@@ -26,11 +26,7 @@ import {
 import { getToken, requireUser } from "@/lib/session";
 import { DISPUTE_REASONS, type Dispute } from "@/lib/trust";
 
-import {
-  ConfirmReceiptButton,
-  DisputeForm,
-  ReviewForm,
-} from "./order-actions";
+import { ConfirmReceiptButton, DisputeForm, ReviewForm } from "./order-actions";
 import { ShipmentRequestForm } from "./shipment-request-form";
 
 export const metadata: Metadata = { title: "Orden · RexFy" };
@@ -58,7 +54,7 @@ async function Order({
   params: Promise<{ id: string }>;
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  await requireUser();
+  const me = await requireUser();
   const [{ id }, query] = await Promise.all([params, searchParams]);
   const result = await apiFetch<Transaction>(
     `/transactions/${encodeURIComponent(id)}`,
@@ -77,9 +73,14 @@ async function Order({
     apiFetch<Dispute[]>(`/transactions/${order.id}/disputes`, { token }),
   ]);
   const counterpart = order.my_role === "buyer" ? order.seller : order.buyer;
+  const myCompany = order.my_role === "buyer" ? order.buyer : order.seller;
+  // Members follow the order; owners and admins commit (pick a transporter, close it).
+  const myRole = me.companies.find((c) => c.company_id === myCompany.id)?.role;
+  const canCommit = myRole === "owner" || myRole === "admin";
   // With a shipment under way, the buyer confirms only after the delivery.
   const canConfirm =
     order.my_role === "buyer" &&
+    canCommit &&
     order.status !== "completed" &&
     !order.has_open_dispute &&
     (!shipment.ok || shipment.data.status === "delivered");
@@ -167,7 +168,11 @@ async function Order({
           </section>
         ))}
       {!order.has_open_dispute && <DisputeForm orderId={order.id} />}
-      <Logistics order={order} shipment={shipment.ok ? shipment.data : null} />
+      <Logistics
+        order={order}
+        shipment={shipment.ok ? shipment.data : null}
+        canCommit={canCommit}
+      />
     </article>
   );
 }
@@ -175,9 +180,11 @@ async function Order({
 function Logistics({
   order,
   shipment,
+  canCommit,
 }: {
   order: Transaction;
   shipment: Shipment | null;
+  canCommit: boolean;
 }) {
   if (!shipment) {
     if (order.status !== "agreed") return null;
@@ -242,13 +249,19 @@ function Logistics({
                   {i === 0 && shipment.quotes.length > 1 && " · Menor precio"}
                 </p>
                 {quote.notes && <p className="mt-1">{quote.notes}</p>}
-                <form action={acceptTransportQuote} className="mt-3">
-                  <input type="hidden" name="quote_id" value={quote.id} />
-                  <input type="hidden" name="transaction_id" value={order.id} />
-                  <button className="btn btn-primary">
-                    Aceptar {formatCop(quote.price)}
-                  </button>
-                </form>
+                {canCommit && (
+                  <form action={acceptTransportQuote} className="mt-3">
+                    <input type="hidden" name="quote_id" value={quote.id} />
+                    <input
+                      type="hidden"
+                      name="transaction_id"
+                      value={order.id}
+                    />
+                    <button className="btn btn-primary">
+                      Aceptar {formatCop(quote.price)}
+                    </button>
+                  </form>
+                )}
               </li>
             ))}
           </ul>

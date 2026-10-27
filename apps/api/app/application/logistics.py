@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from app.application import audit
 from app.application.deals import InvalidState, NotAllowed, lock
 from app.application.notifications import notify
+from app.application.organizations import membership
 from app.domain.deals.enums import TransactionStatus
 from app.domain.logistics.enums import SHIPMENT_FLOW, QuoteStatus, ShipmentStatus, VehicleType
 from app.domain.organizations.roles import MarketRole
@@ -203,7 +204,10 @@ def get_quote(db: Session, user: User, quote_id: uuid.UUID) -> TransportQuote | 
 
 def accept_quote(db: Session, user: User, quote: TransportQuote) -> Shipment:
     shipment = quote.shipment
-    if not _parties(shipment) & _company_ids(user):
+    mine = _parties(shipment) & _company_ids(user)
+    if not mine:
+        raise NotAllowed
+    if not any(membership(user, c).role.can_commit for c in mine):
         raise NotAllowed
     lock(db, shipment)
     if shipment.status is not ShipmentStatus.REQUESTED or quote.status is not QuoteStatus.PENDING:

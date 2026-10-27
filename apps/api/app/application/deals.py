@@ -8,6 +8,8 @@ from sqlalchemy.orm import Session
 
 from app.application import audit
 from app.application.notifications import notify
+from app.application.organizations import NotAllowed as TeamNotAllowed
+from app.application.organizations import require_committer
 from app.domain.deals.enums import OfferStatus, TransactionStatus
 from app.domain.deals.pricing import offer_total
 from app.domain.listings.enums import ListingStatus, QuantityUnit
@@ -240,6 +242,10 @@ def accept_offer(db: Session, user: User, offer: Offer) -> Transaction:
     lock(db, listing)
     lock(db, offer)
     _pending_offer_for_receiver(user, offer)
+    try:
+        require_committer(user, acting_company(user, thread))
+    except TeamNotAllowed:
+        raise NotAllowed from None
     if listing.status is not ListingStatus.PUBLISHED:
         raise InvalidState("La publicación ya no está disponible")
     if offer.quantity > listing.quantity:
@@ -342,6 +348,10 @@ def confirm_receipt(db: Session, user: User, transaction: Transaction) -> Transa
     """
     if transaction.buyer_company_id not in _company_ids(user):
         raise NotAllowed
+    try:
+        require_committer(user, transaction.buyer_company_id)
+    except TeamNotAllowed:
+        raise NotAllowed from None
     lock(db, transaction)
     if transaction.status is TransactionStatus.COMPLETED:
         raise InvalidState("La orden ya está cerrada")

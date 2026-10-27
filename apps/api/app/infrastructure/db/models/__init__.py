@@ -6,12 +6,17 @@ from app.infrastructure.db.models.identity import User
 from app.infrastructure.db.models.listings import Listing, ListingImage
 from app.infrastructure.db.models.logistics import Shipment, ShipmentEvent, TransportQuote
 from app.infrastructure.db.models.notifications import Notification
-from app.infrastructure.db.models.organizations import Company, CompanyMember
+from app.infrastructure.db.models.organizations import (
+    Company,
+    CompanyInvitation,
+    CompanyMember,
+)
 from app.infrastructure.db.models.trust import Dispute, Review
 
 __all__ = [
     "AuditLog",
     "Company",
+    "CompanyInvitation",
     "CompanyMember",
     "Dispute",
     "Listing",

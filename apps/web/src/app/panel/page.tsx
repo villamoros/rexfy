@@ -75,7 +75,23 @@ async function Dashboard() {
       <ul className="flex flex-col gap-3">
         {me.companies.map((company) => (
           <li key={company.company_id} className="card p-5">
-            <p className="text-xl font-semibold">{company.legal_name}</p>
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <p className="text-xl font-semibold">{company.legal_name}</p>
+              <span className="flex gap-3 text-sm">
+                <Link
+                  href={`/empresas/${company.company_id}`}
+                  className="text-muted underline hover:text-foreground"
+                >
+                  Perfil público
+                </Link>
+                <Link
+                  href={`/panel/equipo/${company.company_id}`}
+                  className="text-muted underline hover:text-foreground"
+                >
+                  Equipo
+                </Link>
+              </span>
+            </div>
             <div className="mt-2 flex flex-wrap gap-2">
               {company.market_roles.map((role) => (
                 <span key={role} className="chip">
