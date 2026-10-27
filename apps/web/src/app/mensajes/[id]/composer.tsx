@@ -20,7 +20,7 @@ export function MessageComposer({ threadId }: { threadId: string }) {
           maxLength={4000}
           placeholder="Escribe un mensaje…"
           aria-label="Mensaje"
-          className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-brand"
+          className="flex-1 input text-sm"
         />
         <SubmitButton pending={pending}>Enviar</SubmitButton>
       </div>
@@ -45,8 +45,7 @@ export function OfferComposer({
 }) {
   const [state, action, pending] = useActionState(sendOffer, undefined);
   const details = useRef<HTMLDetailsElement>(null);
-  const input =
-    "rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-brand";
+  const input = "input text-sm";
   return (
     <details
       ref={details}

@@ -14,7 +14,7 @@ export default function MensajesPage() {
     <>
       <SiteHeader />
       <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-8">
-        <h1 className="text-2xl font-semibold">Mensajes</h1>
+        <h1 className="text-3xl font-bold sm:text-4xl">Mensajes</h1>
         <Suspense
           fallback={<p className="mt-6 text-muted">Cargando conversaciones…</p>}
         >
@@ -33,7 +33,7 @@ async function Inbox() {
   if (!result.ok) return <p className="mt-6 text-warn">{result.message}</p>;
   if (result.data.length === 0) {
     return (
-      <p className="mt-6 rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted">
+      <p className="mt-6 rounded-2xl border border-dashed border-border bg-surface-sunken/50 p-8 text-center text-sm text-muted">
         Aún no tienes conversaciones. Busca material en el{" "}
         <Link href="/marketplace" className="text-brand underline">
           marketplace
@@ -43,7 +43,7 @@ async function Inbox() {
     );
   }
   return (
-    <ul className="mt-6 divide-y divide-border rounded-xl border border-border">
+    <ul className="mt-6 divide-y divide-border card">
       {result.data.map((thread) => (
         <li key={thread.id}>
           <Link

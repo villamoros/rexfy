@@ -35,7 +35,7 @@ export function TransportQuoteForm({
           <select
             name="company_id"
             aria-label="Empresa transportadora"
-            className="rounded-lg border border-border bg-background px-3 py-2.5 text-sm"
+            className="input text-sm"
           >
             {companies.map((c) => (
               <option key={c.id} value={c.id}>

@@ -75,7 +75,7 @@ async function Conversation({ params }: { params: Promise<{ id: string }> }) {
   return (
     <div className="flex flex-col gap-4">
       <AutoRefresh />
-      <header className="rounded-xl border border-border bg-surface p-4">
+      <header className="card p-4">
         <Link href="/mensajes" className="text-xs text-muted underline">
           ← Mensajes
         </Link>
@@ -104,7 +104,7 @@ async function Conversation({ params }: { params: Promise<{ id: string }> }) {
       {thread.transaction_id && (
         <Link
           href={`/ordenes/${thread.transaction_id}`}
-          className="rounded-lg border border-brand/40 bg-brand/10 px-4 py-3 text-sm font-medium text-brand"
+          className="rounded-xl border border-brand/30 bg-brand-soft px-4 py-3 text-sm font-medium text-brand-strong"
         >
           Trato cerrado. Ver la orden →
         </Link>
@@ -194,7 +194,7 @@ function OfferCard({
   ];
   return (
     <li className={`flex ${mine ? "justify-end" : "justify-start"}`}>
-      <div className="w-full max-w-sm rounded-xl border-2 border-brand/40 bg-background p-4 text-sm">
+      <div className="w-full max-w-sm rounded-2xl border-2 border-brand/40 bg-surface p-4 text-sm">
         <div className="flex items-center justify-between gap-2">
           <span className="font-semibold">
             Cotización formal · {senderName}
@@ -222,11 +222,7 @@ function OfferCard({
           <form action={respondToOffer} className="mt-3 grid grid-cols-2 gap-2">
             <input type="hidden" name="thread_id" value={threadId} />
             <input type="hidden" name="offer_id" value={offer.id} />
-            <button
-              name="decision"
-              value="accept"
-              className="rounded-lg bg-brand-strong px-3 py-2 font-medium text-white hover:opacity-90"
-            >
+            <button name="decision" value="accept" className="btn btn-primary">
               Aceptar
             </button>
             <button

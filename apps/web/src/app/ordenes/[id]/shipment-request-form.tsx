@@ -49,10 +49,7 @@ export function ShipmentRequestForm({
       </div>
       <label className="flex flex-col gap-1.5 text-sm">
         <span className="font-medium">Tipo de vehículo</span>
-        <select
-          name="vehicle_type"
-          className="rounded-lg border border-border bg-background px-3 py-2.5 text-base"
-        >
+        <select name="vehicle_type" className="input text-base">
           {Object.entries(VEHICLES).map(([value, label]) => (
             <option key={value} value={value}>
               {label}
@@ -74,7 +71,7 @@ export function ShipmentRequestForm({
           rows={2}
           maxLength={2000}
           placeholder="Horario de planta 07:00 a 17:00, montacargas disponible…"
-          className="rounded-lg border border-border bg-background px-3 py-2.5 text-base outline-none focus:border-brand"
+          className="input text-base"
         />
       </label>
       <FormMessage message={state?.message} />

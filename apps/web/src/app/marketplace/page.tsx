@@ -29,9 +29,11 @@ export default function MarketplacePage({
     <>
       <SiteHeader />
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8">
-        <h1 className="text-2xl font-semibold">Marketplace</h1>
-        <p className="mt-1 text-sm text-muted">
-          Material reciclable disponible de empresas en Colombia.
+        <p className="eyebrow">Material disponible</p>
+        <h1 className="mt-2 text-3xl font-bold sm:text-4xl">Marketplace</h1>
+        <p className="mt-2 max-w-xl text-muted">
+          Material reciclable publicado por empresas en Colombia, listo para
+          volver a la cadena productiva.
         </p>
         <Suspense
           fallback={<p className="mt-8 text-muted">Buscando material…</p>}
@@ -61,20 +63,20 @@ async function Search({ searchParams }: { searchParams: Promise<Params> }) {
   const result = await apiFetch<ListingPage>(`/listings?${query}`);
 
   return (
-    <div className="mt-6 grid gap-6 lg:grid-cols-[260px_1fr]">
+    <div className="mt-8 grid gap-6 lg:grid-cols-[272px_1fr]">
       <Filters params={params} />
       <section aria-live="polite">
         {!result.ok ? (
           <p className="text-warn">{result.message}</p>
         ) : (
           <>
-            <p className="mb-3 text-sm text-muted">
+            <p className="mb-3 font-mono text-xs text-muted">
               {result.data.total === 1
                 ? "1 resultado"
                 : `${result.data.total} resultados`}
             </p>
             {result.data.items.length === 0 ? (
-              <p className="rounded-xl border border-dashed border-border p-8 text-center text-muted">
+              <p className="rounded-2xl border border-dashed border-border bg-surface-sunken/50 p-8 text-center text-muted">
                 No hay material con esos filtros todavía.
               </p>
             ) : (
@@ -101,17 +103,20 @@ function Filters({ params }: { params: Params }) {
     ["city", "pricing_type", "recurring"].filter((key) => one(params, key))
       .length;
   return (
-    <form method="get" className="flex flex-col gap-5 text-sm">
+    <form
+      method="get"
+      className="flex flex-col gap-5 self-start text-sm lg:sticky lg:rounded-[1.25rem] lg:border lg:border-border lg:bg-surface lg:top-24 lg:p-5"
+    >
       <input
         type="search"
         name="q"
         defaultValue={one(params, "q")}
         placeholder="Buscar: PET, aluminio, pallets…"
         aria-label="Buscar"
-        className="rounded-lg border border-border bg-background px-3 py-2.5 text-base outline-none focus:border-brand"
+        className="input text-base"
       />
       <details className="filters" open={activeFilters > 0}>
-        <summary className="cursor-pointer rounded-lg border border-border px-3 py-2 font-medium">
+        <summary className="cursor-pointer btn btn-secondary w-full justify-between">
           Filtros{activeFilters > 0 ? ` (${activeFilters})` : ""}
         </summary>
         <div className="mt-3 flex flex-col gap-5 lg:mt-0">
@@ -121,18 +126,26 @@ function Filters({ params }: { params: Params }) {
                 key={value}
                 name="category"
                 value={value}
-                label={label}
+                label={
+                  <span
+                    className="material flex items-center gap-2"
+                    data-category={value}
+                  >
+                    <span className="size-2 rounded-full bg-[var(--cat)]" />
+                    {label}
+                  </span>
+                }
                 checked={categories.includes(value)}
               />
             ))}
           </Group>
           <label className="flex flex-col gap-1.5">
-            <span className="font-medium">Ciudad</span>
+            <span className="eyebrow text-muted">Ciudad</span>
             <input
               name="city"
               defaultValue={one(params, "city")}
               placeholder="Bogotá"
-              className="rounded-lg border border-border bg-background px-3 py-2 outline-none focus:border-brand"
+              className="input"
             />
           </label>
           <Group title="Precio">
@@ -175,11 +188,11 @@ function Filters({ params }: { params: Params }) {
             />
           </Group>
           <label className="flex flex-col gap-1.5">
-            <span className="font-medium">Ordenar por</span>
+            <span className="eyebrow text-muted">Ordenar por</span>
             <select
               name="sort"
               defaultValue={one(params, "sort") || "recent"}
-              className="rounded-lg border border-border bg-background px-3 py-2"
+              className="input"
             >
               <option value="recent">Publicado recientemente</option>
               <option value="price_asc">Menor precio</option>
@@ -188,13 +201,8 @@ function Filters({ params }: { params: Params }) {
         </div>
       </details>
       <div className="flex gap-2">
-        <button className="flex-1 rounded-lg bg-brand-strong px-4 py-2.5 font-medium text-white hover:opacity-90">
-          Aplicar
-        </button>
-        <Link
-          href="/marketplace"
-          className="rounded-lg border border-border px-4 py-2.5 hover:border-brand"
-        >
+        <button className="flex-1 btn btn-primary">Aplicar</button>
+        <Link href="/marketplace" className="btn btn-secondary">
           Limpiar
         </Link>
       </div>
@@ -211,7 +219,7 @@ function Group({
 }) {
   return (
     <fieldset className="flex flex-col gap-2">
-      <legend className="mb-1.5 font-medium">{title}</legend>
+      <legend className="eyebrow mb-2 text-muted">{title}</legend>
       {children}
     </fieldset>
   );
@@ -225,7 +233,7 @@ function Check({
 }: {
   name: string;
   value: string;
-  label: string;
+  label: React.ReactNode;
   checked: boolean;
 }) {
   return (

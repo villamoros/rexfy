@@ -86,7 +86,7 @@ async function Order({
   return (
     <article className="flex flex-col gap-6">
       {query.nueva === "1" && (
-        <p className="rounded-lg border border-brand/40 bg-brand/10 px-4 py-3 text-sm text-brand">
+        <p className="rounded-xl border border-brand/30 bg-brand-soft px-4 py-3 text-sm text-brand-strong">
           ¡Trato cerrado! Ya pueden coordinar la entrega.
         </p>
       )}
@@ -94,10 +94,12 @@ async function Order({
         <p className="text-xs text-muted">
           {order.code} · {order.my_role === "buyer" ? "Compra" : "Venta"}
         </p>
-        <h1 className="mt-1 text-2xl font-semibold">{order.listing.title}</h1>
+        <h1 className="mt-1 text-3xl font-bold sm:text-4xl">
+          {order.listing.title}
+        </h1>
       </header>
       <OrderProgress status={order.status} />
-      <dl className="divide-y divide-border rounded-xl border border-border text-sm">
+      <dl className="divide-y divide-border card text-sm">
         {rows.map(([label, value]) => (
           <div key={label} className="flex justify-between gap-4 px-4 py-3">
             <dt className="text-muted">{label}</dt>
@@ -108,14 +110,14 @@ async function Order({
       <div className="flex flex-wrap gap-2">
         <Link
           href={`/mensajes/${order.thread_id}`}
-          className="rounded-lg border border-border px-4 py-2.5 text-sm hover:border-brand"
+          className="btn btn-secondary text-sm"
         >
           Ir al chat
         </Link>
         {order.my_role === "buyer" && order.status !== "completed" && (
           <form action={confirmReceipt}>
             <input type="hidden" name="transaction_id" value={order.id} />
-            <button className="rounded-lg bg-brand-strong px-4 py-2.5 text-sm font-medium text-white hover:opacity-90">
+            <button className="btn btn-primary text-sm">
               Confirmar recepción del material
             </button>
           </form>
@@ -136,8 +138,8 @@ function Logistics({
   if (!shipment) {
     if (order.status !== "agreed") return null;
     return (
-      <section className="flex flex-col gap-3 rounded-xl border border-border p-5">
-        <h2 className="text-lg font-semibold">Transporte</h2>
+      <section className="flex flex-col gap-3 card p-5">
+        <h2 className="text-xl font-bold">Transporte</h2>
         <p className="text-sm text-muted">
           Pide cotizaciones a transportistas de RexFy. Si el comprador recoge en
           planta, puedes omitir este paso.
@@ -150,13 +152,11 @@ function Logistics({
     );
   }
   return (
-    <section className="flex flex-col gap-4 rounded-xl border border-border p-5">
+    <section className="flex flex-col gap-4 card p-5">
       <AutoRefresh seconds={15} />
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="text-lg font-semibold">Transporte</h2>
-        <span className="rounded-full bg-brand/15 px-2.5 py-0.5 text-xs font-medium text-brand">
-          {SHIPMENT_STATUS[shipment.status]}
-        </span>
+        <h2 className="text-xl font-bold">Transporte</h2>
+        <span className="chip">{SHIPMENT_STATUS[shipment.status]}</span>
       </div>
       <p className="text-sm">
         {shipment.pickup_city} → {shipment.delivery_city} ·{" "}
@@ -179,7 +179,7 @@ function Logistics({
             {shipment.quotes.map((quote, i) => (
               <li
                 key={quote.id}
-                className="rounded-lg border border-border p-4 text-sm"
+                className="rounded-xl border border-border bg-surface p-4 text-sm"
               >
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
                   <span className="font-medium">
@@ -201,7 +201,7 @@ function Logistics({
                 <form action={acceptTransportQuote} className="mt-3">
                   <input type="hidden" name="quote_id" value={quote.id} />
                   <input type="hidden" name="transaction_id" value={order.id} />
-                  <button className="rounded-lg bg-brand-strong px-4 py-2 font-medium text-white hover:opacity-90">
+                  <button className="btn btn-primary">
                     Aceptar {formatCop(quote.price)}
                   </button>
                 </form>

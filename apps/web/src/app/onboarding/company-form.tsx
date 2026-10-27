@@ -45,7 +45,7 @@ export function CompanyForm() {
         {MARKET_ROLES.map((role) => (
           <label
             key={role.value}
-            className="flex cursor-pointer items-start gap-3 rounded-lg border border-border bg-background p-3 has-checked:border-brand"
+            className="flex cursor-pointer items-start gap-3 card p-3 transition hover:border-brand/60 has-checked:border-brand has-checked:bg-brand-soft"
           >
             <input
               type="checkbox"

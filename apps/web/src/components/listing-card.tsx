@@ -10,27 +10,36 @@ import {
 
 export function ListingCard({ listing }: { listing: Listing }) {
   return (
-    <li className="rounded-xl border border-border bg-surface p-4 sm:p-5">
+    <li
+      className="material card group relative overflow-hidden p-4 pl-5 transition hover:-translate-y-0.5 hover:shadow-lg sm:p-5 sm:pl-6"
+      data-category={listing.category}
+    >
+      <span
+        aria-hidden
+        className="absolute inset-y-0 left-0 w-1.5 bg-[var(--cat)]"
+      />
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <span className="text-xs font-semibold uppercase tracking-wide text-brand">
-            {CATEGORIES[listing.category]}
-          </span>
-          <h3 className="mt-1 font-medium">
+          <span className="material-badge">{CATEGORIES[listing.category]}</span>
+          <h3 className="mt-2 text-lg font-semibold leading-snug">
             <Link
               href={`/publicaciones/${listing.id}`}
-              className="hover:underline"
+              className="after:absolute after:inset-0 group-hover:text-brand-strong"
             >
               {listing.title}
             </Link>
           </h3>
-          <p className="mt-0.5 text-sm text-muted">
+          <p className="mt-0.5 flex items-center gap-1.5 text-sm text-muted">
             {listing.company.legal_name}
-            {listing.company.is_verified && " · Verificada"}
+            {listing.company.is_verified && (
+              <span className="chip py-0 text-[0.6875rem]">✓ Verificada</span>
+            )}
           </p>
         </div>
         <div className="text-right">
-          <p className="font-semibold">{formatPrice(listing)}</p>
+          <p className="font-display text-xl font-bold tabular-nums">
+            {formatPrice(listing)}
+          </p>
           {listing.price_negotiable && (
             <p className="text-xs text-muted">Negociable</p>
           )}
@@ -56,7 +65,7 @@ export function ListingCard({ listing }: { listing: Listing }) {
 
 function Tag({ children }: { children: React.ReactNode }) {
   return (
-    <li className="rounded-full border border-border px-2.5 py-0.5 text-muted">
+    <li className="rounded-md bg-surface-sunken px-2 py-0.5 text-muted">
       {children}
     </li>
   );

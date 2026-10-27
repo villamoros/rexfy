@@ -14,7 +14,7 @@ export default function PublicarPage() {
     <>
       <SiteHeader />
       <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-8">
-        <h1 className="text-2xl font-semibold">Publicar residuo</h1>
+        <h1 className="text-3xl font-bold sm:text-4xl">Publicar residuo</h1>
         <div className="mt-6">
           <Suspense fallback={<p className="text-muted">Cargando…</p>}>
             <GeneratorOnly />
@@ -32,7 +32,7 @@ async function GeneratorOnly() {
     .map((c) => ({ id: c.company_id, name: c.legal_name }));
   if (companies.length === 0) {
     return (
-      <p className="rounded-xl border border-border bg-surface p-5 text-sm text-muted">
+      <p className="card p-5 text-sm text-muted">
         Para publicar material tu empresa debe estar registrada como generadora.{" "}
         <Link href="/onboarding" className="text-brand underline">
           Registra una empresa generadora

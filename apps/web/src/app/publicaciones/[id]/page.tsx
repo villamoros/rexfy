@@ -92,37 +92,41 @@ async function Detail({
   return (
     <article className="flex flex-col gap-6">
       {query.nueva === "1" && (
-        <p className="rounded-lg border border-brand/40 bg-brand/10 px-4 py-3 text-sm text-brand">
+        <p className="rounded-xl border border-brand/30 bg-brand-soft px-4 py-3 text-sm text-brand-strong">
           ¡Publicación activa! Ya es visible para los compradores en el
           marketplace.
         </p>
       )}
       <header>
         <div className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-wide">
-          <span className="text-brand">{CATEGORIES[listing.category]}</span>
+          <span
+            className="material material-badge normal-case tracking-normal"
+            data-category={listing.category}
+          >
+            {CATEGORIES[listing.category]}
+          </span>
           {listing.status !== "published" && (
             <span className="rounded-full bg-warn/15 px-2 py-0.5 text-warn">
               {STATUS[listing.status]}
             </span>
           )}
         </div>
-        <h1 className="mt-1 text-2xl font-semibold">{listing.title}</h1>
+        <h1 className="mt-3 text-3xl font-bold sm:text-4xl">{listing.title}</h1>
         <p className="mt-1 text-sm text-muted">
           {listing.company.legal_name} · {listing.company.city}
           {listing.company.is_verified ? " · Empresa verificada" : ""}
         </p>
       </header>
 
-      <div className="rounded-xl border border-border bg-surface p-5">
-        <p className="text-2xl font-semibold">{formatPrice(listing)}</p>
+      <div className="card p-5">
+        <p className="font-display text-3xl font-bold tracking-tight">
+          {formatPrice(listing)}
+        </p>
         {listing.price_negotiable && (
           <p className="text-sm text-muted">Precio negociable</p>
         )}
         {listing.status !== "published" || isOwner ? null : !me?.ok ? (
-          <Link
-            href="/ingresar"
-            className="mt-4 block rounded-lg bg-brand-strong px-4 py-2.5 text-center font-medium text-white hover:opacity-90"
-          >
+          <Link href="/ingresar" className="btn btn-primary mt-4 w-full">
             Ingresa para contactar al generador
           </Link>
         ) : buyerCompanies.length === 0 ? (
@@ -138,7 +142,7 @@ async function Detail({
         <p className="whitespace-pre-line">{listing.description}</p>
       )}
 
-      <dl className="divide-y divide-border rounded-xl border border-border text-sm">
+      <dl className="divide-y divide-border card text-sm">
         {rows.map(([label, value]) => (
           <div key={label} className="flex justify-between gap-4 px-4 py-3">
             <dt className="text-muted">{label}</dt>
@@ -149,7 +153,7 @@ async function Detail({
 
       {listing.conditions && (
         <section>
-          <h2 className="font-medium">Condiciones adicionales</h2>
+          <h2 className="text-lg font-bold">Condiciones adicionales</h2>
           <p className="mt-1 whitespace-pre-line text-sm text-muted">
             {listing.conditions}
           </p>
