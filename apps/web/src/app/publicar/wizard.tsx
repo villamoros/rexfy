@@ -639,10 +639,49 @@ function Choices<T extends string>({
 }
 
 const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
+// The hosting platform takes at most 4.5 MB per request, so photos are shrunk in the
+// browser to fit all six in one upload.
+const PHOTO_MAX_SIDE = 1600;
+const PHOTO_TARGET_BYTES = 600 * 1024;
+
+async function shrinkPhoto(file: File): Promise<File> {
+  if (file.size <= PHOTO_TARGET_BYTES) return file;
+  let bitmap: ImageBitmap;
+  try {
+    bitmap = await createImageBitmap(file);
+  } catch {
+    return file;
+  }
+  const scale = Math.min(
+    1,
+    PHOTO_MAX_SIDE / Math.max(bitmap.width, bitmap.height),
+  );
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.round(bitmap.width * scale);
+  canvas.height = Math.round(bitmap.height * scale);
+  const context = canvas.getContext("2d");
+  if (!context) return file;
+  // JPEG has no transparency: paint transparent PNGs over white instead of black.
+  context.fillStyle = "#fff";
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  bitmap.close();
+  for (const quality of [0.82, 0.7, 0.55]) {
+    const blob = await new Promise<Blob | null>((resolve) =>
+      canvas.toBlob(resolve, "image/jpeg", quality),
+    );
+    if (blob && (blob.size <= PHOTO_TARGET_BYTES || quality === 0.55)) {
+      const name = file.name.replace(/\.\w+$/, "") + ".jpg";
+      return new File([blob], name, { type: "image/jpeg" });
+    }
+  }
+  return file;
+}
 
 function PhotoInput({ already }: { already: number }) {
   const room = MAX_PHOTOS - already;
   const [chosen, setChosen] = useState(0);
+  const [shrinking, setShrinking] = useState(false);
   if (room <= 0) return null;
   return (
     <label className="flex flex-col gap-1.5 text-sm">
@@ -654,24 +693,38 @@ function PhotoInput({ already }: { already: number }) {
         name="photos"
         multiple
         accept="image/jpeg,image/png,image/webp"
-        onChange={(event) => {
+        onChange={async (event) => {
           const input = event.currentTarget;
-          const files = Array.from(input.files ?? []);
+          const original = Array.from(input.files ?? []);
+          setChosen(original.length);
+          if (original.length > room) {
+            input.setCustomValidity(`Puedes subir máximo ${room} fotos`);
+            return;
+          }
+          // Still being shrunk: block submitting until the smaller copies are in place.
           input.setCustomValidity(
-            files.length > room
-              ? `Puedes subir máximo ${room} fotos`
-              : files.some((f) => f.size > MAX_PHOTO_BYTES)
-                ? "Cada foto puede pesar máximo 5 MB"
-                : "",
+            "Espera a que terminemos de preparar las fotos",
           );
-          setChosen(files.length);
+          setShrinking(true);
+          const files = await Promise.all(original.map(shrinkPhoto));
+          const smaller = new DataTransfer();
+          for (const file of files) smaller.items.add(file);
+          input.files = smaller.files;
+          setShrinking(false);
+          input.setCustomValidity(
+            files.some((f) => f.size > MAX_PHOTO_BYTES)
+              ? "Cada foto puede pesar máximo 5 MB"
+              : "",
+          );
         }}
         className="input text-sm file:mr-3 file:rounded-md file:border-0 file:bg-surface-sunken file:px-3 file:py-1.5 file:text-sm file:font-medium"
       />
       <span className="text-muted">
-        {chosen > 0
-          ? `${chosen} ${chosen === 1 ? "foto lista" : "fotos listas"} para subir`
-          : "Una buena foto es la mejor prueba de la calidad del material. JPG, PNG o WebP, 5 MB cada una."}
+        {shrinking
+          ? "Preparando las fotos…"
+          : chosen > 0
+            ? `${chosen} ${chosen === 1 ? "foto lista" : "fotos listas"} para subir`
+            : "Una buena foto es la mejor prueba de la calidad del material. JPG, PNG o WebP, 5 MB cada una."}
       </span>
     </label>
   );

@@ -16,7 +16,10 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-config.set_main_option("sqlalchemy.url", get_settings().database_url)
+settings = get_settings()
+# Escape % so configparser does not read URL-encoded passwords as interpolation.
+url = settings.database_url_unpooled or settings.database_url
+config.set_main_option("sqlalchemy.url", url.replace("%", "%%"))
 
 # add your model's MetaData object here
 # for 'autogenerate' support
