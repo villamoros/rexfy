@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_prefix="REXFY_", extra="ignore")
 
     env: str = "local"
-    # The Neon and Upstash integrations on Vercel set DATABASE_URL and REDIS_URL themselves.
+    # The Neon and Upstash integrations on Vercel set DATABASE_URL and REDIS_URL (or KV_URL).
     database_url: str = Field(
         "postgresql+psycopg://rexfy:rexfy@localhost:5432/rexfy",
         validation_alias=AliasChoices("REXFY_DATABASE_URL", "DATABASE_URL"),
@@ -19,7 +19,8 @@ class Settings(BaseSettings):
         None, validation_alias=AliasChoices("REXFY_DATABASE_URL_UNPOOLED", "DATABASE_URL_UNPOOLED")
     )
     redis_url: str = Field(
-        "redis://localhost:6379/0", validation_alias=AliasChoices("REXFY_REDIS_URL", "REDIS_URL")
+        "redis://localhost:6379/0",
+        validation_alias=AliasChoices("REXFY_REDIS_URL", "REDIS_URL", "KV_URL"),
     )
     cors_origins: list[str] = ["http://localhost:3000"]
     # Clerk instance that issues session tokens, e.g. https://<slug>.clerk.accounts.dev
