@@ -14,7 +14,7 @@ export default function ErrorPage({
   const router = useRouter();
   return (
     <main className="mx-auto flex w-full max-w-md flex-1 flex-col items-center justify-center gap-4 px-4 py-16 text-center">
-      <h1 className="text-xl font-semibold">Algo salió mal</h1>
+      <h1 className="text-3xl font-bold">Algo salió mal</h1>
       <p className="text-muted">
         No pudimos cargar esta página. Puede que el servidor no esté disponible
         en este momento.
@@ -24,7 +24,7 @@ export default function ErrorPage({
       )}
       <div className="flex gap-3">
         <button
-          className="rounded-lg bg-brand-strong px-4 py-2 font-medium text-white hover:opacity-90"
+          className="btn btn-primary"
           onClick={() =>
             startTransition(() => {
               router.refresh();
@@ -35,9 +35,7 @@ export default function ErrorPage({
           Reintentar
         </button>
         <SignOutButton redirectUrl="/ingresar">
-          <button className="rounded-lg border border-border px-4 py-2 font-medium hover:border-brand">
-            Cerrar sesión
-          </button>
+          <button className="btn btn-secondary">Cerrar sesión</button>
         </SignOutButton>
       </div>
     </main>

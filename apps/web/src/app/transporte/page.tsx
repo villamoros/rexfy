@@ -5,6 +5,7 @@ import { Suspense } from "react";
 import { advanceShipment } from "@/app/actions/logistics";
 import { ShipmentTimeline } from "@/components/shipment-timeline";
 import { SiteHeader } from "@/components/site-header";
+import { PageHeader } from "@/components/ui";
 import { apiFetch } from "@/lib/api";
 import { formatCop } from "@/lib/deals";
 import { formatQuantity } from "@/lib/listings";
@@ -27,10 +28,10 @@ export default function TransportePage() {
     <>
       <SiteHeader />
       <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-8">
-        <h1 className="text-2xl font-semibold">Transporte</h1>
-        <p className="mt-1 text-sm text-muted">
-          Cotiza viajes de material reciclable y actualiza tus envíos.
-        </p>
+        <PageHeader
+          title="Transporte"
+          description="Cotiza viajes de material reciclable y actualiza tus envíos."
+        />
         <Suspense fallback={<p className="mt-6 text-muted">Cargando…</p>}>
           <Board />
         </Suspense>
@@ -46,7 +47,7 @@ async function Board() {
     .map((c) => ({ id: c.company_id, name: c.legal_name }));
   if (companies.length === 0) {
     return (
-      <p className="mt-6 rounded-xl border border-border bg-surface p-5 text-sm text-muted">
+      <p className="mt-6 card p-5 text-sm text-muted">
         Esta sección es para empresas transportadoras.{" "}
         <Link href="/onboarding" className="text-brand underline">
           Registra una empresa transportadora
@@ -68,7 +69,7 @@ async function Board() {
   return (
     <div className="mt-6 flex flex-col gap-8">
       <section className="flex flex-col gap-3">
-        <h2 className="text-lg font-semibold">Mis envíos</h2>
+        <h2 className="text-xl font-bold">Mis envíos</h2>
         {!mine.ok || mine.data.length === 0 ? (
           <p className="text-sm text-muted">
             Cuando un cliente acepte tu cotización, el envío aparecerá aquí.
@@ -78,10 +79,7 @@ async function Board() {
             {mine.data.map((s) => {
               const next = NEXT_STATUS[s.status];
               return (
-                <li
-                  key={s.id}
-                  className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4 text-sm"
-                >
+                <li key={s.id} className="flex flex-col gap-3 card p-4 text-sm">
                   <Route shipment={s} />
                   <p>
                     Recoger en{" "}
@@ -89,7 +87,7 @@ async function Board() {
                     entregar en{" "}
                     <span className="font-medium">{s.delivery_address}</span>
                   </p>
-                  <span className="w-fit rounded-full bg-brand/15 px-2.5 py-0.5 text-xs font-medium text-brand">
+                  <span className="w-fit chip">
                     {SHIPMENT_STATUS[s.status]}
                   </span>
                   {next && (
@@ -103,9 +101,9 @@ async function Board() {
                         name="note"
                         placeholder="Nota (placa, ubicación, novedades)"
                         aria-label="Nota"
-                        className="flex-1 rounded-lg border border-border bg-background px-3 py-2"
+                        className="flex-1 input"
                       />
-                      <button className="rounded-lg bg-brand-strong px-4 py-2 font-medium text-white hover:opacity-90">
+                      <button className="btn btn-primary">
                         {NEXT_ACTION[next]}
                       </button>
                     </form>
@@ -119,7 +117,7 @@ async function Board() {
       </section>
 
       <section className="flex flex-col gap-3">
-        <h2 className="text-lg font-semibold">Solicitudes abiertas</h2>
+        <h2 className="text-xl font-bold">Solicitudes abiertas</h2>
         {!open.ok || open.data.length === 0 ? (
           <p className="text-sm text-muted">
             No hay solicitudes de transporte abiertas en este momento.
@@ -129,10 +127,7 @@ async function Board() {
             {open.data.map((s) => {
               const myQuote = s.quotes[0];
               return (
-                <li
-                  key={s.id}
-                  className="flex flex-col gap-3 rounded-xl border border-border p-4 text-sm"
-                >
+                <li key={s.id} className="flex flex-col gap-3 card p-4 text-sm">
                   <Route shipment={s} />
                   {s.requirements && (
                     <p className="text-muted">{s.requirements}</p>

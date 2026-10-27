@@ -6,6 +6,7 @@ import { Suspense } from "react";
 
 import { archiveListing } from "@/app/actions/listings";
 import { SiteHeader } from "@/components/site-header";
+import { EmptyState, PageHeader } from "@/components/ui";
 import { apiFetch } from "@/lib/api";
 import {
   STATUS,
@@ -48,45 +49,35 @@ async function Dashboard() {
 
   return (
     <>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold">
-          Hola, {me.full_name.split(" ")[0]}
-        </h1>
-        <div className="flex gap-2 text-sm">
-          <Link
-            href="/marketplace"
-            className="rounded-lg border border-border px-4 py-2 hover:border-brand"
-          >
-            Buscar material
-          </Link>
-          {isGenerator && (
-            <Link
-              href="/publicar"
-              className="rounded-lg bg-brand-strong px-4 py-2 font-medium text-white hover:opacity-90"
-            >
-              Publicar residuo
+      <PageHeader
+        eyebrow="Tu panel"
+        title={`Hola, ${me.full_name.split(" ")[0]}`}
+        actions={
+          <>
+            <Link href="/marketplace" className="btn btn-secondary">
+              Buscar material
             </Link>
-          )}
-        </div>
-      </div>
+            {isGenerator && (
+              <Link href="/publicar" className="btn btn-primary">
+                Publicar material
+              </Link>
+            )}
+          </>
+        }
+      />
       <ul className="flex flex-col gap-3">
         {me.companies.map((company) => (
-          <li
-            key={company.company_id}
-            className="rounded-xl border border-border bg-surface p-5"
-          >
-            <p className="font-medium">{company.legal_name}</p>
+          <li key={company.company_id} className="card p-5">
+            <p className="text-xl font-semibold">{company.legal_name}</p>
             <div className="mt-2 flex flex-wrap gap-2">
               {company.market_roles.map((role) => (
-                <span
-                  key={role}
-                  className="rounded-full bg-brand/15 px-2.5 py-0.5 text-xs font-medium text-brand"
-                >
+                <span key={role} className="chip">
                   {roleLabel(role)}
                 </span>
               ))}
             </div>
-            <p className="mt-3 text-sm text-muted">
+            <p className="mt-3 flex items-center gap-2 text-sm text-muted">
+              <span className="size-1.5 rounded-full bg-warn" />
               Pendiente de verificación.
             </p>
           </li>
@@ -95,13 +86,11 @@ async function Dashboard() {
 
       {mine?.ok && (
         <section className="flex flex-col gap-3">
-          <h2 className="text-lg font-semibold">Mis publicaciones</h2>
+          <h2 className="text-xl font-bold">Mis publicaciones</h2>
           {mine.data.length === 0 ? (
-            <p className="rounded-xl border border-dashed border-border p-6 text-center text-sm text-muted">
-              Aún no has publicado material.
-            </p>
+            <EmptyState>Aún no has publicado material.</EmptyState>
           ) : (
-            <ul className="divide-y divide-border rounded-xl border border-border">
+            <ul className="divide-y divide-border card">
               {mine.data.map((listing) => (
                 <li
                   key={listing.id}

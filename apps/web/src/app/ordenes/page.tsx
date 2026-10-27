@@ -4,6 +4,7 @@ import { Suspense } from "react";
 
 import { OrderProgress } from "@/components/order-progress";
 import { SiteHeader } from "@/components/site-header";
+import { EmptyState, PageHeader } from "@/components/ui";
 import { apiFetch } from "@/lib/api";
 import { formatCop, type Transaction } from "@/lib/deals";
 import { formatQuantity } from "@/lib/listings";
@@ -16,10 +17,10 @@ export default function OrdenesPage() {
     <>
       <SiteHeader />
       <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-8">
-        <h1 className="text-2xl font-semibold">Órdenes</h1>
-        <p className="mt-1 text-sm text-muted">
-          Tus compras y ventas cerradas en RexFy.
-        </p>
+        <PageHeader
+          title="Órdenes"
+          description="Tus compras y ventas cerradas en RexFy."
+        />
         <Suspense
           fallback={<p className="mt-6 text-muted">Cargando órdenes…</p>}
         >
@@ -38,18 +39,15 @@ async function Orders() {
   if (!result.ok) return <p className="mt-6 text-warn">{result.message}</p>;
   if (result.data.length === 0) {
     return (
-      <p className="mt-6 rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted">
+      <EmptyState className="mt-6">
         Cuando aceptes una cotización, la orden aparecerá aquí.
-      </p>
+      </EmptyState>
     );
   }
   return (
     <ul className="mt-6 flex flex-col gap-3">
       {result.data.map((order) => (
-        <li
-          key={order.id}
-          className="rounded-xl border border-border bg-surface p-4"
-        >
+        <li key={order.id} className="card p-4">
           <Link href={`/ordenes/${order.id}`} className="flex flex-col gap-3">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <span className="font-medium">{order.listing.title}</span>

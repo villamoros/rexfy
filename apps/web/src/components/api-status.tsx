@@ -28,19 +28,13 @@ export function ApiStatus() {
       : [["API", "verificando…"]];
 
   return (
-    <ul className="w-full max-w-sm divide-y divide-border rounded-xl border border-border bg-surface text-sm">
+    <ul className="flex flex-wrap gap-x-4 gap-y-1 font-mono text-xs text-muted">
       {rows.map(([label, value]) => (
-        <li key={label} className="flex items-center justify-between px-4 py-3">
-          <span className="text-muted">{label}</span>
+        <li key={label} className="flex items-center gap-1.5">
           <span
-            className={
-              value === "ok"
-                ? "font-medium text-brand"
-                : "font-medium text-warn"
-            }
-          >
-            {value}
-          </span>
+            className={`size-1.5 rounded-full ${value === "ok" ? "bg-brand" : "bg-warn"}`}
+          />
+          {label}: {value}
         </li>
       ))}
     </ul>

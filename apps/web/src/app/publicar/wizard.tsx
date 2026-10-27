@@ -10,6 +10,7 @@ import {
 
 import { publishListing } from "@/app/actions/listings";
 import { Field, FormMessage, SubmitButton } from "@/components/form";
+import { MaterialIcon } from "@/components/icons";
 import {
   AVAILABILITY,
   CATEGORIES,
@@ -126,10 +127,7 @@ export function PublishWizard({ companies }: { companies: Company[] }) {
           {companies.length > 1 ? (
             <label className="flex flex-col gap-1.5 text-sm">
               <span className="font-medium">Empresa que publica</span>
-              <select
-                name="company_id"
-                className="rounded-lg border border-border bg-background px-3 py-2.5 text-base"
-              >
+              <select name="company_id" className="input text-base">
                 {companies.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.name}
@@ -141,11 +139,14 @@ export function PublishWizard({ companies }: { companies: Company[] }) {
             <input type="hidden" name="company_id" value={companies[0].id} />
           )}
           <Choices
-            legend="¿Qué tipo de residuo tienes?"
+            legend="¿Qué material quieres publicar?"
             name="category"
             options={CATEGORIES as Record<MaterialCategory, string>}
             defaultValue="plastic"
             grid
+            icon={(value) => (
+              <MaterialIcon category={value} className="size-5 shrink-0" />
+            )}
           />
           <Field
             label="Título de la publicación"
@@ -164,7 +165,7 @@ export function PublishWizard({ companies }: { companies: Company[] }) {
               rows={4}
               maxLength={4000}
               placeholder="Material transparente, limpio y separado post proceso industrial."
-              className="rounded-lg border border-border bg-background px-3 py-2.5 text-base outline-none focus:border-brand"
+              className="input text-base"
             />
           </label>
           <Choices
@@ -216,7 +217,7 @@ export function PublishWizard({ companies }: { companies: Company[] }) {
                   value={value}
                   checked={availability === value}
                   onChange={() => setAvailability(value as Availability)}
-                  className="accent-brand-strong"
+                  className="accent-brand"
                 />
                 {label}
               </label>
@@ -271,7 +272,7 @@ export function PublishWizard({ companies }: { companies: Company[] }) {
             ].map(([value, label]) => (
               <label
                 key={value}
-                className="flex cursor-pointer items-center justify-center rounded-lg border border-border bg-background p-3 has-checked:border-brand"
+                className="flex cursor-pointer items-center justify-center card p-3 transition hover:border-brand/60 has-checked:border-brand has-checked:bg-brand-soft"
               >
                 <input
                   type="radio"
@@ -315,7 +316,7 @@ export function PublishWizard({ companies }: { companies: Company[] }) {
               name="conditions"
               rows={3}
               maxLength={2000}
-              className="rounded-lg border border-border bg-background px-3 py-2.5 text-base outline-none focus:border-brand"
+              className="input text-base"
             />
           </label>
         </>,
@@ -324,7 +325,7 @@ export function PublishWizard({ companies }: { companies: Company[] }) {
       {section(
         4,
         <>
-          <dl className="divide-y divide-border rounded-xl border border-border text-sm">
+          <dl className="divide-y divide-border card text-sm">
             {summary.map(([label, value]) => (
               <div key={label} className="flex justify-between gap-4 px-4 py-3">
                 <dt className="text-muted">{label}</dt>
@@ -353,18 +354,14 @@ export function PublishWizard({ companies }: { companies: Company[] }) {
           <button
             type="button"
             onClick={() => setStep(step - 1)}
-            className="rounded-lg border border-border px-4 py-2.5 hover:border-brand"
+            className="btn btn-secondary"
           >
             Atrás
           </button>
         )}
         <div className="flex flex-1 flex-col">
           {step < STEPS.length - 1 ? (
-            <button
-              type="button"
-              onClick={next}
-              className="rounded-lg bg-brand-strong px-4 py-2.5 font-medium text-white hover:opacity-90"
-            >
+            <button type="button" onClick={next} className="btn btn-primary">
               Siguiente →
             </button>
           ) : (
@@ -419,12 +416,14 @@ function Choices<T extends string>({
   options,
   defaultValue,
   grid = false,
+  icon,
 }: {
   legend: string;
   name: string;
   options: Record<T, string>;
   defaultValue: T;
   grid?: boolean;
+  icon?: (value: T) => React.ReactNode;
 }) {
   return (
     <fieldset
@@ -434,15 +433,16 @@ function Choices<T extends string>({
       {(Object.entries(options) as [T, string][]).map(([value, label]) => (
         <label
           key={value}
-          className="flex cursor-pointer items-center gap-2 rounded-lg border border-border bg-background p-3 has-checked:border-brand"
+          className="flex cursor-pointer items-center gap-2 card p-3 transition hover:border-brand/60 has-checked:border-brand has-checked:bg-brand-soft"
         >
           <input
             type="radio"
             name={name}
             value={value}
             defaultChecked={value === defaultValue}
-            className="accent-brand-strong"
+            className="accent-brand"
           />
+          {icon?.(value)}
           {label}
         </label>
       ))}
@@ -462,12 +462,12 @@ function Toggle({
   defaultChecked?: boolean;
 }) {
   return (
-    <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-border bg-background p-3 text-sm has-checked:border-brand">
+    <label className="flex cursor-pointer items-start gap-3 card p-3 transition hover:border-brand/60 text-sm has-checked:border-brand has-checked:bg-brand-soft">
       <input
         type="checkbox"
         name={name}
         defaultChecked={defaultChecked}
-        className="mt-1 accent-brand-strong"
+        className="mt-1 accent-brand"
       />
       <span>
         <span className="block font-medium">{label}</span>
@@ -492,7 +492,7 @@ function UnitSelect({
       <select
         name={name}
         defaultValue={defaultValue}
-        className="rounded-lg border border-border bg-background px-3 py-2.5 text-base"
+        className="input text-base"
       >
         {Object.entries(UNITS).map(([value, unitLabel]) => (
           <option key={value} value={value}>

@@ -1,26 +1,62 @@
 @import "tailwindcss";
 
+/*
+ * RexFy brand tokens (manual de identidad v0.1, marca/tokens/rexfy-tokens.css).
+ * Noche is the brand color, Señal (green) is the single accent: the connection.
+ * Señal and Red are never text on light surfaces; use brand (Taller) and info instead.
+ */
 :root {
-  --background: #ffffff;
-  --foreground: #1f2937;
-  --surface: #f8faf9;
-  --border: #e5e7eb;
-  --muted: #6b7280;
-  --brand: #1d9e75;
-  --brand-strong: #0f6e56;
-  --warn: #ba7517;
+  --background: #f5f7fa;
+  --foreground: #0b1f3b;
+  --surface: #ffffff;
+  --surface-sunken: #eef1f5;
+  --border: #e2e6ec;
+  --border-strong: #c5cdd8;
+  --muted: #5a6578;
+  --brand: #0b7a4a;
+  --brand-soft: #e3f8ee;
+  --primary: #0b1f3b;
+  --primary-hover: #14305a;
+  --on-primary: #ffffff;
+  --ink: #0b1f3b;
+  --ink-2: #14305a;
+  --on-ink: #ffffff;
+  --on-ink-muted: #a9b6c8;
+  --signal: #39d98a;
+  --signal-hover: #5fe3a3;
+  --on-signal: #0b1f3b;
+  /* Lines and nodes of the network graphic and dividers on Noche surfaces. */
+  --ink-line: #1c3558;
+  --ink-line-strong: #2a4a75;
+  --net: #00b4ff;
+  --net-line: #1e4a7a;
+  --net-node: #2a5c8f;
+  --info: #0069a8;
+  --warn: #b45309;
+  --danger: #c0352b;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0b1220;
-    --foreground: #f8fafc;
-    --surface: #111827;
-    --border: #1f2937;
-    --muted: #94a3b8;
-    --brand: #9fe1cb;
-    --brand-strong: #1d9e75;
-    --warn: #fac775;
+    --background: #08172c;
+    --foreground: #f2f5f9;
+    --surface: #0f2645;
+    --surface-sunken: #0c1f3a;
+    --border: #1c3558;
+    --border-strong: #2a4a75;
+    --muted: #a9b6c8;
+    --brand: #39d98a;
+    --brand-soft: #0f3a34;
+    --primary: #39d98a;
+    --primary-hover: #5fe3a3;
+    --on-primary: #0b1f3b;
+    --ink: #050f1e;
+    --ink-2: #0f2645;
+    --on-ink: #ffffff;
+    --on-ink-muted: #a9b6c8;
+    --info: #5cc8ff;
+    --warn: #f0a24b;
+    --danger: #f07a70;
   }
 }
 
@@ -28,19 +64,162 @@
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-surface: var(--surface);
+  --color-surface-sunken: var(--surface-sunken);
   --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
   --color-muted: var(--muted);
   --color-brand: var(--brand);
-  --color-brand-strong: var(--brand-strong);
+  --color-brand-soft: var(--brand-soft);
+  --color-primary: var(--primary);
+  --color-on-primary: var(--on-primary);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-on-ink: var(--on-ink);
+  --color-on-ink-muted: var(--on-ink-muted);
+  --color-signal: var(--signal);
+  --color-on-signal: var(--on-signal);
+  --color-ink-line: var(--ink-line);
+  --color-ink-line-strong: var(--ink-line-strong);
+  --color-net: var(--net);
+  --color-info: var(--info);
   --color-warn: var(--warn);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-danger: var(--danger);
+  --font-sans: var(--font-manrope);
+  --font-mono: var(--font-plex-mono);
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-sans), system-ui, sans-serif;
+@layer base {
+  body {
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans), system-ui, sans-serif;
+  }
+
+  h1,
+  h2,
+  h3 {
+    letter-spacing: -0.02em;
+  }
+
+  h1 {
+    font-weight: 800;
+    letter-spacing: -0.025em;
+  }
+
+  ::selection {
+    background: var(--signal);
+    color: var(--on-signal);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--brand);
+    outline-offset: 2px;
+  }
+}
+
+@layer components {
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: 0.5rem;
+    padding: 0.625rem 1.125rem;
+    font-weight: 600;
+    transition:
+      background-color 150ms,
+      border-color 150ms,
+      color 150ms,
+      transform 150ms;
+  }
+  .btn:active:not(:disabled) {
+    transform: translateY(1px);
+  }
+  .btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+  .btn-primary {
+    background: var(--primary);
+    color: var(--on-primary);
+  }
+  .btn-primary:hover:not(:disabled) {
+    background: var(--primary-hover);
+  }
+  .btn-secondary {
+    border: 1px solid var(--border);
+    background: var(--surface);
+  }
+  .btn-secondary:hover {
+    border-color: var(--foreground);
+  }
+  /* Señal button: only on Noche backgrounds. */
+  .btn-signal {
+    background: var(--signal);
+    color: var(--on-signal);
+  }
+  .btn-signal:hover {
+    background: var(--signal-hover);
+  }
+
+  .input {
+    border-radius: 0.5rem;
+    border: 1px solid var(--border-strong);
+    background: var(--surface);
+    padding: 0.625rem 0.875rem;
+    outline: none;
+    transition:
+      border-color 150ms,
+      box-shadow 150ms;
+  }
+  .input:focus {
+    border-color: var(--brand);
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--brand) 22%, transparent);
+  }
+  .input[aria-invalid="true"] {
+    border-color: var(--warn);
+  }
+
+  .card {
+    border-radius: 0.75rem;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    box-shadow: 0 1px 0 color-mix(in oklab, var(--foreground) 6%, transparent);
+  }
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    border-radius: 9999px;
+    background: var(--brand-soft);
+    padding: 0.125rem 0.625rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--brand);
+  }
+
+  .eyebrow {
+    font-family: var(--font-mono), ui-monospace, monospace;
+    font-size: 0.6875rem;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--brand);
+  }
+
+  /* Material and capability chips: neutral, the icon carries the meaning. */
+  .material-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    border-radius: 9999px;
+    border: 1px solid var(--border-strong);
+    padding: 0.125rem 0.625rem 0.125rem 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--foreground);
+  }
 }
 
 /* Marketplace filters: a collapsible panel on phones, always open as a sidebar on wide screens. */

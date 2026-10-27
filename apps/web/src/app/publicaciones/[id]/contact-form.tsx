@@ -20,7 +20,7 @@ export function ContactForm({
         <select
           name="company_id"
           aria-label="Empresa compradora"
-          className="rounded-lg border border-border bg-background px-3 py-2.5 text-sm"
+          className="input text-sm"
         >
           {companies.map((c) => (
             <option key={c.id} value={c.id}>
@@ -38,7 +38,7 @@ export function ContactForm({
         maxLength={4000}
         aria-label="Mensaje al generador"
         defaultValue="Hola, vi su publicación y me interesa. ¿Me pueden dar más detalles?"
-        className="rounded-lg border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-brand"
+        className="input text-sm"
       />
       <FormMessage message={state?.message} />
       <SubmitButton pending={pending}>Contactar al generador</SubmitButton>

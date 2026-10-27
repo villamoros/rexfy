@@ -3,18 +3,19 @@ import Link from "next/link";
 import { Suspense } from "react";
 
 import { SiteHeader } from "@/components/site-header";
+import { PageHeader } from "@/components/ui";
 import { requireUser } from "@/lib/session";
 
 import { PublishWizard } from "./wizard";
 
-export const metadata: Metadata = { title: "Publicar residuo · RexFy" };
+export const metadata: Metadata = { title: "Publicar material · RexFy" };
 
 export default function PublicarPage() {
   return (
     <>
       <SiteHeader />
       <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-8">
-        <h1 className="text-2xl font-semibold">Publicar residuo</h1>
+        <PageHeader title="Publicar material" />
         <div className="mt-6">
           <Suspense fallback={<p className="text-muted">Cargando…</p>}>
             <GeneratorOnly />
@@ -32,7 +33,7 @@ async function GeneratorOnly() {
     .map((c) => ({ id: c.company_id, name: c.legal_name }));
   if (companies.length === 0) {
     return (
-      <p className="rounded-xl border border-border bg-surface p-5 text-sm text-muted">
+      <p className="card p-5 text-sm text-muted">
         Para publicar material tu empresa debe estar registrada como generadora.{" "}
         <Link href="/onboarding" className="text-brand underline">
           Registra una empresa generadora
