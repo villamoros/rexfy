@@ -1,16 +1,42 @@
+import os
 from collections.abc import Iterator
 
 import pytest
-from fastapi.testclient import TestClient
-from sqlalchemy.orm import Session
+from sqlalchemy import create_engine, text
+from sqlalchemy.engine import make_url
 
-from app.infrastructure.db.session import engine, get_db
-from app.main import app
+from app.core.config import get_settings
+
+# Tests run against their own database ("<name>_test"), so local data never affects them
+# and they never touch it. This must happen before the app creates its engine.
+_dev_url = make_url(get_settings().database_url)
+_test_url = _dev_url.set(database=f"{_dev_url.database}_test")
+os.environ["REXFY_DATABASE_URL"] = _test_url.render_as_string(hide_password=False)
+get_settings.cache_clear()
+
+_admin = create_engine(_dev_url.set(database="postgres"), isolation_level="AUTOCOMMIT")
+with _admin.connect() as conn:
+    exists = conn.scalar(
+        text("SELECT 1 FROM pg_database WHERE datname = :name"), {"name": _test_url.database}
+    )
+    if not exists:
+        conn.execute(text(f'CREATE DATABASE "{_test_url.database}"'))
+_admin.dispose()
+
+from alembic import command  # noqa: E402
+from alembic.config import Config  # noqa: E402
+from fastapi.testclient import TestClient  # noqa: E402
+from sqlalchemy.orm import Session  # noqa: E402
+
+from app.infrastructure.db.session import engine, get_db  # noqa: E402
+from app.main import app  # noqa: E402
+
+command.upgrade(Config(os.path.join(os.path.dirname(__file__), "..", "alembic.ini")), "head")
 
 
 @pytest.fixture
 def db() -> Iterator[Session]:
-    """A session whose commits are rolled back after each test (schema comes from Alembic)."""
+    """A session whose commits are rolled back after each test."""
     connection = engine.connect()
     transaction = connection.begin()
     session = Session(bind=connection, join_transaction_mode="create_savepoint")
