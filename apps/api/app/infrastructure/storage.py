@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Protocol
 
 import boto3
+from vercel.blob.sync import delete_blob, put_blob
 
 from app.core.config import get_settings
 
@@ -66,9 +67,35 @@ class S3Storage:
         return f"{self._public_url}/{key}"
 
 
+class VercelBlobStorage:
+    """Vercel Blob, public objects; credentials come from BLOB_READ_WRITE_TOKEN."""
+
+    def __init__(self, token: str) -> None:
+        # Tokens look like vercel_blob_rw_<store id>_<secret>; public URLs use the store id.
+        store_id = token.removeprefix("vercel_blob_rw_").split("_")[0].lower()
+        self._public_url = f"https://{store_id}.public.blob.vercel-storage.com"
+
+    def save(self, key: str, data: bytes, content_type: str) -> None:
+        put_blob(
+            key,
+            data,
+            access="public",
+            content_type=content_type,
+            cache_control_max_age=31536000,
+        )
+
+    def delete(self, key: str) -> None:
+        delete_blob(key)
+
+    def url(self, key: str) -> str:
+        return f"{self._public_url}/{key}"
+
+
 @lru_cache
 def get_storage() -> Storage:
     settings = get_settings()
+    if settings.storage_backend == "vercel_blob":
+        return VercelBlobStorage(settings.blob_read_write_token)
     if settings.storage_backend == "s3":
         return S3Storage(
             settings.s3_bucket,

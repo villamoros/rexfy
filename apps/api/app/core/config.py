@@ -1,7 +1,7 @@
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import model_validator
+from pydantic import AliasChoices, Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -9,8 +9,19 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_prefix="REXFY_", extra="ignore")
 
     env: str = "local"
-    database_url: str = "postgresql+psycopg://rexfy:rexfy@localhost:5432/rexfy"
-    redis_url: str = "redis://localhost:6379/0"
+    # The Neon and Upstash integrations on Vercel set DATABASE_URL and REDIS_URL (or KV_URL).
+    database_url: str = Field(
+        "postgresql+psycopg://rexfy:rexfy@localhost:5432/rexfy",
+        validation_alias=AliasChoices("REXFY_DATABASE_URL", "DATABASE_URL"),
+    )
+    # A direct (not pooled) connection for migrations; falls back to database_url.
+    database_url_unpooled: str | None = Field(
+        None, validation_alias=AliasChoices("REXFY_DATABASE_URL_UNPOOLED", "DATABASE_URL_UNPOOLED")
+    )
+    redis_url: str = Field(
+        "redis://localhost:6379/0",
+        validation_alias=AliasChoices("REXFY_REDIS_URL", "REDIS_URL", "KV_URL"),
+    )
     cors_origins: list[str] = ["http://localhost:3000"]
     # Clerk instance that issues session tokens, e.g. https://<slug>.clerk.accounts.dev
     clerk_issuer: str = ""
@@ -39,8 +50,10 @@ class Settings(BaseSettings):
 
     # Where this API is reachable from browsers; used to build links to local files.
     public_api_url: str = "http://localhost:8000"
-    # "local" keeps uploads in local_storage_dir; "s3" uses any S3-compatible bucket.
-    storage_backend: Literal["local", "s3"] = "local"
+    # "local" keeps uploads in local_storage_dir; "s3" uses any S3-compatible bucket;
+    # "vercel_blob" uses the Blob store connected to the Vercel project.
+    storage_backend: Literal["local", "s3", "vercel_blob"] = "local"
+    blob_read_write_token: str = Field("", validation_alias="BLOB_READ_WRITE_TOKEN")
     local_storage_dir: str = "uploads"
     s3_bucket: str = ""
     s3_public_url: str = ""
@@ -48,6 +61,17 @@ class Settings(BaseSettings):
     s3_region: str | None = None
     s3_access_key_id: str | None = None
     s3_secret_access_key: str | None = None
+
+    @field_validator("database_url", "database_url_unpooled")
+    @classmethod
+    def _use_psycopg(cls, url: str | None) -> str | None:
+        """Hosted Postgres hands out postgres:// URLs; SQLAlchemy needs the psycopg driver."""
+        if url is None:
+            return None
+        for scheme in ("postgres://", "postgresql://"):
+            if url.startswith(scheme):
+                return "postgresql+psycopg://" + url.removeprefix(scheme)
+        return url
 
     @model_validator(mode="after")
     def _require_clerk_outside_local(self) -> "Settings":
@@ -57,6 +81,8 @@ class Settings(BaseSettings):
             )
         if self.storage_backend == "s3" and not (self.s3_bucket and self.s3_public_url):
             raise ValueError("REXFY_S3_BUCKET and REXFY_S3_PUBLIC_URL are required for s3")
+        if self.storage_backend == "vercel_blob" and not self.blob_read_write_token:
+            raise ValueError("BLOB_READ_WRITE_TOKEN is required for vercel_blob")
         return self
 
     @property

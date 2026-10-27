@@ -17,6 +17,7 @@ dependencies = [
     "python-multipart>=0.0.9",
     "rq>=2.0",
     "sentry-sdk[fastapi]>=2.0",
+    "vercel>=0.12.1",
 ]
 
 [dependency-groups]

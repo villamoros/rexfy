@@ -114,3 +114,45 @@ regenéralos (CI falla si quedaron desactualizados):
 cd apps/api && uv run python -m app.cli.openapi openapi.json
 cd apps/web && npm run api:types
 ```
+
+## Despliegue en Vercel
+
+Son dos proyectos de Vercel sobre el mismo repositorio:
+
+| Proyecto | Root Directory | Qué corre |
+|---|---|---|
+| `rexfy-api` | `apps/api` | FastAPI como función de Python (`app/main.py`) |
+| `rexfy-web` | `apps/web` | Next.js |
+
+Servicios, todos desde el Marketplace / Storage de Vercel y conectados a `rexfy-api`:
+
+- **Neon** (Postgres): pone `DATABASE_URL` (con pooler) y `DATABASE_URL_UNPOOLED`. La API usa la
+  primera sin pool propio (`NullPool`) y las migraciones la segunda.
+- **Upstash** (Redis): pone `REDIS_URL`; lo usa el límite de cambios por minuto.
+- **Vercel Blob**: pone `BLOB_READ_WRITE_TOKEN`; ahí quedan las fotos.
+
+Variables de `rexfy-api` además de esas:
+
+```
+REXFY_ENV=production
+REXFY_TASK_QUEUE=inline          # no hay worker: los emails salen en la misma petición
+REXFY_STORAGE_BACKEND=vercel_blob
+REXFY_CORS_ORIGINS=["https://<dominio de la web>"]
+REXFY_PUBLIC_WEB_URL=https://<dominio de la web>
+REXFY_PUBLIC_API_URL=https://<dominio de la api>
+REXFY_CLERK_ISSUER=...           # Frontend API URL de Clerk
+REXFY_CLERK_SECRET_KEY=...
+```
+
+Variables de `rexfy-web`: `API_URL` y `NEXT_PUBLIC_API_URL` (la URL de la API),
+`NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` y `CLERK_SECRET_KEY`.
+
+Vercel acepta máximo 4,5 MB por petición; por eso la web comprime las fotos en el navegador
+antes de subirlas.
+
+Las migraciones no corren en el deploy. Antes de desplegar un cambio de esquema, desde
+`apps/api` y con la URL directa de Neon:
+
+```bash
+REXFY_DATABASE_URL_UNPOOLED=postgresql://... uv run alembic upgrade head
+```
