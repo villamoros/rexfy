@@ -144,3 +144,23 @@ def test_delivery_before_pickup_is_rejected(client: TestClient, order: dict[str,
         headers=headers,
     )
     assert late.status_code == 409
+
+
+def test_shipment_order_is_enforced(client: TestClient, order: dict[str, Any]) -> None:
+    oid = order["order_id"]
+    sid = client.post(f"/transactions/{oid}/shipment", json=REQUEST, headers=order["buyer"]).json()[
+        "id"
+    ]
+    headers, company_id = transporter(client, "andina@example.com", "811000111")
+    quote = bid(client, headers, sid, company_id, 1_500_000).json()["quotes"][0]
+    client.post(f"/transport-quotes/{quote['id']}/accept", headers=order["buyer"])
+
+    confirm = f"/transactions/{oid}/confirm-receipt"
+    events = f"/shipments/{sid}/events"
+    # Nothing is delivered before pickup, and the buyer waits for the delivery.
+    assert client.post(events, json={"status": "delivered"}, headers=headers).status_code == 409
+    assert client.post(confirm, headers=order["buyer"]).status_code == 409
+    assert client.post(events, json={"status": "picked_up"}, headers=headers).status_code == 201
+    assert client.post(confirm, headers=order["buyer"]).status_code == 409
+    assert client.post(events, json={"status": "delivered"}, headers=headers).status_code == 201
+    assert client.post(confirm, headers=order["buyer"]).json()["status"] == "completed"

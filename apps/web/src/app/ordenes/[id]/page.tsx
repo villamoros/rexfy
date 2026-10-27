@@ -72,6 +72,11 @@ async function Order({
       token: await getToken(),
     },
   );
+  // With a shipment under way, the buyer confirms only after the delivery.
+  const canConfirm =
+    order.my_role === "buyer" &&
+    order.status !== "completed" &&
+    (!shipment.ok || shipment.data.status === "delivered");
   const rows: [string, string][] = [
     ["Vendedor", order.seller.legal_name],
     ["Comprador", order.buyer.legal_name],
@@ -115,7 +120,7 @@ async function Order({
         >
           Ir al chat
         </Link>
-        {order.my_role === "buyer" && order.status !== "completed" && (
+        {canConfirm && (
           <form action={confirmReceipt}>
             <input type="hidden" name="transaction_id" value={order.id} />
             <button className="btn btn-primary text-sm">

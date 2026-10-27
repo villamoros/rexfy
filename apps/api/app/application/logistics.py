@@ -5,7 +5,7 @@ from decimal import Decimal
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.application.deals import InvalidState, NotAllowed
+from app.application.deals import InvalidState, NotAllowed, lock
 from app.domain.deals.enums import TransactionStatus
 from app.domain.logistics.enums import SHIPMENT_FLOW, QuoteStatus, ShipmentStatus, VehicleType
 from app.domain.organizations.roles import MarketRole
@@ -74,6 +74,7 @@ def request_shipment(
         raise NotAllowed
     if transaction.status is not TransactionStatus.AGREED:
         raise InvalidState("La orden ya no está esperando transporte")
+    lock(db, transaction)
     if db.scalar(select(Shipment.id).where(Shipment.transaction_id == transaction.id)):
         raise InvalidState("Esta orden ya tiene una solicitud de transporte")
     shipment = Shipment(
@@ -171,6 +172,7 @@ def accept_quote(db: Session, user: User, quote: TransportQuote) -> Shipment:
     shipment = quote.shipment
     if not _parties(shipment) & _company_ids(user):
         raise NotAllowed
+    lock(db, shipment)
     if shipment.status is not ShipmentStatus.REQUESTED or quote.status is not QuoteStatus.PENDING:
         raise InvalidState("Esta cotización ya no se puede aceptar")
     for other in shipment.quotes:
@@ -191,13 +193,20 @@ def accept_quote(db: Session, user: User, quote: TransportQuote) -> Shipment:
 def advance(
     db: Session, user: User, shipment: Shipment, status: ShipmentStatus, note: str | None
 ) -> Shipment:
-    """The assigned transporter moves the shipment forward, never backwards."""
+    """The assigned transporter moves the shipment forward, never backwards.
+
+    "In transit" may be skipped on short trips, but nothing is delivered before pickup.
+    """
     if shipment.transporter_company_id not in _company_ids(user):
         raise NotAllowed
+    lock(db, shipment)
     if shipment.status not in SHIPMENT_FLOW or status not in SHIPMENT_FLOW:
         raise InvalidState("Estado de envío no válido")
-    if SHIPMENT_FLOW.index(status) <= SHIPMENT_FLOW.index(shipment.status):
+    current, target = SHIPMENT_FLOW.index(shipment.status), SHIPMENT_FLOW.index(status)
+    if target <= current:
         raise InvalidState("El envío ya pasó por ese estado")
+    if shipment.status is ShipmentStatus.ASSIGNED and status is not ShipmentStatus.PICKED_UP:
+        raise InvalidState("Primero marca la recogida del material")
     shipment.status = status
     _event(db, user, shipment, status, note)
     order = shipment.transaction
