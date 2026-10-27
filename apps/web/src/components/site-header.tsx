@@ -1,6 +1,8 @@
 import { UserButton } from "@clerk/nextjs";
 import Link from "next/link";
 
+import { ClientOnly } from "@/components/client-only";
+
 const LINKS = [
   { href: "/marketplace", label: "Marketplace" },
   { href: "/publicar", label: "Publicar" },
@@ -33,7 +35,9 @@ export function SiteHeader() {
               </li>
             ))}
           </ul>
-          <UserButton />
+          <ClientOnly>
+            <UserButton />
+          </ClientOnly>
         </div>
       </nav>
     </header>
