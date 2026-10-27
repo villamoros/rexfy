@@ -3,7 +3,18 @@ from datetime import date, datetime
 from decimal import Decimal
 from enum import StrEnum
 
-from sqlalchemy import Boolean, Date, DateTime, Enum, ForeignKey, Integer, Numeric, String, Text
+from sqlalchemy import (
+    Boolean,
+    Date,
+    DateTime,
+    Enum,
+    ForeignKey,
+    Index,
+    Integer,
+    Numeric,
+    String,
+    Text,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.domain.listings.enums import (
@@ -23,8 +34,19 @@ def enum_column(cls: type[StrEnum], name: str) -> Enum:
     return Enum(cls, name=name, values_callable=lambda e: [m.value for m in e])
 
 
+def _trigram(column: str) -> Index:
+    """GIN trigram index for ILIKE '%...%' search (pg_trgm)."""
+    return Index(
+        f"ix_listings_{column}_trgm",
+        column,
+        postgresql_using="gin",
+        postgresql_ops={column: "gin_trgm_ops"},
+    )
+
+
 class Listing(TimestampedModel):
     __tablename__ = "listings"
+    __table_args__ = (_trigram("title"), _trigram("description"), _trigram("city"))
 
     company_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("companies.id", ondelete="CASCADE"), index=True

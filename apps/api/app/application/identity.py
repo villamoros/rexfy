@@ -8,6 +8,10 @@ from app.infrastructure.auth.clerk import Profile
 from app.infrastructure.db.models import User
 
 
+class EmailNotVerified(Exception):
+    pass
+
+
 def resolve_user(db: Session, clerk_user_id: str, fetch_profile: Callable[[str], Profile]) -> User:
     """The local user for a Clerk account, created on first sign-in.
 
@@ -20,6 +24,9 @@ def resolve_user(db: Session, clerk_user_id: str, fetch_profile: Callable[[str],
     user = db.scalar(
         select(User).where(func.lower(User.email) == profile.email, User.clerk_user_id.is_(None))
     )
+    if user is not None and not profile.email_verified:
+        # Linking on an unconfirmed email would hand someone else's account over.
+        raise EmailNotVerified
     if user is None:
         user = User(email=profile.email, full_name=profile.full_name)
         db.add(user)

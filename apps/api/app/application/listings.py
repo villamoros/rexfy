@@ -161,15 +161,25 @@ class ListingSearch:
     offset: int = 0
 
 
+def _escape_like(text: str) -> str:
+    """Search words literally: % and _ are wildcards in LIKE."""
+    return text.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
 def _apply_filters(stmt: Select, f: ListingSearch) -> Select:
     stmt = stmt.where(Listing.status == ListingStatus.PUBLISHED)
     if f.q:
-        pattern = f"%{f.q.strip()}%"
-        stmt = stmt.where(or_(Listing.title.ilike(pattern), Listing.description.ilike(pattern)))
+        pattern = f"%{_escape_like(f.q.strip())}%"
+        stmt = stmt.where(
+            or_(
+                Listing.title.ilike(pattern, escape="\\"),
+                Listing.description.ilike(pattern, escape="\\"),
+            )
+        )
     if f.categories:
         stmt = stmt.where(Listing.category.in_(f.categories))
     if f.city:
-        stmt = stmt.where(Listing.city.ilike(f"%{f.city.strip()}%"))
+        stmt = stmt.where(Listing.city.ilike(f"%{_escape_like(f.city.strip())}%", escape="\\"))
     if f.availability:
         stmt = stmt.where(Listing.availability.in_(f.availability))
     if f.pricing_type:

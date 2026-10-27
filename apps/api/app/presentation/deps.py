@@ -4,7 +4,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
-from app.application.identity import resolve_user
+from app.application.identity import EmailNotVerified, resolve_user
 from app.infrastructure.auth.clerk import Clerk, ClerkUnavailable, get_clerk
 from app.infrastructure.db.models import User
 from app.infrastructure.db.session import get_db
@@ -32,6 +32,10 @@ def get_current_user(
         raise unauthorized
     try:
         user = resolve_user(db, clerk_user_id, clerk.profile)
+    except EmailNotVerified:
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN, "Confirma tu email en tu cuenta para continuar"
+        ) from None
     except ClerkUnavailable:
         raise HTTPException(
             status.HTTP_503_SERVICE_UNAVAILABLE, "No pudimos validar tu cuenta, intenta de nuevo"
@@ -51,7 +55,13 @@ def get_optional_user(
 ) -> User | None:
     if credentials is None:
         return None
-    return get_current_user(db, clerk, credentials)
+    try:
+        return get_current_user(db, clerk, credentials)
+    except HTTPException as exc:
+        # An expired or bad token on a public page just means a visitor.
+        if exc.status_code == status.HTTP_401_UNAUTHORIZED:
+            return None
+        raise
 
 
 def get_admin(user: CurrentUser) -> User:

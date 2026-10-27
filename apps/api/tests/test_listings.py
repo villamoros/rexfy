@@ -152,6 +152,16 @@ def test_update_and_archive(client: TestClient, generator: tuple[dict[str, str],
     assert [m["status"] for m in mine] == ["archived"]
 
 
+def test_search_treats_wildcards_literally(
+    client: TestClient, generator: tuple[dict[str, str], str]
+) -> None:
+    headers, company_id = generator
+    create(client, headers, company_id, publish=True, title="PET 100% reciclado")
+    create(client, headers, company_id, publish=True, title="PET 1000 kg")
+    found = client.get("/listings", params={"q": "100%"}).json()
+    assert [i["title"] for i in found["items"]] == ["PET 100% reciclado"]
+
+
 def test_search_filters(client: TestClient, generator: tuple[dict[str, str], str]) -> None:
     headers, company_id = generator
     rows = [

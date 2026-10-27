@@ -19,7 +19,15 @@ from app.presentation.routes import (
 
 def create_app() -> FastAPI:
     settings = get_settings()
-    app = FastAPI(title="Rexfy API", version="0.1.0")
+    # The interactive docs are for development; production does not advertise its API.
+    public_docs = settings.env in ("local", "test")
+    app = FastAPI(
+        title="Rexfy API",
+        version="0.1.0",
+        docs_url="/docs" if public_docs else None,
+        redoc_url=None,
+        openapi_url="/openapi.json" if public_docs else None,
+    )
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins,

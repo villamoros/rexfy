@@ -56,6 +56,7 @@ class FakeClerk:
 
     def __init__(self) -> None:
         self.profile_calls = 0
+        self.email_verified = True
 
     def verify(self, token: str) -> str | None:
         prefix, _, email = token.partition(":")
@@ -63,7 +64,11 @@ class FakeClerk:
 
     def profile(self, clerk_user_id: str) -> Profile:
         self.profile_calls += 1
-        return Profile(email=clerk_user_id.removeprefix("user_"), full_name="Ana Gómez")
+        return Profile(
+            email=clerk_user_id.removeprefix("user_"),
+            full_name="Ana Gómez",
+            email_verified=self.email_verified,
+        )
 
 
 @pytest.fixture
