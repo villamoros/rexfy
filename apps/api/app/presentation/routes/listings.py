@@ -73,7 +73,9 @@ def my_listings(db: DbSession, user: CurrentUser) -> list[ListingOut]:
 @router.post("/listings", status_code=status.HTTP_201_CREATED)
 def create(body: ListingCreate, db: DbSession, user: CurrentUser) -> ListingOut:
     try:
-        listing = service.create_listing(db, user, body.model_dump())
+        listing = service.create_listing(
+            db, user, body.model_dump(exclude={"publish"}), publish=body.publish
+        )
     except service.NotAllowed:
         raise _FORBIDDEN from None
     except ValueError as exc:

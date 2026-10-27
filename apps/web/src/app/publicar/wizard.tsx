@@ -5,10 +5,12 @@ import {
   useActionState,
   useRef,
   useState,
+  useSyncExternalStore,
   type ReactNode,
 } from "react";
+import { flushSync } from "react-dom";
 
-import { publishListing } from "@/app/actions/listings";
+import { saveListing } from "@/app/actions/listings";
 import { Field, FormMessage, SubmitButton } from "@/components/form";
 import { MaterialIcon } from "@/components/icons";
 import {
@@ -20,6 +22,7 @@ import {
   formatPrice,
   formatQuantity,
   type Availability,
+  type Listing,
   type MaterialCategory,
   type MaterialCondition,
   type QuantityUnit,
@@ -46,14 +49,139 @@ const FIELD_LABELS: Record<string, string> = {
 
 type Company = { id: string; name: string };
 
-export function PublishWizard({ companies }: { companies: Company[] }) {
-  const [state, action, pending] = useActionState(publishListing, undefined);
+/** Form values by field name: text for inputs and radios, true/false for checkboxes. */
+type Values = Record<string, string | boolean>;
+
+// Unsent new listings are kept in this browser, so closing the tab at the plant loses nothing.
+const DRAFT_KEY = "rexfy:publicar:borrador";
+
+function readDraft(): string | null {
+  try {
+    return localStorage.getItem(DRAFT_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function writeDraft(values: Values | null) {
+  try {
+    if (values) localStorage.setItem(DRAFT_KEY, JSON.stringify(values));
+    else localStorage.removeItem(DRAFT_KEY);
+  } catch {
+    // Storage blocked or full: the wizard still works, just without the local copy.
+  }
+}
+
+const noSubscribe = () => () => {};
+
+function readForm(form: HTMLFormElement): Values {
+  const values: Values = {};
+  for (const el of Array.from(form.elements)) {
+    if (
+      !(
+        el instanceof HTMLInputElement ||
+        el instanceof HTMLSelectElement ||
+        el instanceof HTMLTextAreaElement
+      ) ||
+      !el.name ||
+      el.type === "hidden"
+    )
+      continue;
+    if (el instanceof HTMLInputElement && el.type === "checkbox")
+      values[el.name] = el.checked;
+    else if (el instanceof HTMLInputElement && el.type === "radio") {
+      if (el.checked) values[el.name] = el.value;
+    } else values[el.name] = el.value;
+  }
+  return values;
+}
+
+function fillForm(form: HTMLFormElement, values: Values) {
+  for (const el of Array.from(form.elements)) {
+    if (
+      !(
+        el instanceof HTMLInputElement ||
+        el instanceof HTMLSelectElement ||
+        el instanceof HTMLTextAreaElement
+      ) ||
+      !(el.name in values) ||
+      el.type === "hidden"
+    )
+      continue;
+    const value = values[el.name];
+    if (el instanceof HTMLInputElement && el.type === "checkbox")
+      el.checked = value === true;
+    else if (el instanceof HTMLInputElement && el.type === "radio")
+      el.checked = el.value === value;
+    else el.value = String(value);
+  }
+}
+
+function valuesOf(listing: Listing): Values {
+  const text = (v: string | number | null) => (v === null ? "" : String(v));
+  return {
+    category: listing.category,
+    title: listing.title,
+    description: listing.description,
+    condition: listing.condition,
+    is_recurring: listing.is_recurring,
+    quantity: text(listing.quantity),
+    quantity_unit: listing.quantity_unit,
+    min_order_quantity: text(listing.min_order_quantity),
+    availability: listing.availability,
+    available_from: text(listing.available_from),
+    city: listing.city,
+    facility_name: text(listing.facility_name),
+    pickup_allowed: listing.pickup_allowed,
+    pricing_type: listing.pricing_type,
+    price: text(listing.price),
+    price_unit: listing.price_unit ?? "kg",
+    price_negotiable: listing.price_negotiable,
+    conditions: text(listing.conditions),
+  };
+}
+
+export function PublishWizard({
+  companies,
+  listing,
+}: {
+  companies: Company[];
+  /** The listing being edited; without it the wizard creates a new one. */
+  listing?: Listing;
+}) {
+  const [state, action, pending] = useActionState(saveListing, undefined);
   const [step, setStep] = useState(0);
   const [summary, setSummary] = useState<[string, string][]>([]);
-  const [availability, setAvailability] = useState<Availability>("immediate");
-  const [free, setFree] = useState(false);
+  const [availability, setAvailability] = useState<Availability>(
+    listing?.availability ?? "immediate",
+  );
+  const [free, setFree] = useState(listing?.pricing_type === "free");
+  const [draftHandled, setDraftHandled] = useState(false);
+  const savedDraft = useSyncExternalStore(noSubscribe, readDraft, () => null);
   const formRef = useRef<HTMLFormElement>(null);
+  const filled = useRef(false);
   const sectionRefs = useRef<(HTMLElement | null)[]>([]);
+  const offerDraft = !listing && !draftHandled && savedDraft !== null;
+
+  function restoreDraft() {
+    const values = JSON.parse(savedDraft ?? "{}") as Values;
+    // Render the fields that depend on these choices before filling them in.
+    flushSync(() => {
+      setAvailability((values.availability as Availability) ?? "immediate");
+      setFree(values.pricing_type === "free");
+      setDraftHandled(true);
+    });
+    if (formRef.current) fillForm(formRef.current, values);
+  }
+
+  function discardDraft() {
+    writeDraft(null);
+    setDraftHandled(true);
+  }
+
+  function rememberDraft() {
+    if (!listing && formRef.current) writeDraft(readForm(formRef.current));
+  }
 
   function next() {
     const section = sectionRefs.current[step];
@@ -99,14 +227,48 @@ export function PublishWizard({ companies }: { companies: Company[] }) {
     // Submitting through onSubmit (not the form's action prop) keeps every step's values
     // if the server rejects the listing, since React resets forms after an action.
     <form
-      ref={formRef}
+      ref={(form) => {
+        formRef.current = form;
+        // An edited listing's values go in once, after the first render.
+        if (form && listing && !filled.current) {
+          fillForm(form, valuesOf(listing));
+          filled.current = true;
+        }
+      }}
+      onChange={rememberDraft}
       onSubmit={(event) => {
         event.preventDefault();
-        const data = new FormData(event.currentTarget);
+        const data = new FormData(
+          event.currentTarget,
+          (event.nativeEvent as SubmitEvent).submitter,
+        );
+        if (!listing) writeDraft(null);
         startTransition(() => action(data));
       }}
       className="flex flex-col gap-6"
     >
+      {listing && <input type="hidden" name="listing_id" value={listing.id} />}
+      {offerDraft && (
+        <div className="flex flex-wrap items-center justify-between gap-3 card p-4 text-sm">
+          <span>Tienes una publicación sin terminar en este dispositivo.</span>
+          <span className="flex gap-2">
+            <button
+              type="button"
+              onClick={discardDraft}
+              className="btn btn-secondary text-sm"
+            >
+              Descartar
+            </button>
+            <button
+              type="button"
+              onClick={restoreDraft}
+              className="btn btn-primary text-sm"
+            >
+              Retomar
+            </button>
+          </span>
+        </div>
+      )}
       <ol className="flex gap-1.5" aria-label="Pasos">
         {STEPS.map((label, i) => (
           <li
@@ -124,7 +286,7 @@ export function PublishWizard({ companies }: { companies: Company[] }) {
       {section(
         0,
         <>
-          {companies.length > 1 ? (
+          {listing ? null : companies.length > 1 ? (
             <label className="flex flex-col gap-1.5 text-sm">
               <span className="font-medium">Empresa que publica</span>
               <select name="company_id" className="input text-base">
@@ -334,7 +496,9 @@ export function PublishWizard({ companies }: { companies: Company[] }) {
             ))}
           </dl>
           <p className="text-sm text-muted">
-            Tu publicación será visible de inmediato en el marketplace.
+            {listing?.status === "published"
+              ? "Los cambios se verán de inmediato en el marketplace. Las cotizaciones ya enviadas conservan sus condiciones."
+              : "Tu publicación será visible de inmediato en el marketplace."}
           </p>
           <FormMessage message={state?.message} />
           {serverFieldErrors.length > 0 && (
@@ -365,7 +529,24 @@ export function PublishWizard({ companies }: { companies: Company[] }) {
               Siguiente →
             </button>
           ) : (
-            <SubmitButton pending={pending}>Publicar</SubmitButton>
+            <div className="flex flex-col gap-2">
+              <SubmitButton pending={pending}>
+                {listing?.status === "published"
+                  ? "Guardar cambios"
+                  : "Publicar"}
+              </SubmitButton>
+              {listing?.status !== "published" && (
+                <button
+                  type="submit"
+                  name="intent"
+                  value="draft"
+                  disabled={pending}
+                  className="btn btn-secondary"
+                >
+                  Guardar como borrador
+                </button>
+              )}
+            </div>
           )}
         </div>
       </div>

@@ -54,12 +54,18 @@ def _check_terms(listing: Listing) -> None:
     check_listing_terms(**{name: getattr(listing, name) for name in TERM_FIELDS})
 
 
-def create_listing(db: Session, user: User, data: dict[str, Any]) -> Listing:
+def create_listing(
+    db: Session, user: User, data: dict[str, Any], *, publish: bool = False
+) -> Listing:
+    """Save a draft, or publish it in the same transaction so a failure leaves nothing behind."""
     _require_generator(user, data["company_id"])
     listing = Listing(**data, status=ListingStatus.DRAFT)
     if listing.pricing_type is PricingType.FREE:
         listing.price = listing.price_unit = None
     _check_terms(listing)
+    if publish:
+        listing.status = ListingStatus.PUBLISHED
+        listing.published_at = datetime.now(UTC)
     db.add(listing)
     db.commit()
     return listing

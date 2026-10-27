@@ -20,16 +20,21 @@ function num(formData: FormData, name: string): number | null {
   return value === null ? null : Number(value.replace(",", "."));
 }
 
-export async function publishListing(
+/**
+ * Saves the wizard. New listings are created (and published unless the user chose to keep a
+ * draft) in one request; an existing one is updated, and a draft is published afterwards.
+ */
+export async function saveListing(
   _: PublishState,
   formData: FormData,
 ): Promise<PublishState> {
   const token = await getToken();
   if (!token) redirect("/ingresar");
 
+  const listingId = text(formData, "listing_id");
+  const asDraft = formData.get("intent") === "draft";
   const free = formData.get("pricing_type") === "free";
-  const body = {
-    company_id: text(formData, "company_id"),
+  const terms = {
     category: text(formData, "category"),
     title: text(formData, "title"),
     description: text(formData, "description") ?? "",
@@ -53,33 +58,42 @@ export async function publishListing(
     conditions: text(formData, "conditions"),
   };
 
-  const created = await apiFetch<Listing>("/listings", {
-    method: "POST",
-    token,
-    body,
-  });
-  if (!created.ok) {
-    if (created.status === 401) redirect("/ingresar");
-    const fieldErrors = { ...created.fieldErrors };
+  const saved = listingId
+    ? await apiFetch<Listing>(`/listings/${encodeURIComponent(listingId)}`, {
+        method: "PATCH",
+        token,
+        body: terms,
+      })
+    : await apiFetch<Listing>("/listings", {
+        method: "POST",
+        token,
+        body: {
+          ...terms,
+          company_id: text(formData, "company_id"),
+          publish: !asDraft,
+        },
+      });
+  if (!saved.ok) {
+    if (saved.status === 401) redirect("/ingresar");
+    const fieldErrors = { ...saved.fieldErrors };
     const general = fieldErrors.body;
     delete fieldErrors.body;
-    return { message: general ?? created.message, fieldErrors };
+    return { message: general ?? saved.message, fieldErrors };
   }
 
-  const published = await apiFetch<Listing>(
-    `/listings/${created.data.id}/publish`,
-    {
-      method: "POST",
-      token,
-    },
-  );
-  if (!published.ok) {
-    return {
-      message:
-        "Guardamos el borrador pero no pudimos publicarlo. Intenta desde tu panel.",
-    };
+  const listing = saved.data;
+  if (listing.status === "draft" && !asDraft) {
+    const published = await apiFetch<Listing>(
+      `/listings/${listing.id}/publish`,
+      { method: "POST", token },
+    );
+    if (!published.ok) return { message: published.message };
+    redirect(`/publicaciones/${listing.id}?nueva=1`);
   }
-  redirect(`/publicaciones/${created.data.id}?nueva=1`);
+  if (asDraft) redirect(`/publicaciones/${listing.id}`);
+  redirect(
+    `/publicaciones/${listing.id}${listingId ? "?editada=1" : "?nueva=1"}`,
+  );
 }
 
 export async function archiveListing(formData: FormData) {

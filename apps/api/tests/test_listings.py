@@ -191,3 +191,22 @@ def test_search_filters(client: TestClient, generator: tuple[dict[str, str], str
     page = client.get("/listings", params={"limit": 1, "offset": 1}).json()
     assert page["total"] == 3
     assert len(page["items"]) == 1
+
+
+def test_create_and_publish_in_one_step(
+    client: TestClient, generator: tuple[dict[str, str], str]
+) -> None:
+    headers, company_id = generator
+    listing = create(client, headers, company_id, publish=True)
+    assert listing["status"] == "published"
+    assert listing["published_at"] is not None
+    assert client.get(f"/listings/{listing['id']}").status_code == 200
+
+    # A rejected listing leaves no draft behind.
+    bad = client.post(
+        "/listings",
+        json={**PET, "company_id": company_id, "min_order_quantity": 10, "publish": True},
+        headers=headers,
+    )
+    assert bad.status_code == 422
+    assert [i["id"] for i in client.get("/me/listings", headers=headers).json()] == [listing["id"]]

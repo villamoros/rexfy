@@ -39,6 +39,8 @@ class ListingFields(BaseModel):
 
 class ListingCreate(ListingFields):
     company_id: uuid.UUID
+    # Publish right away instead of saving a draft, in one step.
+    publish: bool = False
 
 
 class ListingUpdate(BaseModel):

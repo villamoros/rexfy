@@ -109,14 +109,24 @@ async function Dashboard() {
                       · {formatPrice(listing)}
                     </p>
                   </div>
-                  {listing.status === "published" && (
-                    <form action={archiveListing}>
-                      <input type="hidden" name="id" value={listing.id} />
-                      <button className="text-muted underline hover:text-foreground">
-                        Archivar
-                      </button>
-                    </form>
-                  )}
+                  <div className="flex items-center gap-3">
+                    {listing.status !== "archived" && (
+                      <Link
+                        href={`/publicaciones/${listing.id}/editar`}
+                        className="text-muted underline hover:text-foreground"
+                      >
+                        {listing.status === "draft" ? "Continuar" : "Editar"}
+                      </Link>
+                    )}
+                    {listing.status === "published" && (
+                      <form action={archiveListing}>
+                        <input type="hidden" name="id" value={listing.id} />
+                        <button className="text-muted underline hover:text-foreground">
+                          Archivar
+                        </button>
+                      </form>
+                    )}
+                  </div>
                 </li>
               ))}
             </ul>

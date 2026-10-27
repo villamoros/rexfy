@@ -93,6 +93,9 @@ async function Detail({
 
   return (
     <article className="flex flex-col gap-6">
+      {query.editada === "1" && (
+        <SuccessNotice>Guardamos los cambios de tu publicación.</SuccessNotice>
+      )}
       {query.nueva === "1" && (
         <SuccessNotice>
           ¡Publicación activa! Ya es visible para los compradores en el
@@ -124,6 +127,16 @@ async function Detail({
         </p>
         {listing.price_negotiable && (
           <p className="text-sm text-muted">Precio negociable</p>
+        )}
+        {isOwner && listing.status !== "archived" && (
+          <Link
+            href={`/publicaciones/${listing.id}/editar`}
+            className="btn btn-secondary mt-4 w-full"
+          >
+            {listing.status === "draft"
+              ? "Terminar y publicar"
+              : "Editar publicación"}
+          </Link>
         )}
         {listing.status !== "published" || isOwner ? null : !me?.ok ? (
           <Link href="/ingresar" className="btn btn-primary mt-4 w-full">
