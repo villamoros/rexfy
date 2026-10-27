@@ -1,9 +1,9 @@
+import { SignOutButton } from "@clerk/nextjs";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 
-import { logout } from "@/app/actions/auth";
 import { archiveListing } from "@/app/actions/listings";
 import { SiteHeader } from "@/components/site-header";
 import { apiFetch } from "@/lib/api";
@@ -26,11 +26,11 @@ export default function PanelPage() {
         <Suspense fallback={<p className="text-muted">Cargando tu panel…</p>}>
           <Dashboard />
         </Suspense>
-        <form action={logout}>
-          <button className="text-sm text-muted underline">
+        <SignOutButton redirectUrl="/ingresar">
+          <button className="self-start text-sm text-muted underline">
             Cerrar sesión
           </button>
-        </form>
+        </SignOutButton>
       </main>
     </>
   );

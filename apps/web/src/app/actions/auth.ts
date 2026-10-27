@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 
 import { apiFetch } from "@/lib/api";
-import { clearToken, getToken, setToken } from "@/lib/session";
+import { getToken } from "@/lib/session";
 
 export type FormState =
   | {
@@ -14,48 +14,8 @@ export type FormState =
     }
   | undefined;
 
-type Token = { access_token: string };
-
 function text(formData: FormData, name: string): string {
   return String(formData.get(name) ?? "").trim();
-}
-
-export async function register(
-  _: FormState,
-  formData: FormData,
-): Promise<FormState> {
-  const values = {
-    full_name: text(formData, "full_name"),
-    email: text(formData, "email"),
-  };
-  const result = await apiFetch<Token>("/auth/register", {
-    method: "POST",
-    body: { ...values, password: String(formData.get("password") ?? "") },
-  });
-  if (!result.ok)
-    return { message: result.message, fieldErrors: result.fieldErrors, values };
-  await setToken(result.data.access_token);
-  redirect("/onboarding");
-}
-
-export async function login(
-  _: FormState,
-  formData: FormData,
-): Promise<FormState> {
-  const values = { email: text(formData, "email") };
-  const result = await apiFetch<Token>("/auth/login", {
-    method: "POST",
-    body: { ...values, password: String(formData.get("password") ?? "") },
-  });
-  if (!result.ok)
-    return { message: result.message, fieldErrors: result.fieldErrors, values };
-  await setToken(result.data.access_token);
-  redirect("/panel");
-}
-
-export async function logout() {
-  await clearToken();
-  redirect("/ingresar");
 }
 
 export async function createCompany(

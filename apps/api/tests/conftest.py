@@ -26,6 +26,7 @@ from alembic.config import Config  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
 from sqlalchemy.orm import Session  # noqa: E402
 
+from app.infrastructure.auth.clerk import Profile, get_clerk  # noqa: E402
 from app.infrastructure.db.session import engine, get_db  # noqa: E402
 from app.main import app  # noqa: E402
 
@@ -46,21 +47,41 @@ def db() -> Iterator[Session]:
         connection.close()
 
 
+class FakeClerk:
+    """Stands in for Clerk: the token "test:<email>" belongs to the Clerk user "user_<email>"."""
+
+    def __init__(self) -> None:
+        self.profile_calls = 0
+
+    def verify(self, token: str) -> str | None:
+        prefix, _, email = token.partition(":")
+        return f"user_{email}" if prefix == "test" and email else None
+
+    def profile(self, clerk_user_id: str) -> Profile:
+        self.profile_calls += 1
+        return Profile(email=clerk_user_id.removeprefix("user_"), full_name="Ana Gómez")
+
+
 @pytest.fixture
-def client(db: Session) -> Iterator[TestClient]:
+def clerk() -> FakeClerk:
+    return FakeClerk()
+
+
+@pytest.fixture
+def client(db: Session, clerk: FakeClerk) -> Iterator[TestClient]:
     app.dependency_overrides[get_db] = lambda: db
+    app.dependency_overrides[get_clerk] = lambda: clerk
     with TestClient(app) as c:
         yield c
     app.dependency_overrides.clear()
 
 
 def register(client: TestClient, email: str = "ana@example.com") -> dict[str, str]:
-    response = client.post(
-        "/auth/register",
-        json={"email": email, "password": "supersecreta", "full_name": "Ana Gómez"},
-    )
-    assert response.status_code == 201, response.text
-    return {"Authorization": f"Bearer {response.json()['access_token']}"}
+    """Sign in as a Clerk user, creating the local user on the first request."""
+    headers = {"Authorization": f"Bearer test:{email}"}
+    response = client.get("/me", headers=headers)
+    assert response.status_code == 200, response.text
+    return headers
 
 
 def nit(base: str) -> str:

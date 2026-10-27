@@ -36,6 +36,15 @@ npm install
 npm run dev
 ```
 
+### Login con Clerk
+
+El ingreso y registro los maneja [Clerk](https://clerk.com). Crea una aplicación en el dashboard de Clerk y copia sus llaves (sección **API keys**):
+
+- En `apps/web/.env.local`: `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` y `CLERK_SECRET_KEY`.
+- En `apps/api/.env`: `REXFY_CLERK_ISSUER` (el *Frontend API URL*, por ejemplo `https://tu-app.clerk.accounts.dev`) y `REXFY_CLERK_SECRET_KEY` (la misma secret key).
+
+La API valida el token de sesión de Clerk con sus llaves públicas (JWKS) y, la primera vez que ve a un usuario, lee su correo y nombre de Clerk y lo crea en la base. Las empresas, roles y permisos siguen viviendo en nuestra base.
+
 La página de inicio muestra el estado de la API, la base de datos y Redis. Si los tres dicen `ok`, todo está conectado.
 
 Para levantar también la API dentro de Docker: `docker compose --profile full up`.
