@@ -1,61 +1,14 @@
-import type { CompanyRef } from "@/lib/deals";
-import type { QuantityUnit } from "@/lib/listings";
+import type { Schemas } from "@/lib/api";
 
-export type VehicleType =
-  | "single_truck"
-  | "double_axle"
-  | "tractor_trailer"
-  | "bulk"
-  | "special";
-export type ShipmentStatus =
-  | "requested"
-  | "assigned"
-  | "picked_up"
-  | "in_transit"
-  | "delivered";
-export type QuoteStatus = "pending" | "accepted" | "rejected";
+export type VehicleType = Schemas["VehicleType"];
+export type ShipmentStatus = Schemas["ShipmentStatus"];
+export type QuoteStatus = Schemas["QuoteStatus"];
 
-export type TransportQuote = {
-  id: string;
-  transporter: CompanyRef;
-  status: QuoteStatus;
-  price: number;
-  pickup_date: string;
-  delivery_date: string;
-  includes_insurance: boolean;
-  notes: string | null;
-  created_at: string;
-};
+export type TransportQuote = Schemas["QuoteOut"];
 
-export type ShipmentEvent = {
-  id: string;
-  status: ShipmentStatus;
-  note: string | null;
-  created_at: string;
-};
+export type ShipmentEvent = Schemas["EventOut"];
 
-export type Shipment = {
-  id: string;
-  status: ShipmentStatus;
-  order: {
-    id: string;
-    code: string;
-    listing_title: string;
-    quantity: number;
-    quantity_unit: QuantityUnit;
-    buyer: CompanyRef;
-    seller: CompanyRef;
-  };
-  pickup_city: string;
-  delivery_city: string;
-  pickup_address: string | null;
-  delivery_address: string | null;
-  vehicle_type: VehicleType;
-  pickup_date: string;
-  requirements: string | null;
-  transporter: CompanyRef | null;
-  quotes: TransportQuote[];
-  events: ShipmentEvent[];
+export type Shipment = Omit<Schemas["ShipmentOut"], "my_relation"> & {
   my_relation: "party" | "transporter" | "bidder";
 };
 

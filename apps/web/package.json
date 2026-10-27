@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "typecheck": "next typegen && tsc --noEmit"
+    "typecheck": "next typegen && tsc --noEmit",
+    "api:types": "openapi-typescript ../api/openapi.json -o src/lib/api-schema.d.ts",
+    "e2e": "playwright test"
   },
   "dependencies": {
     "@clerk/localizations": "^4.24.2",
@@ -18,12 +20,16 @@
     "server-only": "^0.0.1"
   },
   "devDependencies": {
+    "@clerk/backend": "3.26.3",
+    "@clerk/testing": "2.2.51",
+    "@playwright/test": "1.63.0",
     "@tailwindcss/turbopack": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.4.3",
+    "openapi-typescript": "^7.13.0",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

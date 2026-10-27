@@ -93,6 +93,28 @@ async function Detail({
 
   return (
     <article className="flex flex-col gap-6">
+      {isOwner && listing.moderation_note && (
+        <p
+          role="alert"
+          className="rounded-xl border border-warn/40 bg-warn/10 px-4 py-3 text-sm text-warn"
+        >
+          RexFy retiró esta publicación: {listing.moderation_note}
+        </p>
+      )}
+      {query.fotos === "error" && (
+        <p role="alert" className="rounded-xl border border-warn/40 bg-warn/10 px-4 py-3 text-sm text-warn">
+          Guardamos la publicación, pero no pudimos subir las fotos. Inténtalo
+          de nuevo desde Editar.
+        </p>
+      )}
+      {query.borrador === "1" && (
+        <SuccessNotice>
+          Guardamos tu borrador. Termínalo cuando quieras desde tu panel.
+        </SuccessNotice>
+      )}
+      {query.editada === "1" && (
+        <SuccessNotice>Guardamos los cambios de tu publicación.</SuccessNotice>
+      )}
       {query.nueva === "1" && (
         <SuccessNotice>
           ¡Publicación activa! Ya es visible para los compradores en el
@@ -113,10 +135,33 @@ async function Detail({
         </div>
         <h1 className="mt-3 text-3xl font-bold sm:text-4xl">{listing.title}</h1>
         <p className="mt-1 text-sm text-muted">
-          {listing.company.legal_name} · {listing.company.city}
+          <Link
+            href={`/empresas/${listing.company.id}`}
+            className="underline-offset-2 hover:underline"
+          >
+            {listing.company.legal_name}
+          </Link>{" "}
+          · {listing.company.city}
           {listing.company.is_verified ? " · Empresa verificada" : ""}
         </p>
       </header>
+
+      {listing.images.length > 0 && (
+        <ul className="-mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-1 sm:mx-0 sm:grid sm:grid-cols-3 sm:px-0">
+          {listing.images.map((image, i) => (
+            <li key={image.id} className="shrink-0 snap-start">
+              <a href={image.url} target="_blank" rel="noreferrer">
+                {/* eslint-disable-next-line @next/next/no-img-element -- photos come from the API's storage */}
+                <img
+                  src={image.url}
+                  alt={`Foto ${i + 1} de ${listing.title}`}
+                  className="aspect-[4/3] w-64 rounded-xl object-cover sm:w-full"
+                />
+              </a>
+            </li>
+          ))}
+        </ul>
+      )}
 
       <div className="card p-5">
         <p className="font-mono text-3xl font-medium tracking-tight">
@@ -124,6 +169,16 @@ async function Detail({
         </p>
         {listing.price_negotiable && (
           <p className="text-sm text-muted">Precio negociable</p>
+        )}
+        {isOwner && listing.status !== "archived" && (
+          <Link
+            href={`/publicaciones/${listing.id}/editar`}
+            className="btn btn-secondary mt-4 w-full"
+          >
+            {listing.status === "draft"
+              ? "Terminar y publicar"
+              : "Editar publicación"}
+          </Link>
         )}
         {listing.status !== "published" || isOwner ? null : !me?.ok ? (
           <Link href="/ingresar" className="btn btn-primary mt-4 w-full">

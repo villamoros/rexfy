@@ -37,5 +37,18 @@ services:
       redis:
         condition: service_healthy
 
+  worker:
+    build: ./apps/api
+    profiles: ["full"]
+    command: ["uv", "run", "--no-dev", "python", "-m", "app.worker"]
+    environment:
+      REXFY_DATABASE_URL: postgresql+psycopg://rexfy:rexfy@postgres:5432/rexfy
+      REXFY_REDIS_URL: redis://redis:6379/0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
 volumes:
   postgres-data:

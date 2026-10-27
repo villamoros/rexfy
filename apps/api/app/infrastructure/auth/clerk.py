@@ -13,6 +13,8 @@ from app.core.config import get_settings
 class Profile:
     email: str
     full_name: str
+    # Whether Clerk confirmed the user owns the email; only then may it link an older account.
+    email_verified: bool = False
 
 
 class ClerkUnavailable(Exception):
@@ -65,10 +67,16 @@ class Clerk:
         except httpx.HTTPError as exc:
             raise ClerkUnavailable from exc
         data = response.json()
-        emails = {e["id"]: e["email_address"] for e in data.get("email_addresses", [])}
-        email = emails.get(data.get("primary_email_address_id")) or next(iter(emails.values()), "")
+        addresses = {e["id"]: e for e in data.get("email_addresses", [])}
+        primary = addresses.get(data.get("primary_email_address_id")) or next(
+            iter(addresses.values()), {}
+        )
+        email = primary.get("email_address", "")
+        verified = (primary.get("verification") or {}).get("status") == "verified"
         name = " ".join(p for p in (data.get("first_name"), data.get("last_name")) if p)
-        return Profile(email=email.lower(), full_name=name or email.split("@")[0])
+        return Profile(
+            email=email.lower(), full_name=name or email.split("@")[0], email_verified=verified
+        )
 
 
 @lru_cache

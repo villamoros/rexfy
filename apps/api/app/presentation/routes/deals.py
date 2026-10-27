@@ -3,6 +3,7 @@ import uuid
 from fastapi import APIRouter, HTTPException, status
 
 from app.application import deals as service
+from app.application import trust as trust_service
 from app.domain.deals.enums import OfferStatus
 from app.domain.deals.pricing import offer_total
 from app.infrastructure.db.models import Offer, Thread, Transaction, User
@@ -19,6 +20,7 @@ from app.presentation.schemas.deals import (
     ThreadSummary,
     TransactionOut,
 )
+from app.presentation.schemas.trust import DisputeOut
 
 router = APIRouter(tags=["negotiation"])
 
@@ -194,7 +196,19 @@ def list_transactions(db: DbSession, user: CurrentUser) -> list[TransactionOut]:
 
 @router.get("/transactions/{transaction_id}")
 def read_transaction(transaction_id: uuid.UUID, db: DbSession, user: CurrentUser) -> TransactionOut:
-    return _transaction_out(user, _load_transaction(db, user, transaction_id))
+    transaction = _load_transaction(db, user, transaction_id)
+    return _transaction_out(user, transaction).model_copy(
+        update={
+            "reviewed_by_me": trust_service.reviewed_by(db, user, transaction),
+            "has_open_dispute": trust_service.open_dispute_for(db, transaction) is not None,
+        }
+    )
+
+
+@router.get("/transactions/{transaction_id}/disputes")
+def order_disputes(transaction_id: uuid.UUID, db: DbSession, user: CurrentUser) -> list[DisputeOut]:
+    transaction = _load_transaction(db, user, transaction_id)
+    return [DisputeOut.model_validate(d) for d in trust_service.disputes_of(db, transaction)]
 
 
 @router.post("/transactions/{transaction_id}/confirm-receipt")

@@ -3,7 +3,6 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
-import { confirmReceipt } from "@/app/actions/deals";
 import { acceptTransportQuote } from "@/app/actions/logistics";
 import { AutoRefresh } from "@/components/auto-refresh";
 import { OrderProgress } from "@/components/order-progress";
@@ -25,7 +24,9 @@ import {
   type Shipment,
 } from "@/lib/logistics";
 import { getToken, requireUser } from "@/lib/session";
+import { DISPUTE_REASONS, type Dispute } from "@/lib/trust";
 
+import { ConfirmReceiptButton, DisputeForm, ReviewForm } from "./order-actions";
 import { ShipmentRequestForm } from "./shipment-request-form";
 
 export const metadata: Metadata = { title: "Orden · RexFy" };
@@ -53,7 +54,7 @@ async function Order({
   params: Promise<{ id: string }>;
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  await requireUser();
+  const me = await requireUser();
   const [{ id }, query] = await Promise.all([params, searchParams]);
   const result = await apiFetch<Transaction>(
     `/transactions/${encodeURIComponent(id)}`,
@@ -66,12 +67,23 @@ async function Order({
     return <p className="text-warn">{result.message}</p>;
   }
   const order = result.data;
-  const shipment = await apiFetch<Shipment>(
-    `/transactions/${order.id}/shipment`,
-    {
-      token: await getToken(),
-    },
-  );
+  const token = await getToken();
+  const [shipment, disputes] = await Promise.all([
+    apiFetch<Shipment>(`/transactions/${order.id}/shipment`, { token }),
+    apiFetch<Dispute[]>(`/transactions/${order.id}/disputes`, { token }),
+  ]);
+  const counterpart = order.my_role === "buyer" ? order.seller : order.buyer;
+  const myCompany = order.my_role === "buyer" ? order.buyer : order.seller;
+  // Members follow the order; owners and admins commit (pick a transporter, close it).
+  const myRole = me.companies.find((c) => c.company_id === myCompany.id)?.role;
+  const canCommit = myRole === "owner" || myRole === "admin";
+  // With a shipment under way, the buyer confirms only after the delivery.
+  const canConfirm =
+    order.my_role === "buyer" &&
+    canCommit &&
+    order.status !== "completed" &&
+    !order.has_open_dispute &&
+    (!shipment.ok || shipment.data.status === "delivered");
   const rows: [string, string][] = [
     ["Vendedor", order.seller.legal_name],
     ["Comprador", order.buyer.legal_name],
@@ -115,16 +127,52 @@ async function Order({
         >
           Ir al chat
         </Link>
-        {order.my_role === "buyer" && order.status !== "completed" && (
-          <form action={confirmReceipt}>
-            <input type="hidden" name="transaction_id" value={order.id} />
-            <button className="btn btn-primary text-sm">
-              Confirmar recepción del material
-            </button>
-          </form>
-        )}
+        <Link
+          href={`/empresas/${counterpart.id}`}
+          className="btn btn-secondary text-sm"
+        >
+          Perfil de {counterpart.legal_name}
+        </Link>
+        {canConfirm && <ConfirmReceiptButton orderId={order.id} />}
       </div>
-      <Logistics order={order} shipment={shipment.ok ? shipment.data : null} />
+      {order.status === "completed" && !order.reviewed_by_me && (
+        <section className="card p-5">
+          <ReviewForm orderId={order.id} counterpart={counterpart.legal_name} />
+        </section>
+      )}
+      {disputes.ok &&
+        disputes.data.map((d) => (
+          <section
+            key={d.id}
+            className={`flex flex-col gap-1 rounded-xl border p-4 text-sm ${
+              d.status === "open"
+                ? "border-warn/40 bg-warn/10"
+                : "border-border bg-surface"
+            }`}
+          >
+            <p className="font-semibold">
+              {d.status === "open"
+                ? "Problema reportado · RexFy lo está revisando"
+                : "Problema resuelto"}
+            </p>
+            <p>
+              {DISPUTE_REASONS[d.reason]} · reportado por{" "}
+              {d.opened_by.legal_name} el {formatDateTime(d.created_at)}
+            </p>
+            <p className="whitespace-pre-line text-muted">{d.description}</p>
+            {d.resolution && (
+              <p className="mt-1">
+                <span className="font-medium">Resolución:</span> {d.resolution}
+              </p>
+            )}
+          </section>
+        ))}
+      {!order.has_open_dispute && <DisputeForm orderId={order.id} />}
+      <Logistics
+        order={order}
+        shipment={shipment.ok ? shipment.data : null}
+        canCommit={canCommit}
+      />
     </article>
   );
 }
@@ -132,9 +180,11 @@ async function Order({
 function Logistics({
   order,
   shipment,
+  canCommit,
 }: {
   order: Transaction;
   shipment: Shipment | null;
+  canCommit: boolean;
 }) {
   if (!shipment) {
     if (order.status !== "agreed") return null;
@@ -199,13 +249,19 @@ function Logistics({
                   {i === 0 && shipment.quotes.length > 1 && " · Menor precio"}
                 </p>
                 {quote.notes && <p className="mt-1">{quote.notes}</p>}
-                <form action={acceptTransportQuote} className="mt-3">
-                  <input type="hidden" name="quote_id" value={quote.id} />
-                  <input type="hidden" name="transaction_id" value={order.id} />
-                  <button className="btn btn-primary">
-                    Aceptar {formatCop(quote.price)}
-                  </button>
-                </form>
+                {canCommit && (
+                  <form action={acceptTransportQuote} className="mt-3">
+                    <input type="hidden" name="quote_id" value={quote.id} />
+                    <input
+                      type="hidden"
+                      name="transaction_id"
+                      value={order.id}
+                    />
+                    <button className="btn btn-primary">
+                      Aceptar {formatCop(quote.price)}
+                    </button>
+                  </form>
+                )}
               </li>
             ))}
           </ul>

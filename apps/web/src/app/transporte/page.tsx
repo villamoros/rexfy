@@ -118,7 +118,13 @@ async function Board() {
 
       <section className="flex flex-col gap-3">
         <h2 className="text-xl font-bold">Solicitudes abiertas</h2>
-        {!open.ok || open.data.length === 0 ? (
+        {!open.ok ? (
+          <p className="card p-4 text-sm text-muted">
+            {open.status === 403
+              ? `${open.message}. El equipo de RexFy la revisará pronto.`
+              : open.message}
+          </p>
+        ) : open.data.length === 0 ? (
           <p className="text-sm text-muted">
             No hay solicitudes de transporte abiertas en este momento.
           </p>

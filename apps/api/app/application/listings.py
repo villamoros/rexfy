@@ -6,10 +6,12 @@ from typing import Any, Literal
 from sqlalchemy import Select, func, or_, select
 from sqlalchemy.orm import Session
 
+from app.application import audit
 from app.domain.listings.enums import Availability, ListingStatus, MaterialCategory, PricingType
 from app.domain.listings.rules import check_listing_terms
 from app.domain.organizations.roles import MarketRole
-from app.infrastructure.db.models import Listing, User
+from app.infrastructure.db.models import Listing, ListingImage, User
+from app.infrastructure.storage import get_storage
 
 TERM_FIELDS = (
     "quantity",
@@ -54,13 +56,27 @@ def _check_terms(listing: Listing) -> None:
     check_listing_terms(**{name: getattr(listing, name) for name in TERM_FIELDS})
 
 
-def create_listing(db: Session, user: User, data: dict[str, Any]) -> Listing:
+def create_listing(
+    db: Session, user: User, data: dict[str, Any], *, publish: bool = False
+) -> Listing:
+    """Save a draft, or publish it in the same transaction so a failure leaves nothing behind."""
     _require_generator(user, data["company_id"])
     listing = Listing(**data, status=ListingStatus.DRAFT)
     if listing.pricing_type is PricingType.FREE:
         listing.price = listing.price_unit = None
     _check_terms(listing)
+    if publish:
+        listing.status = ListingStatus.PUBLISHED
+        listing.published_at = datetime.now(UTC)
     db.add(listing)
+    audit.record(
+        db,
+        user,
+        "listing.published" if publish else "listing.created",
+        listing,
+        company_id=listing.company_id,
+        title=listing.title,
+    )
     db.commit()
     return listing
 
@@ -81,12 +97,22 @@ def update_listing(db: Session, user: User, listing: Listing, changes: dict[str,
     _require_generator(user, listing.company_id)
     if listing.status is ListingStatus.ARCHIVED:
         raise InvalidState
+    before = {name: getattr(listing, name) for name in changes}
     for name, value in changes.items():
         if value is not None or name in NULLABLE_FIELDS:
             setattr(listing, name, value)
     if listing.pricing_type is PricingType.FREE:
         listing.price = listing.price_unit = None
     _check_terms(listing)
+    changed = {
+        name: [before[name], getattr(listing, name)]
+        for name in changes
+        if before[name] != getattr(listing, name)
+    }
+    if changed:
+        audit.record(
+            db, user, "listing.updated", listing, company_id=listing.company_id, changes=changed
+        )
     db.commit()
     return listing
 
@@ -97,6 +123,7 @@ def publish_listing(db: Session, user: User, listing: Listing) -> Listing:
         raise InvalidState
     listing.status = ListingStatus.PUBLISHED
     listing.published_at = datetime.now(UTC)
+    audit.record(db, user, "listing.published", listing, company_id=listing.company_id)
     db.commit()
     return listing
 
@@ -104,6 +131,7 @@ def publish_listing(db: Session, user: User, listing: Listing) -> Listing:
 def archive_listing(db: Session, user: User, listing: Listing) -> Listing:
     _require_generator(user, listing.company_id)
     listing.status = ListingStatus.ARCHIVED
+    audit.record(db, user, "listing.archived", listing, company_id=listing.company_id)
     db.commit()
     return listing
 
@@ -133,15 +161,25 @@ class ListingSearch:
     offset: int = 0
 
 
+def _escape_like(text: str) -> str:
+    """Search words literally: % and _ are wildcards in LIKE."""
+    return text.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
 def _apply_filters(stmt: Select, f: ListingSearch) -> Select:
     stmt = stmt.where(Listing.status == ListingStatus.PUBLISHED)
     if f.q:
-        pattern = f"%{f.q.strip()}%"
-        stmt = stmt.where(or_(Listing.title.ilike(pattern), Listing.description.ilike(pattern)))
+        pattern = f"%{_escape_like(f.q.strip())}%"
+        stmt = stmt.where(
+            or_(
+                Listing.title.ilike(pattern, escape="\\"),
+                Listing.description.ilike(pattern, escape="\\"),
+            )
+        )
     if f.categories:
         stmt = stmt.where(Listing.category.in_(f.categories))
     if f.city:
-        stmt = stmt.where(Listing.city.ilike(f"%{f.city.strip()}%"))
+        stmt = stmt.where(Listing.city.ilike(f"%{_escape_like(f.city.strip())}%", escape="\\"))
     if f.availability:
         stmt = stmt.where(Listing.availability.in_(f.availability))
     if f.pricing_type:
@@ -159,3 +197,82 @@ def search_listings(db: Session, f: ListingSearch) -> tuple[list[Listing], int]:
     }[f.sort]
     stmt = _apply_filters(select(Listing), f).order_by(*order).limit(f.limit).offset(f.offset)
     return list(db.scalars(stmt)), total
+
+
+MAX_IMAGES = 6
+MAX_IMAGE_BYTES = 5 * 1024 * 1024
+
+# Checked against the file's first bytes, not the name or the browser's claim.
+_IMAGE_TYPES = (
+    (b"\xff\xd8\xff", "image/jpeg", "jpg"),
+    (b"\x89PNG\r\n\x1a\n", "image/png", "png"),
+)
+
+
+def _sniff(data: bytes) -> tuple[str, str] | None:
+    for magic, content_type, ext in _IMAGE_TYPES:
+        if data.startswith(magic):
+            return content_type, ext
+    if data[:4] == b"RIFF" and data[8:12] == b"WEBP":
+        return "image/webp", "webp"
+    return None
+
+
+def add_images(db: Session, user: User, listing: Listing, files: list[bytes]) -> Listing:
+    """Attach photos (JPEG, PNG or WebP, 5 MB each, 6 per listing)."""
+    _require_generator(user, listing.company_id)
+    if listing.status is ListingStatus.ARCHIVED:
+        raise InvalidState
+    if len(listing.images) + len(files) > MAX_IMAGES:
+        raise ValueError(f"Máximo {MAX_IMAGES} fotos por publicación")
+    accepted = []
+    for data in files:
+        if len(data) > MAX_IMAGE_BYTES:
+            raise ValueError("Cada foto puede pesar máximo 5 MB")
+        kind = _sniff(data)
+        if kind is None:
+            raise ValueError("Las fotos deben ser JPG, PNG o WebP")
+        accepted.append((data, *kind))
+
+    storage = get_storage()
+    saved: list[str] = []
+    first_position = len(listing.images)
+    try:
+        for i, (data, content_type, ext) in enumerate(accepted):
+            key = f"listings/{listing.id}/{uuid.uuid4().hex}.{ext}"
+            storage.save(key, data, content_type)
+            saved.append(key)
+            listing.images.append(
+                ListingImage(
+                    key=key,
+                    content_type=content_type,
+                    size_bytes=len(data),
+                    position=first_position + i,
+                )
+            )
+        audit.record(
+            db,
+            user,
+            "listing.images_added",
+            listing,
+            company_id=listing.company_id,
+            count=len(saved),
+        )
+        db.commit()
+    except Exception:
+        db.rollback()
+        for key in saved:
+            storage.delete(key)
+        raise
+    return listing
+
+
+def remove_image(db: Session, user: User, listing: Listing, image_id: uuid.UUID) -> Listing:
+    _require_generator(user, listing.company_id)
+    image = next((i for i in listing.images if i.id == image_id), None)
+    if image is None:
+        raise LookupError
+    listing.images.remove(image)
+    db.commit()
+    get_storage().delete(image.key)
+    return listing

@@ -1,26 +1,17 @@
 import "server-only";
 
+import type { components } from "@/lib/api-schema";
+
 const API_URL =
   process.env.API_URL ??
   process.env.NEXT_PUBLIC_API_URL ??
   "http://localhost:8000";
 
-export type MarketRole = "generator" | "buyer" | "transporter";
+export type Schemas = components["schemas"];
 
-export type Membership = {
-  company_id: string;
-  legal_name: string;
-  market_roles: MarketRole[];
-  role: "owner" | "admin" | "member";
-};
-
-export type Me = {
-  id: string;
-  email: string;
-  full_name: string;
-  is_platform_admin: boolean;
-  companies: Membership[];
-};
+export type MarketRole = Schemas["MarketRole"];
+export type Membership = Schemas["MembershipOut"];
+export type Me = Schemas["MeResponse"];
 
 export type ApiResult<T> =
   | { ok: true; data: T }
@@ -41,15 +32,22 @@ export async function apiFetch<T>(
     body,
   }: { token?: string; method?: string; body?: unknown } = {},
 ): Promise<ApiResult<T>> {
+  // FormData goes as multipart (file uploads); anything else as JSON.
+  const multipart = body instanceof FormData;
   let res: Response;
   try {
     res = await fetch(`${API_URL}${path}`, {
       method,
       headers: {
-        "Content-Type": "application/json",
+        ...(multipart ? {} : { "Content-Type": "application/json" }),
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
-      body: body === undefined ? undefined : JSON.stringify(body),
+      body:
+        body === undefined
+          ? undefined
+          : multipart
+            ? body
+            : JSON.stringify(body),
       cache: "no-store",
     });
   } catch {

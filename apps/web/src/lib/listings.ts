@@ -1,63 +1,17 @@
-export type MaterialCategory =
-  | "plastic"
-  | "metal"
-  | "paper_cardboard"
-  | "wood"
-  | "textile"
-  | "glass"
-  | "electronic"
-  | "agro";
-export type MaterialCondition =
-  | "clean_separated"
-  | "mixed"
-  | "preprocessed"
-  | "needs_sorting";
-export type QuantityUnit = "t" | "kg" | "unit" | "m3" | "l";
-export type Availability =
-  | "immediate"
-  | "this_week"
-  | "this_month"
-  | "specific_date";
-export type PricingType = "paid" | "free";
-export type ListingStatus = "draft" | "published" | "archived";
+import type { Schemas } from "@/lib/api";
 
-export type Listing = {
-  id: string;
-  status: ListingStatus;
-  published_at: string | null;
-  created_at: string;
-  company: {
-    id: string;
-    legal_name: string;
-    city: string;
-    is_verified: boolean;
-  };
-  category: MaterialCategory;
-  title: string;
-  description: string;
-  condition: MaterialCondition;
-  is_recurring: boolean;
-  quantity: number;
-  quantity_unit: QuantityUnit;
-  min_order_quantity: number | null;
-  availability: Availability;
-  available_from: string | null;
-  city: string;
-  facility_name: string | null;
-  pickup_allowed: boolean;
-  pricing_type: PricingType;
-  price: number | null;
-  price_unit: QuantityUnit | null;
-  price_negotiable: boolean;
-  conditions: string | null;
-};
+export type MaterialCategory = Schemas["MaterialCategory"];
+export type MaterialCondition = Schemas["MaterialCondition"];
+export type QuantityUnit = Schemas["QuantityUnit"];
+export type Availability = Schemas["Availability"];
+export type PricingType = Schemas["PricingType"];
+export type ListingStatus = Schemas["ListingStatus"];
 
-export type ListingPage = {
-  items: Listing[];
-  total: number;
-  limit: number;
-  offset: number;
-};
+export type Listing = Schemas["ListingOut"];
+
+export const MAX_PHOTOS = 6;
+
+export type ListingPage = Schemas["ListingPage"];
 
 export const CATEGORIES: Record<MaterialCategory, string> = {
   plastic: "Plástico",

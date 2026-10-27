@@ -4,8 +4,13 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.application.organizations import accept_invitations
 from app.infrastructure.auth.clerk import Profile
 from app.infrastructure.db.models import User
+
+
+class EmailNotVerified(Exception):
+    pass
 
 
 def resolve_user(db: Session, clerk_user_id: str, fetch_profile: Callable[[str], Profile]) -> User:
@@ -20,14 +25,21 @@ def resolve_user(db: Session, clerk_user_id: str, fetch_profile: Callable[[str],
     user = db.scalar(
         select(User).where(func.lower(User.email) == profile.email, User.clerk_user_id.is_(None))
     )
+    if user is not None and not profile.email_verified:
+        # Linking on an unconfirmed email would hand someone else's account over.
+        raise EmailNotVerified
     if user is None:
         user = User(email=profile.email, full_name=profile.full_name)
         db.add(user)
     user.clerk_user_id = clerk_user_id
+    if profile.email_verified:
+        db.flush()
+        accept_invitations(db, user)
     try:
         db.commit()
     except IntegrityError:
         # Two first requests raced; the other one created the user.
         db.rollback()
         return db.scalars(select(User).where(User.clerk_user_id == clerk_user_id)).one()
+    db.refresh(user)
     return user

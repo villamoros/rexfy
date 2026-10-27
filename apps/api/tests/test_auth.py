@@ -33,6 +33,20 @@ def test_existing_user_is_linked_by_email(client: TestClient, db: Session) -> No
     assert db.query(User).count() == 1
 
 
+def test_unverified_email_does_not_link(client: TestClient, db: Session, clerk: FakeClerk) -> None:
+    db.add(User(email="ana@example.com", full_name="Ana de antes"))
+    db.commit()
+    clerk.email_verified = False
+    response = client.get("/me", headers={"Authorization": "Bearer test:ana@example.com"})
+    assert response.status_code == 403
+    assert db.query(User).one().clerk_user_id is None
+
+
+def test_bad_token_on_public_page_is_a_visitor(client: TestClient) -> None:
+    response = client.get("/listings", headers={"Authorization": "Bearer vencido"})
+    assert response.status_code == 200
+
+
 def test_me_requires_token(client: TestClient) -> None:
     assert client.get("/me").status_code == 401
     assert client.get("/me", headers={"Authorization": "Bearer basura"}).status_code == 401
@@ -110,7 +124,11 @@ def test_profile_reads_primary_email(real_clerk: Clerk, monkeypatch: pytest.Monk
                 "primary_email_address_id": "idn_2",
                 "email_addresses": [
                     {"id": "idn_1", "email_address": "vieja@example.com"},
-                    {"id": "idn_2", "email_address": "Ana@Example.com"},
+                    {
+                        "id": "idn_2",
+                        "email_address": "Ana@Example.com",
+                        "verification": {"status": "verified"},
+                    },
                 ],
                 "first_name": "Ana",
                 "last_name": "Gómez",
@@ -122,3 +140,4 @@ def test_profile_reads_primary_email(real_clerk: Clerk, monkeypatch: pytest.Monk
     profile = real_clerk.profile("user_2abc")
     assert profile.email == "ana@example.com"
     assert profile.full_name == "Ana Gómez"
+    assert profile.email_verified is True

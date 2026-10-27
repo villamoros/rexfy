@@ -111,3 +111,6 @@ class TransactionOut(BaseModel):
     completed_at: datetime | None
     thread_id: uuid.UUID
     my_role: str = ""
+    # Only filled when reading one order.
+    reviewed_by_me: bool = False
+    has_open_dispute: bool = False

@@ -168,3 +168,59 @@ def test_buyer_confirms_receipt(client: TestClient, deal: dict[str, Any]) -> Non
     assert client.post(path, headers=deal["buyer"]).status_code == 409
     stranger = register(client, "stranger@example.com")
     assert client.get(f"/transactions/{order['id']}", headers=stranger).status_code == 404
+
+
+def _second_buyer(client: TestClient, listing_id: str) -> tuple[Headers, str]:
+    buyer = register(client, "buyer2@example.com")
+    buyer_company = company(client, buyer, ["buyer"], "800200311")
+    thread = client.post(
+        "/threads",
+        json={"listing_id": listing_id, "company_id": buyer_company, "body": "Me interesa"},
+        headers=buyer,
+    )
+    return buyer, thread.json()["id"]
+
+
+def test_one_off_listing_cannot_be_oversold(client: TestClient, deal: dict[str, Any]) -> None:
+    lid = deal["listing_id"]
+    client.patch(f"/listings/{lid}", json={"is_recurring": False}, headers=deal["seller"])
+    other, other_thread = _second_buyer(client, lid)
+    first = offer(client, deal["seller"], deal["thread_id"], quantity=3)
+    second = offer(client, deal["seller"], other_thread, quantity=3)
+
+    assert client.post(f"/offers/{first['id']}/accept", headers=deal["buyer"]).status_code == 200
+    listing = client.get(f"/listings/{lid}", headers=deal["seller"]).json()
+    assert listing["quantity"] == 1.5
+    assert listing["status"] == "published"
+
+    # 3 t no longer fit in the 1.5 t left.
+    late = client.post(f"/offers/{second['id']}/accept", headers=other)
+    assert late.status_code == 409
+
+    # The buyer counters with what is left, and the seller accepts.
+    rest = offer(client, other, other_thread, quantity=1.5)
+    assert client.post(f"/offers/{rest['id']}/accept", headers=deal["seller"]).status_code == 200
+    sold_out = client.get(f"/listings/{lid}", headers=deal["seller"]).json()
+    assert sold_out["status"] == "archived"
+    assert sold_out["quantity"] == 0
+
+
+def test_recurring_listing_keeps_its_quantity(client: TestClient, deal: dict[str, Any]) -> None:
+    quote = offer(client, deal["seller"], deal["thread_id"], quantity=4.5)
+    assert client.post(f"/offers/{quote['id']}/accept", headers=deal["buyer"]).status_code == 200
+    listing = client.get(f"/listings/{deal['listing_id']}").json()
+    assert listing["quantity"] == 4.5
+    assert listing["status"] == "published"
+
+
+def test_archived_listing_cannot_close_deals(client: TestClient, deal: dict[str, Any]) -> None:
+    quote = offer(client, deal["seller"], deal["thread_id"])
+    client.post(f"/listings/{deal['listing_id']}/archive", headers=deal["seller"])
+    accepted = client.post(f"/offers/{quote['id']}/accept", headers=deal["buyer"])
+    assert accepted.status_code == 409
+    new_quote = client.post(
+        f"/threads/{deal['thread_id']}/offers",
+        json={"quantity": 1, "price": 800, "price_unit": "kg"},
+        headers=deal["buyer"],
+    )
+    assert new_quote.status_code == 409

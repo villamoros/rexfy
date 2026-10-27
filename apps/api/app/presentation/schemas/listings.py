@@ -39,6 +39,8 @@ class ListingFields(BaseModel):
 
 class ListingCreate(ListingFields):
     company_id: uuid.UUID
+    # Publish right away instead of saving a draft, in one step.
+    publish: bool = False
 
 
 class ListingUpdate(BaseModel):
@@ -73,6 +75,13 @@ class ListingCompany(BaseModel):
     is_verified: bool
 
 
+class ListingImageOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    url: str
+
+
 class ListingOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -99,6 +108,8 @@ class ListingOut(BaseModel):
     price_unit: QuantityUnit | None
     price_negotiable: bool
     conditions: str | None
+    moderation_note: str | None
+    images: list[ListingImageOut]
 
 
 class ListingPage(BaseModel):

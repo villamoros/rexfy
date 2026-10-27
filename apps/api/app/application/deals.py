@@ -6,11 +6,27 @@ from decimal import Decimal
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
+from app.application import audit
+from app.application.notifications import notify
+from app.application.organizations import NotAllowed as TeamNotAllowed
+from app.application.organizations import require_committer
 from app.domain.deals.enums import OfferStatus, TransactionStatus
 from app.domain.deals.pricing import offer_total
 from app.domain.listings.enums import ListingStatus, QuantityUnit
+from app.domain.logistics.enums import ShipmentStatus
 from app.domain.organizations.roles import MarketRole
-from app.infrastructure.db.models import Listing, Message, Offer, Thread, Transaction, User
+from app.domain.trust.enums import DisputeStatus
+from app.infrastructure.db.models import (
+    Company,
+    Dispute,
+    Listing,
+    Message,
+    Offer,
+    Shipment,
+    Thread,
+    Transaction,
+    User,
+)
 
 
 class NotAllowed(Exception):
@@ -25,6 +41,17 @@ class InvalidState(Exception):
 
 def _now() -> datetime:
     return datetime.now(UTC)
+
+
+def lock(db: Session, row: object) -> None:
+    """Take a row lock for the rest of the transaction and reload the row's current state.
+
+    Locks only the row itself: a plain `with_for_update` would also try to lock the
+    outer-joined relationships, which Postgres refuses.
+    """
+    model = type(row)
+    db.execute(select(model.id).where(model.id == row.id).with_for_update())
+    db.refresh(row)
 
 
 def _company_ids(user: User) -> set[uuid.UUID]:
@@ -81,6 +108,25 @@ def _add_message(db: Session, user: User, thread: Thread, company_id: uuid.UUID,
         )
     )
     thread.last_activity_at = _now()
+    db.flush()
+    notify(
+        db,
+        _other_side(thread, company_id),
+        kind="message",
+        title=f"Mensaje de {_company_name(db, company_id)}",
+        body=f"{thread.listing.title}: {body.strip()[:200]}",
+        link=f"/mensajes/{thread.id}",
+    )
+
+
+def _other_side(thread: Thread, company_id: uuid.UUID) -> uuid.UUID:
+    if company_id == thread.buyer_company_id:
+        return thread.seller_company_id
+    return thread.buyer_company_id
+
+
+def _company_name(db: Session, company_id: uuid.UUID) -> str:
+    return db.get(Company, company_id).legal_name
 
 
 def threads_of(db: Session, user: User) -> list[Thread]:
@@ -137,6 +183,8 @@ def send_offer(
 ) -> Offer:
     """Send a formal quote. A pending quote from the other side becomes countered."""
     company_id = acting_company(user, thread)
+    if thread.listing.status is not ListingStatus.PUBLISHED:
+        raise InvalidState("La publicación ya no está disponible")
     if quantity > thread.listing.quantity:
         raise InvalidState("La cantidad supera lo disponible en la publicación")
     for offer in thread.offers:
@@ -158,6 +206,18 @@ def send_offer(
     )
     db.add(offer)
     thread.last_activity_at = _now()
+    audit.record(
+        db, user, "offer.sent", offer, company_id=company_id, quantity=quantity, price=price
+    )
+    notify(
+        db,
+        _other_side(thread, company_id),
+        kind="offer",
+        title=f"Nueva cotización de {_company_name(db, company_id)}",
+        body=f"{thread.listing.title}: {quantity} {thread.listing.quantity_unit} "
+        f"a ${price:,.0f} / {price_unit}",
+        link=f"/mensajes/{thread.id}",
+    )
     db.commit()
     return offer
 
@@ -172,8 +232,28 @@ def _pending_offer_for_receiver(user: User, offer: Offer) -> Offer:
 
 
 def accept_offer(db: Session, user: User, offer: Offer) -> Transaction:
-    _pending_offer_for_receiver(user, offer)
+    """Close the deal. One-off listings lose the sold quantity and close when sold out.
+
+    The listing and the offer are locked first, so two buyers accepting at the same time
+    cannot both take the last tons, and a double click cannot accept the same offer twice.
+    """
     thread = offer.thread
+    listing = thread.listing
+    lock(db, listing)
+    lock(db, offer)
+    _pending_offer_for_receiver(user, offer)
+    try:
+        require_committer(user, acting_company(user, thread))
+    except TeamNotAllowed:
+        raise NotAllowed from None
+    if listing.status is not ListingStatus.PUBLISHED:
+        raise InvalidState("La publicación ya no está disponible")
+    if offer.quantity > listing.quantity:
+        raise InvalidState("Ya no queda suficiente material en la publicación")
+    if not listing.is_recurring:
+        listing.quantity -= offer.quantity
+        if listing.quantity <= 0:
+            listing.status = ListingStatus.ARCHIVED
     offer.status = OfferStatus.ACCEPTED
     offer.responded_at = _now()
     transaction = Transaction(
@@ -190,14 +270,41 @@ def accept_offer(db: Session, user: User, offer: Offer) -> Transaction:
     )
     db.add(transaction)
     thread.last_activity_at = _now()
+    audit.record(
+        db,
+        user,
+        "offer.accepted",
+        offer,
+        company_id=acting_company(user, thread),
+        order=transaction.code,
+        total=transaction.total,
+    )
+    notify(
+        db,
+        offer.from_company_id,
+        kind="offer_accepted",
+        title=f"Aceptaron tu cotización · orden {transaction.code}",
+        body=thread.listing.title,
+        link=f"/ordenes/{transaction.id}",
+    )
     db.commit()
     return transaction
 
 
 def decline_offer(db: Session, user: User, offer: Offer) -> Offer:
+    lock(db, offer)
     _pending_offer_for_receiver(user, offer)
     offer.status = OfferStatus.DECLINED
     offer.responded_at = _now()
+    audit.record(db, user, "offer.declined", offer, company_id=acting_company(user, offer.thread))
+    notify(
+        db,
+        offer.from_company_id,
+        kind="offer_declined",
+        title="Rechazaron tu cotización",
+        body=offer.thread.listing.title,
+        link=f"/mensajes/{offer.thread_id}",
+    )
     db.commit()
     return offer
 
@@ -235,12 +342,38 @@ def get_transaction(db: Session, user: User, transaction_id: uuid.UUID) -> Trans
 
 
 def confirm_receipt(db: Session, user: User, transaction: Transaction) -> Transaction:
-    """The buyer closes the deal once the material arrived (or was picked up)."""
+    """The buyer closes the deal once the material arrived (or was picked up).
+
+    With a shipment under way, only after the transporter marked it delivered.
+    """
     if transaction.buyer_company_id not in _company_ids(user):
         raise NotAllowed
+    try:
+        require_committer(user, transaction.buyer_company_id)
+    except TeamNotAllowed:
+        raise NotAllowed from None
+    lock(db, transaction)
     if transaction.status is TransactionStatus.COMPLETED:
         raise InvalidState("La orden ya está cerrada")
+    shipment = db.scalar(select(Shipment).where(Shipment.transaction_id == transaction.id))
+    if shipment is not None and shipment.status is not ShipmentStatus.DELIVERED:
+        raise InvalidState("El transportador aún no ha marcado la entrega")
+    if db.scalar(
+        select(Dispute.id).where(
+            Dispute.transaction_id == transaction.id, Dispute.status == DisputeStatus.OPEN
+        )
+    ):
+        raise InvalidState("La orden tiene una disputa abierta; RexFy la está revisando")
     transaction.status = TransactionStatus.COMPLETED
     transaction.completed_at = _now()
+    audit.record(db, user, "order.completed", transaction, company_id=transaction.buyer_company_id)
+    notify(
+        db,
+        transaction.seller_company_id,
+        kind="order_completed",
+        title=f"Orden {transaction.code} cerrada",
+        body="El comprador confirmó la recepción. Ya puedes calificarlo.",
+        link=f"/ordenes/{transaction.id}",
+    )
     db.commit()
     return transaction

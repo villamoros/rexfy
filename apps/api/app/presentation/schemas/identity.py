@@ -9,6 +9,7 @@ class MembershipOut(BaseModel):
     company_id: uuid.UUID
     legal_name: str
     market_roles: list[MarketRole]
+    is_verified: bool
     role: MemberRole
 
 

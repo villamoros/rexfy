@@ -35,6 +35,7 @@ def _out(user: User, shipment: Shipment) -> ShipmentOut:
         if rel == "party"
         else [q for q in shipment.quotes if q.transporter_company_id in mine]
     )
+    # Bidders get what they need to quote (route, dates, load), not who is trading.
     sees_addresses = rel in ("party", "transporter")
     return ShipmentOut(
         id=shipment.id,
@@ -45,8 +46,8 @@ def _out(user: User, shipment: Shipment) -> ShipmentOut:
             listing_title=order.listing.title,
             quantity=float(order.quantity),
             quantity_unit=order.quantity_unit,
-            buyer=CompanyRef.model_validate(order.buyer),
-            seller=CompanyRef.model_validate(order.seller),
+            buyer=CompanyRef.model_validate(order.buyer) if sees_addresses else None,
+            seller=CompanyRef.model_validate(order.seller) if sees_addresses else None,
         ),
         pickup_city=shipment.pickup_city,
         delivery_city=shipment.delivery_city,
@@ -59,7 +60,7 @@ def _out(user: User, shipment: Shipment) -> ShipmentOut:
         if shipment.transporter
         else None,
         quotes=[QuoteOut.model_validate(q) for q in quotes],
-        events=[EventOut.model_validate(e) for e in shipment.events],
+        events=[EventOut.model_validate(e) for e in shipment.events] if sees_addresses else [],
         my_relation=rel,
     )
 
@@ -101,6 +102,11 @@ def open_requests(db: DbSession, user: CurrentUser) -> list[ShipmentOut]:
     except deals_service.NotAllowed:
         raise HTTPException(
             status.HTTP_403_FORBIDDEN, "Solo para empresas transportadoras"
+        ) from None
+    except service.NotVerified:
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            "Tu empresa transportadora debe estar verificada para ver solicitudes",
         ) from None
 
 

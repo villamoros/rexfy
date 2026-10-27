@@ -152,6 +152,16 @@ def test_update_and_archive(client: TestClient, generator: tuple[dict[str, str],
     assert [m["status"] for m in mine] == ["archived"]
 
 
+def test_search_treats_wildcards_literally(
+    client: TestClient, generator: tuple[dict[str, str], str]
+) -> None:
+    headers, company_id = generator
+    create(client, headers, company_id, publish=True, title="PET 100% reciclado")
+    create(client, headers, company_id, publish=True, title="PET 1000 kg")
+    found = client.get("/listings", params={"q": "100%"}).json()
+    assert [i["title"] for i in found["items"]] == ["PET 100% reciclado"]
+
+
 def test_search_filters(client: TestClient, generator: tuple[dict[str, str], str]) -> None:
     headers, company_id = generator
     rows = [
@@ -191,3 +201,62 @@ def test_search_filters(client: TestClient, generator: tuple[dict[str, str], str
     page = client.get("/listings", params={"limit": 1, "offset": 1}).json()
     assert page["total"] == 3
     assert len(page["items"]) == 1
+
+
+def test_create_and_publish_in_one_step(
+    client: TestClient, generator: tuple[dict[str, str], str]
+) -> None:
+    headers, company_id = generator
+    listing = create(client, headers, company_id, publish=True)
+    assert listing["status"] == "published"
+    assert listing["published_at"] is not None
+    assert client.get(f"/listings/{listing['id']}").status_code == 200
+
+    # A rejected listing leaves no draft behind.
+    bad = client.post(
+        "/listings",
+        json={**PET, "company_id": company_id, "min_order_quantity": 10, "publish": True},
+        headers=headers,
+    )
+    assert bad.status_code == 422
+    assert [i["id"] for i in client.get("/me/listings", headers=headers).json()] == [listing["id"]]
+
+
+PNG = b"\x89PNG\r\n\x1a\n" + b"\x00" * 64
+
+
+def test_listing_photos(client: TestClient, generator: tuple[dict[str, str], str]) -> None:
+    headers, company_id = generator
+    listing = create(client, headers, company_id, publish=True)
+    path = f"/listings/{listing['id']}/images"
+
+    uploaded = client.post(
+        path,
+        files=[("files", ("a.png", PNG, "image/png")), ("files", ("b.png", PNG, "image/png"))],
+        headers=headers,
+    )
+    assert uploaded.status_code == 201, uploaded.text
+    images = uploaded.json()["images"]
+    assert len(images) == 2
+    served = client.get(images[0]["url"].removeprefix("http://localhost:8000"))
+    assert served.status_code == 200
+    assert served.content == PNG
+
+    # Only real images, only the listing's company, at most six.
+    fake = client.post(path, files=[("files", ("x.png", b"<svg/>", "image/png"))], headers=headers)
+    assert fake.status_code == 422
+    stranger = register(client, "otro@example.com")
+    assert (
+        client.post(
+            path, files=[("files", ("a.png", PNG, "image/png"))], headers=stranger
+        ).status_code
+        == 403
+    )
+    too_many = client.post(
+        path, files=[("files", (f"{i}.png", PNG, "image/png")) for i in range(5)], headers=headers
+    )
+    assert too_many.status_code == 422
+
+    removed = client.delete(f"{path}/{images[0]['id']}", headers=headers)
+    assert [i["id"] for i in removed.json()["images"]] == [images[1]["id"]]
+    assert client.get(images[0]["url"].removeprefix("http://localhost:8000")).status_code == 404

@@ -3,24 +3,23 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-const LINKS = [
-  { href: "/marketplace", label: "Marketplace" },
-  { href: "/publicar", label: "Publicar" },
-  { href: "/mensajes", label: "Mensajes" },
-  { href: "/ordenes", label: "Órdenes" },
-  { href: "/transporte", label: "Transporte" },
-  { href: "/panel", label: "Panel" },
-] as const;
+export type NavLink = { href: string; label: string };
 
-export function NavLinks() {
-  return <NavList pathname={usePathname()} />;
+export function NavLinks({ links }: { links: NavLink[] }) {
+  return <NavList links={links} pathname={usePathname()} />;
 }
 
 /** The links without an active state, for the prerendered shell. */
-export function NavList({ pathname }: { pathname: string | null }) {
+export function NavList({
+  links,
+  pathname,
+}: {
+  links: NavLink[];
+  pathname: string | null;
+}) {
   return (
     <ul className="-mx-1 flex gap-1 overflow-x-auto text-sm [scrollbar-width:none]">
-      {LINKS.map((link) => {
+      {links.map((link) => {
         const active =
           pathname !== null &&
           (pathname === link.href || pathname.startsWith(`${link.href}/`));

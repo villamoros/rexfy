@@ -43,7 +43,7 @@ type Entry = { at: string } & (
 );
 
 async function Conversation({ params }: { params: Promise<{ id: string }> }) {
-  await requireUser();
+  const me = await requireUser();
   const { id } = await params;
   const result = await apiFetch<ThreadDetail>(
     `/threads/${encodeURIComponent(id)}`,
@@ -58,6 +58,11 @@ async function Conversation({ params }: { params: Promise<{ id: string }> }) {
   const thread = result.data;
   const iAmBuyer = thread.my_company_id === thread.buyer.id;
   const counterpart = iAmBuyer ? thread.seller : thread.buyer;
+  // Members negotiate; accepting a quote is for the company's owner or admins.
+  const myRole = me.companies.find(
+    (c) => c.company_id === thread.my_company_id,
+  )?.role;
+  const canCommit = myRole === "owner" || myRole === "admin";
   const pending = thread.offers.find((o) => o.status === "pending");
   const timeline: Entry[] = [
     ...thread.messages.map((m) => ({
@@ -79,7 +84,14 @@ async function Conversation({ params }: { params: Promise<{ id: string }> }) {
         <Link href="/mensajes" className="text-xs text-muted underline">
           ← Mensajes
         </Link>
-        <h1 className="mt-1 text-lg font-semibold">{counterpart.legal_name}</h1>
+        <h1 className="mt-1 text-lg font-semibold">
+          <Link
+            href={`/empresas/${counterpart.id}`}
+            className="underline-offset-2 hover:underline"
+          >
+            {counterpart.legal_name}
+          </Link>
+        </h1>
         <p className="text-sm text-muted">
           <Link
             href={`/publicaciones/${thread.listing.id}`}
@@ -124,6 +136,7 @@ async function Conversation({ params }: { params: Promise<{ id: string }> }) {
               offer={entry.offer}
               threadId={thread.id}
               mine={entry.offer.from_company_id === thread.my_company_id}
+              canCommit={canCommit}
               senderName={
                 entry.offer.from_company_id === thread.buyer.id
                   ? thread.buyer.legal_name
@@ -177,11 +190,13 @@ function OfferCard({
   offer,
   threadId,
   mine,
+  canCommit,
   senderName,
 }: {
   offer: Offer;
   threadId: string;
   mine: boolean;
+  canCommit: boolean;
   senderName: string;
 }) {
   const rows: [string, string][] = [
@@ -222,9 +237,19 @@ function OfferCard({
           <form action={respondToOffer} className="mt-3 grid grid-cols-2 gap-2">
             <input type="hidden" name="thread_id" value={threadId} />
             <input type="hidden" name="offer_id" value={offer.id} />
-            <button name="decision" value="accept" className="btn btn-primary">
-              Aceptar
-            </button>
+            {canCommit ? (
+              <button
+                name="decision"
+                value="accept"
+                className="btn btn-primary"
+              >
+                Aceptar
+              </button>
+            ) : (
+              <p className="self-center text-xs text-muted">
+                Un admin de tu empresa la acepta
+              </p>
+            )}
             <button
               name="decision"
               value="decline"

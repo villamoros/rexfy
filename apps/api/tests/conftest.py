@@ -1,4 +1,5 @@
 import os
+import tempfile
 from collections.abc import Iterator
 
 import pytest
@@ -12,6 +13,10 @@ from app.core.config import get_settings
 _dev_url = make_url(get_settings().database_url)
 _test_url = _dev_url.set(database=f"{_dev_url.database}_test")
 os.environ["REXFY_DATABASE_URL"] = _test_url.render_as_string(hide_password=False)
+os.environ["REXFY_TASK_QUEUE"] = "off"
+os.environ["REXFY_RATE_LIMIT_WRITES_PER_MINUTE"] = "0"
+# Uploads go to a throwaway folder.
+os.environ["REXFY_LOCAL_STORAGE_DIR"] = tempfile.mkdtemp(prefix="rexfy-uploads-")
 get_settings.cache_clear()
 
 _admin = create_engine(_dev_url.set(database="postgres"), isolation_level="AUTOCOMMIT")
@@ -52,6 +57,7 @@ class FakeClerk:
 
     def __init__(self) -> None:
         self.profile_calls = 0
+        self.email_verified = True
 
     def verify(self, token: str) -> str | None:
         prefix, _, email = token.partition(":")
@@ -59,7 +65,11 @@ class FakeClerk:
 
     def profile(self, clerk_user_id: str) -> Profile:
         self.profile_calls += 1
-        return Profile(email=clerk_user_id.removeprefix("user_"), full_name="Ana Gómez")
+        return Profile(
+            email=clerk_user_id.removeprefix("user_"),
+            full_name="Ana Gómez",
+            email_verified=self.email_verified,
+        )
 
 
 @pytest.fixture
