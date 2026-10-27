@@ -76,10 +76,18 @@ async function Dashboard() {
                 </span>
               ))}
             </div>
-            <p className="mt-3 flex items-center gap-2 text-sm text-muted">
-              <span className="size-1.5 rounded-full bg-warn" />
-              Pendiente de verificación.
-            </p>
+            {company.is_verified ? (
+              <p className="mt-3 flex items-center gap-2 text-sm text-muted">
+                <span className="size-1.5 rounded-full bg-signal" />
+                Empresa verificada por RexFy.
+              </p>
+            ) : (
+              <p className="mt-3 flex items-center gap-2 text-sm text-muted">
+                <span className="size-1.5 rounded-full bg-warn" />
+                Pendiente de verificación. El equipo de RexFy revisa el NIT y
+                los datos de la empresa.
+              </p>
+            )}
           </li>
         ))}
       </ul>

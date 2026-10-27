@@ -56,6 +56,18 @@ uv run python -m app.cli.seed
 
 Se puede correr varias veces: solo crea lo que falta. Solo funciona con `REXFY_ENV=local`.
 
+### Admin de RexFy
+
+El panel `/admin` (verificar empresas, moderar publicaciones, disputas y actividad) es para el
+equipo de RexFy. Ingresa una vez con tu cuenta y luego, desde `apps/api`:
+
+```bash
+uv run python -m app.cli.admin tu@correo.com            # dar acceso
+uv run python -m app.cli.admin tu@correo.com --revoke   # quitarlo
+```
+
+Los transportadores solo ven solicitudes de transporte cuando su empresa está verificada.
+
 La página de inicio muestra el estado de la API, la base de datos y Redis. Si los tres dicen `ok`, todo está conectado.
 
 Para levantar también la API dentro de Docker: `docker compose --profile full up`.

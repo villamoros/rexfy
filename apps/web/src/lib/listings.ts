@@ -50,6 +50,7 @@ export type Listing = {
   price_unit: QuantityUnit | null;
   price_negotiable: boolean;
   conditions: string | null;
+  moderation_note: string | null;
 };
 
 export type ListingPage = {

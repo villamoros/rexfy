@@ -54,4 +54,12 @@ def get_optional_user(
     return get_current_user(db, clerk, credentials)
 
 
+def get_admin(user: CurrentUser) -> User:
+    if not user.is_platform_admin:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Solo para el equipo de RexFy")
+    return user
+
+
+AdminUser = Annotated[User, Depends(get_admin)]
+
 OptionalUser = Annotated[User | None, Depends(get_optional_user)]

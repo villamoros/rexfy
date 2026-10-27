@@ -24,6 +24,7 @@ def test_create_company_makes_user_owner(client: TestClient) -> None:
             "company_id": company["id"],
             "legal_name": "Cartones del Valle SAS",
             "market_roles": ["buyer", "generator"],
+            "is_verified": False,
             "role": "owner",
         }
     ]

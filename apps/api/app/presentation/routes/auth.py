@@ -18,6 +18,7 @@ def me(user: CurrentUser) -> MeResponse:
                 company_id=m.company.id,
                 legal_name=m.company.legal_name,
                 market_roles=m.company.market_roles,
+                is_verified=m.company.is_verified,
                 role=m.role,
             )
             for m in user.memberships

@@ -3,6 +3,7 @@ import uuid
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.application import audit
 from app.domain.organizations.roles import MarketRole, MemberRole
 from app.infrastructure.db.models import Company, CompanyMember, User
 
@@ -31,6 +32,9 @@ def create_company(
     )
     db.add(company)
     db.add(CompanyMember(company=company, user=owner, role=MemberRole.OWNER))
+    audit.record(
+        db, owner, "company.created", company, company_id=None, nit=nit, roles=company.market_roles
+    )
     db.commit()
     db.refresh(owner)
     return company

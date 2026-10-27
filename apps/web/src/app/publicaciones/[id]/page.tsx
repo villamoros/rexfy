@@ -93,6 +93,14 @@ async function Detail({
 
   return (
     <article className="flex flex-col gap-6">
+      {isOwner && listing.moderation_note && (
+        <p
+          role="alert"
+          className="rounded-xl border border-warn/40 bg-warn/10 px-4 py-3 text-sm text-warn"
+        >
+          RexFy retiró esta publicación: {listing.moderation_note}
+        </p>
+      )}
       {query.editada === "1" && (
         <SuccessNotice>Guardamos los cambios de tu publicación.</SuccessNotice>
       )}

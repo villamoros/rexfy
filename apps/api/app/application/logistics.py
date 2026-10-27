@@ -5,6 +5,7 @@ from decimal import Decimal
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.application import audit
 from app.application.deals import InvalidState, NotAllowed, lock
 from app.domain.deals.enums import TransactionStatus
 from app.domain.logistics.enums import SHIPMENT_FLOW, QuoteStatus, ShipmentStatus, VehicleType
@@ -98,6 +99,9 @@ def request_shipment(
     )
     db.add(shipment)
     _event(db, user, shipment, ShipmentStatus.REQUESTED, None)
+    audit.record(
+        db, user, "shipment.requested", shipment, company_id=shipment.requested_by_company_id
+    )
     db.commit()
     return shipment
 
@@ -199,6 +203,14 @@ def accept_quote(db: Session, user: User, quote: TransportQuote) -> Shipment:
         ShipmentStatus.ASSIGNED,
         f"Transportador: {quote.transporter.legal_name}",
     )
+    audit.record(
+        db,
+        user,
+        "transport_quote.accepted",
+        quote,
+        company_id=next(iter(_parties(shipment) & _company_ids(user))),
+        price=quote.price,
+    )
     db.commit()
     return shipment
 
@@ -225,5 +237,13 @@ def advance(
     order = shipment.transaction
     if order.status is not TransactionStatus.COMPLETED:
         order.status = _ORDER_STATUS.get(status, order.status)
+    audit.record(
+        db,
+        user,
+        "shipment.advanced",
+        shipment,
+        company_id=shipment.transporter_company_id,
+        status=status,
+    )
     db.commit()
     return shipment

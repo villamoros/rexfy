@@ -6,6 +6,7 @@ from typing import Any, Literal
 from sqlalchemy import Select, func, or_, select
 from sqlalchemy.orm import Session
 
+from app.application import audit
 from app.domain.listings.enums import Availability, ListingStatus, MaterialCategory, PricingType
 from app.domain.listings.rules import check_listing_terms
 from app.domain.organizations.roles import MarketRole
@@ -67,6 +68,14 @@ def create_listing(
         listing.status = ListingStatus.PUBLISHED
         listing.published_at = datetime.now(UTC)
     db.add(listing)
+    audit.record(
+        db,
+        user,
+        "listing.published" if publish else "listing.created",
+        listing,
+        company_id=listing.company_id,
+        title=listing.title,
+    )
     db.commit()
     return listing
 
@@ -87,12 +96,22 @@ def update_listing(db: Session, user: User, listing: Listing, changes: dict[str,
     _require_generator(user, listing.company_id)
     if listing.status is ListingStatus.ARCHIVED:
         raise InvalidState
+    before = {name: getattr(listing, name) for name in changes}
     for name, value in changes.items():
         if value is not None or name in NULLABLE_FIELDS:
             setattr(listing, name, value)
     if listing.pricing_type is PricingType.FREE:
         listing.price = listing.price_unit = None
     _check_terms(listing)
+    changed = {
+        name: [before[name], getattr(listing, name)]
+        for name in changes
+        if before[name] != getattr(listing, name)
+    }
+    if changed:
+        audit.record(
+            db, user, "listing.updated", listing, company_id=listing.company_id, changes=changed
+        )
     db.commit()
     return listing
 
@@ -103,6 +122,7 @@ def publish_listing(db: Session, user: User, listing: Listing) -> Listing:
         raise InvalidState
     listing.status = ListingStatus.PUBLISHED
     listing.published_at = datetime.now(UTC)
+    audit.record(db, user, "listing.published", listing, company_id=listing.company_id)
     db.commit()
     return listing
 
@@ -110,6 +130,7 @@ def publish_listing(db: Session, user: User, listing: Listing) -> Listing:
 def archive_listing(db: Session, user: User, listing: Listing) -> Listing:
     _require_generator(user, listing.company_id)
     listing.status = ListingStatus.ARCHIVED
+    audit.record(db, user, "listing.archived", listing, company_id=listing.company_id)
     db.commit()
     return listing
 

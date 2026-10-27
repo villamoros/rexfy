@@ -11,6 +11,7 @@ export type Membership = {
   company_id: string;
   legal_name: string;
   market_roles: MarketRole[];
+  is_verified: boolean;
   role: "owner" | "admin" | "member";
 };
 

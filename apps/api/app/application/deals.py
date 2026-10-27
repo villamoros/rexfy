@@ -6,6 +6,7 @@ from decimal import Decimal
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
+from app.application import audit
 from app.domain.deals.enums import OfferStatus, TransactionStatus
 from app.domain.deals.pricing import offer_total
 from app.domain.listings.enums import ListingStatus, QuantityUnit
@@ -180,6 +181,9 @@ def send_offer(
     )
     db.add(offer)
     thread.last_activity_at = _now()
+    audit.record(
+        db, user, "offer.sent", offer, company_id=company_id, quantity=quantity, price=price
+    )
     db.commit()
     return offer
 
@@ -228,6 +232,15 @@ def accept_offer(db: Session, user: User, offer: Offer) -> Transaction:
     )
     db.add(transaction)
     thread.last_activity_at = _now()
+    audit.record(
+        db,
+        user,
+        "offer.accepted",
+        offer,
+        company_id=acting_company(user, thread),
+        order=transaction.code,
+        total=transaction.total,
+    )
     db.commit()
     return transaction
 
@@ -237,6 +250,7 @@ def decline_offer(db: Session, user: User, offer: Offer) -> Offer:
     _pending_offer_for_receiver(user, offer)
     offer.status = OfferStatus.DECLINED
     offer.responded_at = _now()
+    audit.record(db, user, "offer.declined", offer, company_id=acting_company(user, offer.thread))
     db.commit()
     return offer
 
@@ -288,5 +302,6 @@ def confirm_receipt(db: Session, user: User, transaction: Transaction) -> Transa
         raise InvalidState("El transportador aún no ha marcado la entrega")
     transaction.status = TransactionStatus.COMPLETED
     transaction.completed_at = _now()
+    audit.record(db, user, "order.completed", transaction, company_id=transaction.buyer_company_id)
     db.commit()
     return transaction

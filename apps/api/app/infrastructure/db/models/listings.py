@@ -64,5 +64,7 @@ class Listing(TimestampedModel):
     )
     price_negotiable: Mapped[bool] = mapped_column(Boolean, default=False)
     conditions: Mapped[str | None] = mapped_column(Text)
+    # Why RexFy took the listing down, shown to its company.
+    moderation_note: Mapped[str | None] = mapped_column(Text)
 
     company: Mapped[Company] = relationship(lazy="joined")

@@ -101,6 +101,7 @@ class ListingOut(BaseModel):
     price_unit: QuantityUnit | None
     price_negotiable: bool
     conditions: str | None
+    moderation_note: str | None
 
 
 class ListingPage(BaseModel):
