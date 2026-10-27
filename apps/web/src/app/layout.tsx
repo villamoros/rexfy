@@ -1,34 +1,31 @@
 import { ClerkProvider } from "@clerk/nextjs";
 import { esMX } from "@clerk/localizations";
 import type { Metadata } from "next";
-import { Bricolage_Grotesque, Geist, Geist_Mono } from "next/font/google";
+import { IBM_Plex_Mono, Manrope } from "next/font/google";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const manrope = Manrope({
+  variable: "--font-manrope",
   subsets: ["latin"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const plexMono = IBM_Plex_Mono({
+  variable: "--font-plex-mono",
   subsets: ["latin"],
-});
-
-const display = Bricolage_Grotesque({
-  variable: "--font-display",
-  subsets: ["latin"],
+  weight: ["400", "500"],
 });
 
 export const metadata: Metadata = {
   title: "RexFy",
-  description: "Marketplace B2B de materiales reciclables",
+  description:
+    "Una red productiva: material recuperado y capacidad de manufactura entre empresas.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="es"
-      className={`${geistSans.variable} ${geistMono.variable} ${display.variable} h-full antialiased`}
+      className={`${manrope.variable} ${plexMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
         <ClerkProvider
@@ -39,9 +36,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           signUpFallbackRedirectUrl="/onboarding"
           appearance={{
             variables: {
-              colorPrimary: "#0f6e56",
-              colorBackground: "#fffdf7",
-              borderRadius: "0.75rem",
+              colorPrimary: "#0b1f3b",
+              colorBackground: "#ffffff",
+              fontFamily: "var(--font-manrope)",
+              borderRadius: "0.5rem",
             },
           }}
         >

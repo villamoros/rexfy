@@ -10,6 +10,7 @@ import {
 
 import { publishListing } from "@/app/actions/listings";
 import { Field, FormMessage, SubmitButton } from "@/components/form";
+import { MaterialIcon } from "@/components/icons";
 import {
   AVAILABILITY,
   CATEGORIES,
@@ -138,11 +139,14 @@ export function PublishWizard({ companies }: { companies: Company[] }) {
             <input type="hidden" name="company_id" value={companies[0].id} />
           )}
           <Choices
-            legend="¿Qué tipo de residuo tienes?"
+            legend="¿Qué material quieres publicar?"
             name="category"
             options={CATEGORIES as Record<MaterialCategory, string>}
             defaultValue="plastic"
             grid
+            icon={(value) => (
+              <MaterialIcon category={value} className="size-5 shrink-0" />
+            )}
           />
           <Field
             label="Título de la publicación"
@@ -412,12 +416,14 @@ function Choices<T extends string>({
   options,
   defaultValue,
   grid = false,
+  icon,
 }: {
   legend: string;
   name: string;
   options: Record<T, string>;
   defaultValue: T;
   grid?: boolean;
+  icon?: (value: T) => React.ReactNode;
 }) {
   return (
     <fieldset
@@ -436,6 +442,7 @@ function Choices<T extends string>({
             defaultChecked={value === defaultValue}
             className="accent-brand-strong"
           />
+          {icon?.(value)}
           {label}
         </label>
       ))}

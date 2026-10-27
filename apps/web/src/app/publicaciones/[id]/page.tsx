@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
+import { MaterialIcon } from "@/components/icons";
 import { SiteHeader } from "@/components/site-header";
 import { apiFetch, type Me } from "@/lib/api";
 import {
@@ -99,10 +100,8 @@ async function Detail({
       )}
       <header>
         <div className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-wide">
-          <span
-            className="material material-badge normal-case tracking-normal"
-            data-category={listing.category}
-          >
+          <span className="material-badge normal-case tracking-normal">
+            <MaterialIcon category={listing.category} className="size-4" />
             {CATEGORIES[listing.category]}
           </span>
           {listing.status !== "published" && (
@@ -119,7 +118,7 @@ async function Detail({
       </header>
 
       <div className="card p-5">
-        <p className="font-display text-3xl font-bold tracking-tight">
+        <p className="font-mono text-3xl font-medium tracking-tight">
           {formatPrice(listing)}
         </p>
         {listing.price_negotiable && (

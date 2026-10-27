@@ -29,12 +29,15 @@ export function NavList({ pathname }: { pathname: string | null }) {
             <Link
               href={link.href}
               aria-current={active ? "page" : undefined}
-              className={`block whitespace-nowrap rounded-full px-3 py-1.5 transition-colors ${
+              className={`flex items-center gap-1.5 whitespace-nowrap rounded-md px-3 py-1.5 transition-colors ${
                 active
-                  ? "bg-ink font-medium text-on-ink"
-                  : "text-muted hover:bg-surface-sunken hover:text-foreground"
+                  ? "bg-surface-sunken font-semibold text-foreground"
+                  : "font-medium text-muted hover:bg-surface-sunken hover:text-foreground"
               }`}
             >
+              {active && (
+                <span className="size-1.5 rounded-full bg-signal" aria-hidden />
+              )}
               {link.label}
             </Link>
           </li>

@@ -7,14 +7,14 @@ import { requireUser } from "@/lib/session";
 
 import { PublishWizard } from "./wizard";
 
-export const metadata: Metadata = { title: "Publicar residuo · RexFy" };
+export const metadata: Metadata = { title: "Publicar material · RexFy" };
 
 export default function PublicarPage() {
   return (
     <>
       <SiteHeader />
       <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-8">
-        <h1 className="text-3xl font-bold sm:text-4xl">Publicar residuo</h1>
+        <h1 className="text-3xl font-bold sm:text-4xl">Publicar material</h1>
         <div className="mt-6">
           <Suspense fallback={<p className="text-muted">Cargando…</p>}>
             <GeneratorOnly />

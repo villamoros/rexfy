@@ -61,7 +61,7 @@ async function Dashboard() {
           </Link>
           {isGenerator && (
             <Link href="/publicar" className="btn btn-primary">
-              Publicar residuo
+              Publicar material
             </Link>
           )}
         </div>

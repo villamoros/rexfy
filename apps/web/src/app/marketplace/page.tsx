@@ -2,10 +2,16 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 
+import { MaterialIcon } from "@/components/icons";
 import { ListingCard } from "@/components/listing-card";
 import { SiteHeader } from "@/components/site-header";
 import { apiFetch } from "@/lib/api";
-import { AVAILABILITY, CATEGORIES, type ListingPage } from "@/lib/listings";
+import {
+  AVAILABILITY,
+  CATEGORIES,
+  type ListingPage,
+  type MaterialCategory,
+} from "@/lib/listings";
 
 export const metadata: Metadata = { title: "Marketplace · RexFy" };
 
@@ -105,7 +111,7 @@ function Filters({ params }: { params: Params }) {
   return (
     <form
       method="get"
-      className="flex flex-col gap-5 self-start text-sm lg:sticky lg:rounded-[1.25rem] lg:border lg:border-border lg:bg-surface lg:top-24 lg:p-5"
+      className="flex flex-col gap-5 self-start text-sm lg:sticky lg:rounded-xl lg:border lg:border-border lg:bg-surface lg:top-24 lg:p-5"
     >
       <input
         type="search"
@@ -127,11 +133,11 @@ function Filters({ params }: { params: Params }) {
                 name="category"
                 value={value}
                 label={
-                  <span
-                    className="material flex items-center gap-2"
-                    data-category={value}
-                  >
-                    <span className="size-2 rounded-full bg-[var(--cat)]" />
+                  <span className="flex items-center gap-2">
+                    <MaterialIcon
+                      category={value as MaterialCategory}
+                      className="size-4"
+                    />
                     {label}
                   </span>
                 }
