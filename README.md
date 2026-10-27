@@ -89,6 +89,24 @@ cd apps/api && uv run pytest && uv run ruff check .
 cd apps/web && npm run lint && npm run typecheck && npm run build
 ```
 
+### Prueba de punta a punta (Playwright)
+
+`apps/web/e2e` recorre el marketplace completo en el navegador: tres empresas se registran, RexFy
+verifica al transportador, el generador publica, el comprador cotiza y el generador acepta, se
+pide y adjudica el transporte, se entrega, y el comprador confirma y califica.
+
+Usa tu instancia de desarrollo de Clerk (las mismas llaves de `.env.local` y `apps/api/.env`):
+crea usuarios de prueba `+clerk_test` y los borra al terminar. Con la API corriendo:
+
+```bash
+cd apps/web
+npx playwright install chromium   # solo la primera vez
+npm run e2e                       # levanta la web si no está corriendo
+```
+
+En CI corre cuando el repositorio tiene los secretos `E2E_CLERK_PUBLISHABLE_KEY`,
+`E2E_CLERK_SECRET_KEY` y `E2E_CLERK_ISSUER`; sin ellos el job se salta.
+
 Los tipos de la web salen del esquema OpenAPI de la API. Si cambias un esquema de la API,
 regenéralos (CI falla si quedaron desactualizados):
 

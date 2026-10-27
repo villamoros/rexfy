@@ -43,3 +43,8 @@ next-env.d.ts
 
 # clerk keyless mode
 /.clerk/
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
