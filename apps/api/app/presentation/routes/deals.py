@@ -146,6 +146,7 @@ def post_message(
 ) -> ThreadDetail:
     thread = _load_thread(db, user, thread_id)
     service.send_message(db, user, thread, body.body)
+    db.refresh(thread)
     return _detail(db, user, thread)
 
 
