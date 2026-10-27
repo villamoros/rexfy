@@ -101,6 +101,17 @@ async function Detail({
           RexFy retiró esta publicación: {listing.moderation_note}
         </p>
       )}
+      {query.fotos === "error" && (
+        <p role="alert" className="rounded-xl border border-warn/40 bg-warn/10 px-4 py-3 text-sm text-warn">
+          Guardamos la publicación, pero no pudimos subir las fotos. Inténtalo
+          de nuevo desde Editar.
+        </p>
+      )}
+      {query.borrador === "1" && (
+        <SuccessNotice>
+          Guardamos tu borrador. Termínalo cuando quieras desde tu panel.
+        </SuccessNotice>
+      )}
       {query.editada === "1" && (
         <SuccessNotice>Guardamos los cambios de tu publicación.</SuccessNotice>
       )}
@@ -134,6 +145,23 @@ async function Detail({
           {listing.company.is_verified ? " · Empresa verificada" : ""}
         </p>
       </header>
+
+      {listing.images.length > 0 && (
+        <ul className="-mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-1 sm:mx-0 sm:grid sm:grid-cols-3 sm:px-0">
+          {listing.images.map((image, i) => (
+            <li key={image.id} className="shrink-0 snap-start">
+              <a href={image.url} target="_blank" rel="noreferrer">
+                {/* eslint-disable-next-line @next/next/no-img-element -- photos come from the API's storage */}
+                <img
+                  src={image.url}
+                  alt={`Foto ${i + 1} de ${listing.title}`}
+                  className="aspect-[4/3] w-64 rounded-xl object-cover sm:w-full"
+                />
+              </a>
+            </li>
+          ))}
+        </ul>
+      )}
 
       <div className="card p-5">
         <p className="font-mono text-3xl font-medium tracking-tight">

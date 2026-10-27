@@ -51,7 +51,10 @@ export type Listing = {
   price_negotiable: boolean;
   conditions: string | null;
   moderation_note: string | null;
+  images: { id: string; url: string }[];
 };
+
+export const MAX_PHOTOS = 6;
 
 export type ListingPage = {
   items: Listing[];

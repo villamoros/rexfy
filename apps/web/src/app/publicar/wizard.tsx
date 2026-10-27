@@ -22,6 +22,7 @@ import {
   formatPrice,
   formatQuantity,
   type Availability,
+  MAX_PHOTOS,
   type Listing,
   type MaterialCategory,
   type MaterialCondition,
@@ -84,7 +85,7 @@ function readForm(form: HTMLFormElement): Values {
         el instanceof HTMLTextAreaElement
       ) ||
       !el.name ||
-      el.type === "hidden"
+      ["hidden", "file"].includes(el.type)
     )
       continue;
     if (el instanceof HTMLInputElement && el.type === "checkbox")
@@ -105,7 +106,7 @@ function fillForm(form: HTMLFormElement, values: Values) {
         el instanceof HTMLTextAreaElement
       ) ||
       !(el.name in values) ||
-      el.type === "hidden"
+      ["hidden", "file"].includes(el.type)
     )
       continue;
     const value = values[el.name];
@@ -341,6 +342,7 @@ export function PublishWizard({
             label="¿Oferta recurrente?"
             hint="Generas este material de forma continua"
           />
+          <PhotoInput already={listing?.images.length ?? 0} />
         </>,
       )}
 
@@ -588,6 +590,11 @@ function buildSummary(data: FormData): [string, string][] {
     ],
     ["Oferta", data.get("is_recurring") === "on" ? "Recurrente" : "Puntual"],
   );
+  const photos = data
+    .getAll("photos")
+    .filter((f) => f instanceof File && f.size > 0).length;
+  if (photos > 0)
+    rows.push(["Fotos nuevas", `${photos} ${photos === 1 ? "foto" : "fotos"}`]);
   return rows;
 }
 
@@ -628,6 +635,45 @@ function Choices<T extends string>({
         </label>
       ))}
     </fieldset>
+  );
+}
+
+const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
+
+function PhotoInput({ already }: { already: number }) {
+  const room = MAX_PHOTOS - already;
+  const [chosen, setChosen] = useState(0);
+  if (room <= 0) return null;
+  return (
+    <label className="flex flex-col gap-1.5 text-sm">
+      <span className="font-medium">
+        Fotos del material (opcional, hasta {room})
+      </span>
+      <input
+        type="file"
+        name="photos"
+        multiple
+        accept="image/jpeg,image/png,image/webp"
+        onChange={(event) => {
+          const input = event.currentTarget;
+          const files = Array.from(input.files ?? []);
+          input.setCustomValidity(
+            files.length > room
+              ? `Puedes subir máximo ${room} fotos`
+              : files.some((f) => f.size > MAX_PHOTO_BYTES)
+                ? "Cada foto puede pesar máximo 5 MB"
+                : "",
+          );
+          setChosen(files.length);
+        }}
+        className="input text-sm file:mr-3 file:rounded-md file:border-0 file:bg-surface-sunken file:px-3 file:py-1.5 file:text-sm file:font-medium"
+      />
+      <span className="text-muted">
+        {chosen > 0
+          ? `${chosen} ${chosen === 1 ? "foto lista" : "fotos listas"} para subir`
+          : "Una buena foto es la mejor prueba de la calidad del material. JPG, PNG o WebP, 5 MB cada una."}
+      </span>
+    </label>
   );
 }
 

@@ -10,7 +10,8 @@ from app.application import audit
 from app.domain.listings.enums import Availability, ListingStatus, MaterialCategory, PricingType
 from app.domain.listings.rules import check_listing_terms
 from app.domain.organizations.roles import MarketRole
-from app.infrastructure.db.models import Listing, User
+from app.infrastructure.db.models import Listing, ListingImage, User
+from app.infrastructure.storage import get_storage
 
 TERM_FIELDS = (
     "quantity",
@@ -186,3 +187,82 @@ def search_listings(db: Session, f: ListingSearch) -> tuple[list[Listing], int]:
     }[f.sort]
     stmt = _apply_filters(select(Listing), f).order_by(*order).limit(f.limit).offset(f.offset)
     return list(db.scalars(stmt)), total
+
+
+MAX_IMAGES = 6
+MAX_IMAGE_BYTES = 5 * 1024 * 1024
+
+# Checked against the file's first bytes, not the name or the browser's claim.
+_IMAGE_TYPES = (
+    (b"\xff\xd8\xff", "image/jpeg", "jpg"),
+    (b"\x89PNG\r\n\x1a\n", "image/png", "png"),
+)
+
+
+def _sniff(data: bytes) -> tuple[str, str] | None:
+    for magic, content_type, ext in _IMAGE_TYPES:
+        if data.startswith(magic):
+            return content_type, ext
+    if data[:4] == b"RIFF" and data[8:12] == b"WEBP":
+        return "image/webp", "webp"
+    return None
+
+
+def add_images(db: Session, user: User, listing: Listing, files: list[bytes]) -> Listing:
+    """Attach photos (JPEG, PNG or WebP, 5 MB each, 6 per listing)."""
+    _require_generator(user, listing.company_id)
+    if listing.status is ListingStatus.ARCHIVED:
+        raise InvalidState
+    if len(listing.images) + len(files) > MAX_IMAGES:
+        raise ValueError(f"Máximo {MAX_IMAGES} fotos por publicación")
+    accepted = []
+    for data in files:
+        if len(data) > MAX_IMAGE_BYTES:
+            raise ValueError("Cada foto puede pesar máximo 5 MB")
+        kind = _sniff(data)
+        if kind is None:
+            raise ValueError("Las fotos deben ser JPG, PNG o WebP")
+        accepted.append((data, *kind))
+
+    storage = get_storage()
+    saved: list[str] = []
+    first_position = len(listing.images)
+    try:
+        for i, (data, content_type, ext) in enumerate(accepted):
+            key = f"listings/{listing.id}/{uuid.uuid4().hex}.{ext}"
+            storage.save(key, data, content_type)
+            saved.append(key)
+            listing.images.append(
+                ListingImage(
+                    key=key,
+                    content_type=content_type,
+                    size_bytes=len(data),
+                    position=first_position + i,
+                )
+            )
+        audit.record(
+            db,
+            user,
+            "listing.images_added",
+            listing,
+            company_id=listing.company_id,
+            count=len(saved),
+        )
+        db.commit()
+    except Exception:
+        db.rollback()
+        for key in saved:
+            storage.delete(key)
+        raise
+    return listing
+
+
+def remove_image(db: Session, user: User, listing: Listing, image_id: uuid.UUID) -> Listing:
+    _require_generator(user, listing.company_id)
+    image = next((i for i in listing.images if i.id == image_id), None)
+    if image is None:
+        raise LookupError
+    listing.images.remove(image)
+    db.commit()
+    get_storage().delete(image.key)
+    return listing

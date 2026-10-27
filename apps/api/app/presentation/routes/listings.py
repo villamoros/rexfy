@@ -1,7 +1,7 @@
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, File, HTTPException, Query, UploadFile, status
 
 from app.application import listings as service
 from app.domain.listings.enums import Availability, MaterialCategory, PricingType
@@ -126,4 +126,39 @@ def archive(listing_id: uuid.UUID, db: DbSession, user: CurrentUser) -> ListingO
         listing = service.archive_listing(db, user, listing)
     except service.NotAllowed:
         raise _FORBIDDEN from None
+    return ListingOut.model_validate(listing)
+
+
+@router.post("/listings/{listing_id}/images", status_code=status.HTTP_201_CREATED)
+async def upload_images(
+    listing_id: uuid.UUID,
+    db: DbSession,
+    user: CurrentUser,
+    files: Annotated[list[UploadFile], File()],
+) -> ListingOut:
+    listing = _load(db, user, listing_id)
+    # Read at most one byte over the limit, so a huge upload is not held in memory.
+    contents = [await f.read(service.MAX_IMAGE_BYTES + 1) for f in files]
+    try:
+        listing = service.add_images(db, user, listing, contents)
+    except service.NotAllowed:
+        raise _FORBIDDEN from None
+    except service.InvalidState:
+        raise HTTPException(status.HTTP_409_CONFLICT, "La publicación está archivada") from None
+    except ValueError as exc:
+        raise _invalid(str(exc)) from None
+    return ListingOut.model_validate(listing)
+
+
+@router.delete("/listings/{listing_id}/images/{image_id}")
+def delete_image(
+    listing_id: uuid.UUID, image_id: uuid.UUID, db: DbSession, user: CurrentUser
+) -> ListingOut:
+    listing = _load(db, user, listing_id)
+    try:
+        listing = service.remove_image(db, user, listing, image_id)
+    except service.NotAllowed:
+        raise _FORBIDDEN from None
+    except LookupError:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Foto no encontrada") from None
     return ListingOut.model_validate(listing)

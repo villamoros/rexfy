@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { apiFetch } from "@/lib/api";
@@ -82,17 +83,32 @@ export async function saveListing(
   }
 
   const listing = saved.data;
+  const photos = formData
+    .getAll("photos")
+    .filter((f): f is File => f instanceof File && f.size > 0);
+  let photosFailed = false;
+  if (photos.length > 0) {
+    const upload = new FormData();
+    for (const photo of photos) upload.append("files", photo);
+    const uploaded = await apiFetch<Listing>(
+      `/listings/${listing.id}/images`,
+      { method: "POST", token, body: upload },
+    );
+    photosFailed = !uploaded.ok;
+  }
+  // The listing is saved either way; a failed upload is reported on its page.
+  const notice = photosFailed ? "&fotos=error" : "";
   if (listing.status === "draft" && !asDraft) {
     const published = await apiFetch<Listing>(
       `/listings/${listing.id}/publish`,
       { method: "POST", token },
     );
     if (!published.ok) return { message: published.message };
-    redirect(`/publicaciones/${listing.id}?nueva=1`);
+    redirect(`/publicaciones/${listing.id}?nueva=1${notice}`);
   }
-  if (asDraft) redirect(`/publicaciones/${listing.id}`);
+  if (asDraft) redirect(`/publicaciones/${listing.id}?borrador=1${notice}`);
   redirect(
-    `/publicaciones/${listing.id}${listingId ? "?editada=1" : "?nueva=1"}`,
+    `/publicaciones/${listing.id}?${listingId ? "editada=1" : "nueva=1"}${notice}`,
   );
 }
 
@@ -104,4 +120,16 @@ export async function archiveListing(formData: FormData) {
     token,
   });
   redirect("/panel");
+}
+
+export async function removePhoto(formData: FormData) {
+  const token = await getToken();
+  if (!token) redirect("/ingresar");
+  const listingId = encodeURIComponent(String(formData.get("listing_id")));
+  const imageId = encodeURIComponent(String(formData.get("image_id")));
+  await apiFetch(`/listings/${listingId}/images/${imageId}`, {
+    method: "DELETE",
+    token,
+  });
+  revalidatePath(`/publicaciones/${listingId}/editar`);
 }

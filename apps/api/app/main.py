@@ -1,7 +1,9 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from app.core.config import get_settings
+from app.infrastructure.storage import LocalStorage, get_storage
 from app.presentation.routes import (
     admin,
     auth,
@@ -32,6 +34,10 @@ def create_app() -> FastAPI:
     app.include_router(logistics.router)
     app.include_router(trust.router)
     app.include_router(admin.router)
+    storage = get_storage()
+    if isinstance(storage, LocalStorage):
+        storage.root.mkdir(parents=True, exist_ok=True)
+        app.mount("/files", StaticFiles(directory=storage.root), name="files")
     return app
 
 

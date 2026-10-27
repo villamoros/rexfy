@@ -3,7 +3,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from enum import StrEnum
 
-from sqlalchemy import Boolean, Date, DateTime, Enum, ForeignKey, Numeric, String, Text
+from sqlalchemy import Boolean, Date, DateTime, Enum, ForeignKey, Integer, Numeric, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.domain.listings.enums import (
@@ -16,6 +16,7 @@ from app.domain.listings.enums import (
 )
 from app.infrastructure.db.base import TimestampedModel
 from app.infrastructure.db.models.organizations import Company
+from app.infrastructure.storage import get_storage
 
 
 def enum_column(cls: type[StrEnum], name: str) -> Enum:
@@ -68,3 +69,29 @@ class Listing(TimestampedModel):
     moderation_note: Mapped[str | None] = mapped_column(Text)
 
     company: Mapped[Company] = relationship(lazy="joined")
+    images: Mapped[list["ListingImage"]] = relationship(
+        back_populates="listing",
+        order_by="ListingImage.position",
+        lazy="selectin",
+        cascade="all, delete-orphan",
+    )
+
+
+class ListingImage(TimestampedModel):
+    """A photo of the material. The file lives in storage under `key`."""
+
+    __tablename__ = "listing_images"
+
+    listing_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("listings.id", ondelete="CASCADE"), index=True
+    )
+    key: Mapped[str] = mapped_column(String(300), unique=True)
+    content_type: Mapped[str] = mapped_column(String(50))
+    size_bytes: Mapped[int] = mapped_column(Integer)
+    position: Mapped[int] = mapped_column(Integer, default=0)
+
+    listing: Mapped[Listing] = relationship(back_populates="images")
+
+    @property
+    def url(self) -> str:
+        return get_storage().url(self.key)

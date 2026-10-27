@@ -75,6 +75,13 @@ class ListingCompany(BaseModel):
     is_verified: bool
 
 
+class ListingImageOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    url: str
+
+
 class ListingOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -102,6 +109,7 @@ class ListingOut(BaseModel):
     price_negotiable: bool
     conditions: str | None
     moderation_note: str | None
+    images: list[ListingImageOut]
 
 
 class ListingPage(BaseModel):

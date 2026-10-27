@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
+import { removePhoto } from "@/app/actions/listings";
 import { PublishWizard } from "@/app/publicar/wizard";
 import { SiteHeader } from "@/components/site-header";
 import { PageHeader } from "@/components/ui";
@@ -55,6 +56,30 @@ async function Editor({ params }: { params: Promise<{ id: string }> }) {
             : "Editar publicación"
         }
       />
+      {listing.images.length > 0 && (
+        <section className="mt-6 flex flex-col gap-2">
+          <h2 className="text-sm font-medium">Fotos actuales</h2>
+          <ul className="grid grid-cols-3 gap-2">
+            {listing.images.map((image) => (
+              <li key={image.id} className="relative">
+                {/* eslint-disable-next-line @next/next/no-img-element -- photos come from the API's storage */}
+                <img
+                  src={image.url}
+                  alt=""
+                  className="aspect-square w-full rounded-lg object-cover"
+                />
+                <form action={removePhoto} className="absolute right-1 top-1">
+                  <input type="hidden" name="listing_id" value={listing.id} />
+                  <input type="hidden" name="image_id" value={image.id} />
+                  <button className="rounded-md bg-surface/90 px-2 py-1 text-xs font-medium shadow">
+                    Quitar
+                  </button>
+                </form>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
       <div className="mt-6">
         <PublishWizard
           companies={[{ id: owner.company_id, name: owner.legal_name }]}

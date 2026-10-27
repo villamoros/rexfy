@@ -12,9 +12,19 @@ import {
 export function ListingCard({ listing }: { listing: Listing }) {
   return (
     <li className="card group relative flex gap-4 p-4 transition hover:border-foreground sm:p-5">
-      <span className="grid size-12 shrink-0 place-items-center rounded-lg bg-surface-sunken">
-        <MaterialIcon category={listing.category} className="size-6" />
-      </span>
+      {listing.images.length > 0 ? (
+        // eslint-disable-next-line @next/next/no-img-element -- photos come from the API's storage
+        <img
+          src={listing.images[0].url}
+          alt=""
+          loading="lazy"
+          className="size-16 shrink-0 rounded-lg object-cover sm:size-20"
+        />
+      ) : (
+        <span className="grid size-12 shrink-0 place-items-center rounded-lg bg-surface-sunken">
+          <MaterialIcon category={listing.category} className="size-6" />
+        </span>
+      )}
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">

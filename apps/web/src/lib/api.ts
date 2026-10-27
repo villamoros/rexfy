@@ -42,15 +42,22 @@ export async function apiFetch<T>(
     body,
   }: { token?: string; method?: string; body?: unknown } = {},
 ): Promise<ApiResult<T>> {
+  // FormData goes as multipart (file uploads); anything else as JSON.
+  const multipart = body instanceof FormData;
   let res: Response;
   try {
     res = await fetch(`${API_URL}${path}`, {
       method,
       headers: {
-        "Content-Type": "application/json",
+        ...(multipart ? {} : { "Content-Type": "application/json" }),
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
-      body: body === undefined ? undefined : JSON.stringify(body),
+      body:
+        body === undefined
+          ? undefined
+          : multipart
+            ? body
+            : JSON.stringify(body),
       cache: "no-store",
     });
   } catch {

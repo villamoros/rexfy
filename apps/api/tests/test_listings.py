@@ -210,3 +210,43 @@ def test_create_and_publish_in_one_step(
     )
     assert bad.status_code == 422
     assert [i["id"] for i in client.get("/me/listings", headers=headers).json()] == [listing["id"]]
+
+
+PNG = b"\x89PNG\r\n\x1a\n" + b"\x00" * 64
+
+
+def test_listing_photos(client: TestClient, generator: tuple[dict[str, str], str]) -> None:
+    headers, company_id = generator
+    listing = create(client, headers, company_id, publish=True)
+    path = f"/listings/{listing['id']}/images"
+
+    uploaded = client.post(
+        path,
+        files=[("files", ("a.png", PNG, "image/png")), ("files", ("b.png", PNG, "image/png"))],
+        headers=headers,
+    )
+    assert uploaded.status_code == 201, uploaded.text
+    images = uploaded.json()["images"]
+    assert len(images) == 2
+    served = client.get(images[0]["url"].removeprefix("http://localhost:8000"))
+    assert served.status_code == 200
+    assert served.content == PNG
+
+    # Only real images, only the listing's company, at most six.
+    fake = client.post(path, files=[("files", ("x.png", b"<svg/>", "image/png"))], headers=headers)
+    assert fake.status_code == 422
+    stranger = register(client, "otro@example.com")
+    assert (
+        client.post(
+            path, files=[("files", ("a.png", PNG, "image/png"))], headers=stranger
+        ).status_code
+        == 403
+    )
+    too_many = client.post(
+        path, files=[("files", (f"{i}.png", PNG, "image/png")) for i in range(5)], headers=headers
+    )
+    assert too_many.status_code == 422
+
+    removed = client.delete(f"{path}/{images[0]['id']}", headers=headers)
+    assert [i["id"] for i in removed.json()["images"]] == [images[1]["id"]]
+    assert client.get(images[0]["url"].removeprefix("http://localhost:8000")).status_code == 404
