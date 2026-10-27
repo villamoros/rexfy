@@ -32,7 +32,13 @@ export function ApiStatus() {
       {rows.map(([label, value]) => (
         <li key={label} className="flex items-center justify-between px-4 py-3">
           <span className="text-muted">{label}</span>
-          <span className={value === "ok" ? "font-medium text-brand" : "font-medium text-warn"}>
+          <span
+            className={
+              value === "ok"
+                ? "font-medium text-brand"
+                : "font-medium text-warn"
+            }
+          >
             {value}
           </span>
         </li>
