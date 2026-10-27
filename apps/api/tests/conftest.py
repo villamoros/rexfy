@@ -14,6 +14,7 @@ _dev_url = make_url(get_settings().database_url)
 _test_url = _dev_url.set(database=f"{_dev_url.database}_test")
 os.environ["REXFY_DATABASE_URL"] = _test_url.render_as_string(hide_password=False)
 os.environ["REXFY_TASK_QUEUE"] = "off"
+os.environ["REXFY_RATE_LIMIT_WRITES_PER_MINUTE"] = "0"
 # Uploads go to a throwaway folder.
 os.environ["REXFY_LOCAL_STORAGE_DIR"] = tempfile.mkdtemp(prefix="rexfy-uploads-")
 get_settings.cache_clear()

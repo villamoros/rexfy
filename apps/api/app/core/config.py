@@ -32,6 +32,11 @@ class Settings(BaseSettings):
     smtp_password: str = ""
     email_from: str = "RexFy <notificaciones@rexfy.co>"
 
+    # Changes (POST/PATCH/DELETE) one user or IP may make per minute; 0 turns the limit off.
+    rate_limit_writes_per_minute: int = 60
+    # Error reporting; leave empty to disable.
+    sentry_dsn: str = ""
+
     # Where this API is reachable from browsers; used to build links to local files.
     public_api_url: str = "http://localhost:8000"
     # "local" keeps uploads in local_storage_dir; "s3" uses any S3-compatible bucket.

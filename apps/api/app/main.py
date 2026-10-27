@@ -2,7 +2,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
+from app.core import observability
 from app.core.config import get_settings
+from app.core.rate_limit import RateLimitMiddleware, RedisCounter
 from app.infrastructure.storage import LocalStorage, get_storage
 from app.presentation.routes import (
     admin,
@@ -28,6 +30,12 @@ def create_app() -> FastAPI:
         redoc_url=None,
         openapi_url="/openapi.json" if public_docs else None,
     )
+    app.add_middleware(
+        RateLimitMiddleware,
+        counter=RedisCounter(settings.redis_url),
+        writes_per_minute=settings.rate_limit_writes_per_minute,
+    )
+    observability.setup(app, settings)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins,

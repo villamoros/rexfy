@@ -16,6 +16,7 @@ dependencies = [
     "boto3>=1.35",
     "python-multipart>=0.0.9",
     "rq>=2.0",
+    "sentry-sdk[fastapi]>=2.0",
 ]
 
 [dependency-groups]
