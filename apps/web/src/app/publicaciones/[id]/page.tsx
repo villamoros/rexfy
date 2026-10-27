@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 import { SiteHeader } from "@/components/site-header";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, type Me } from "@/lib/api";
 import {
   CATEGORIES,
   CONDITIONS,
@@ -15,6 +15,8 @@ import {
   type Listing,
 } from "@/lib/listings";
 import { getToken } from "@/lib/session";
+
+import { ContactForm } from "./contact-form";
 
 export const metadata: Metadata = { title: "Publicación · RexFy" };
 
@@ -57,6 +59,19 @@ async function Detail({
     return <p className="text-warn">{result.message}</p>;
   }
   const listing = result.data;
+  const me = token ? await apiFetch<Me>("/me", { token }) : null;
+  const buyerCompanies = me?.ok
+    ? me.data.companies
+        .filter(
+          (c) =>
+            c.market_roles.includes("buyer") &&
+            c.company_id !== listing.company.id,
+        )
+        .map((c) => ({ id: c.company_id, name: c.legal_name }))
+    : [];
+  const isOwner =
+    me?.ok &&
+    me.data.companies.some((c) => c.company_id === listing.company.id);
   const rows: [string, string][] = [
     ["Cantidad", formatQuantity(listing.quantity, listing.quantity_unit)],
     ...(listing.min_order_quantity !== null
@@ -103,13 +118,20 @@ async function Detail({
         {listing.price_negotiable && (
           <p className="text-sm text-muted">Precio negociable</p>
         )}
-        <button
-          disabled
-          title="La negociación llega en el siguiente paso del MVP"
-          className="mt-4 w-full rounded-lg bg-brand-strong px-4 py-2.5 font-medium text-white opacity-60"
-        >
-          Contactar al generador (próximamente)
-        </button>
+        {listing.status !== "published" || isOwner ? null : !me?.ok ? (
+          <Link
+            href="/ingresar"
+            className="mt-4 block rounded-lg bg-brand-strong px-4 py-2.5 text-center font-medium text-white hover:opacity-90"
+          >
+            Ingresa para contactar al generador
+          </Link>
+        ) : buyerCompanies.length === 0 ? (
+          <p className="mt-4 text-sm text-muted">
+            Para negociar, tu empresa debe estar registrada como compradora.
+          </p>
+        ) : (
+          <ContactForm listingId={listing.id} companies={buyerCompanies} />
+        )}
       </div>
 
       {listing.description && (
