@@ -43,7 +43,7 @@ export function Network({
       className={className}
       aria-hidden
     >
-      <g stroke="#1e4a7a" strokeWidth="1">
+      <g stroke="var(--net-line)" strokeWidth="1">
         {links.map(([x1, y1, x2, y2], i) => (
           <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} />
         ))}
@@ -54,7 +54,7 @@ export function Network({
           cx={x}
           cy={y}
           r={i % 9 === 0 ? 4 : 2.5}
-          fill={i % 9 === 0 ? "var(--signal)" : "#2a5c8f"}
+          fill={i % 9 === 0 ? "var(--signal)" : "var(--net-node)"}
         />
       ))}
     </svg>

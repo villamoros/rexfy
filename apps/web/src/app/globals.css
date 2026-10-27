@@ -14,7 +14,6 @@
   --border-strong: #c5cdd8;
   --muted: #5a6578;
   --brand: #0b7a4a;
-  --brand-strong: #0b7a4a;
   --brand-soft: #e3f8ee;
   --primary: #0b1f3b;
   --primary-hover: #14305a;
@@ -24,7 +23,14 @@
   --on-ink: #ffffff;
   --on-ink-muted: #a9b6c8;
   --signal: #39d98a;
+  --signal-hover: #5fe3a3;
+  --on-signal: #0b1f3b;
+  /* Lines and nodes of the network graphic and dividers on Noche surfaces. */
+  --ink-line: #1c3558;
+  --ink-line-strong: #2a4a75;
   --net: #00b4ff;
+  --net-line: #1e4a7a;
+  --net-node: #2a5c8f;
   --info: #0069a8;
   --warn: #b45309;
   --danger: #c0352b;
@@ -40,7 +46,6 @@
     --border-strong: #2a4a75;
     --muted: #a9b6c8;
     --brand: #39d98a;
-    --brand-strong: #39d98a;
     --brand-soft: #0f3a34;
     --primary: #39d98a;
     --primary-hover: #5fe3a3;
@@ -49,8 +54,6 @@
     --ink-2: #0f2645;
     --on-ink: #ffffff;
     --on-ink-muted: #a9b6c8;
-    --signal: #39d98a;
-    --net: #00b4ff;
     --info: #5cc8ff;
     --warn: #f0a24b;
     --danger: #f07a70;
@@ -66,7 +69,6 @@
   --color-border-strong: var(--border-strong);
   --color-muted: var(--muted);
   --color-brand: var(--brand);
-  --color-brand-strong: var(--brand-strong);
   --color-brand-soft: var(--brand-soft);
   --color-primary: var(--primary);
   --color-on-primary: var(--on-primary);
@@ -75,12 +77,14 @@
   --color-on-ink: var(--on-ink);
   --color-on-ink-muted: var(--on-ink-muted);
   --color-signal: var(--signal);
+  --color-on-signal: var(--on-signal);
+  --color-ink-line: var(--ink-line);
+  --color-ink-line-strong: var(--ink-line-strong);
   --color-net: var(--net);
   --color-info: var(--info);
   --color-warn: var(--warn);
   --color-danger: var(--danger);
   --font-sans: var(--font-manrope);
-  --font-display: var(--font-manrope);
   --font-mono: var(--font-plex-mono);
 }
 
@@ -94,7 +98,6 @@
   h1,
   h2,
   h3 {
-    font-family: var(--font-display), var(--font-sans), sans-serif;
     letter-spacing: -0.02em;
   }
 
@@ -105,7 +108,7 @@
 
   ::selection {
     background: var(--signal);
-    color: #0b1f3b;
+    color: var(--on-signal);
   }
 
   :focus-visible {
@@ -153,10 +156,10 @@
   /* Señal button: only on Noche backgrounds. */
   .btn-signal {
     background: var(--signal);
-    color: #0b1f3b;
+    color: var(--on-signal);
   }
   .btn-signal:hover {
-    background: #5fe3a3;
+    background: var(--signal-hover);
   }
 
   .input {
@@ -216,15 +219,6 @@
     font-size: 0.75rem;
     font-weight: 600;
     color: var(--foreground);
-  }
-
-  /* Network of nodes and links, drawn behind Noche sections. */
-  .dot-grid {
-    background-image: radial-gradient(
-      color-mix(in oklab, currentColor 18%, transparent) 1px,
-      transparent 1px
-    );
-    background-size: 18px 18px;
   }
 }
 

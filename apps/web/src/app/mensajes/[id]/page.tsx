@@ -104,7 +104,7 @@ async function Conversation({ params }: { params: Promise<{ id: string }> }) {
       {thread.transaction_id && (
         <Link
           href={`/ordenes/${thread.transaction_id}`}
-          className="rounded-xl border border-brand/30 bg-brand-soft px-4 py-3 text-sm font-medium text-brand-strong"
+          className="rounded-xl border border-brand/30 bg-brand-soft px-4 py-3 text-sm font-medium text-brand"
         >
           Trato cerrado. Ver la orden →
         </Link>
@@ -159,7 +159,7 @@ function Bubble({ message, mine }: { message: ThreadMessage; mine: boolean }) {
       <div
         className={`max-w-[85%] whitespace-pre-line rounded-2xl px-4 py-2.5 text-sm ${
           mine
-            ? "bg-brand-strong text-white"
+            ? "bg-primary text-on-primary"
             : "border border-border bg-surface"
         }`}
       >

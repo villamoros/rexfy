@@ -5,6 +5,7 @@ import { Suspense } from "react";
 import { advanceShipment } from "@/app/actions/logistics";
 import { ShipmentTimeline } from "@/components/shipment-timeline";
 import { SiteHeader } from "@/components/site-header";
+import { PageHeader } from "@/components/ui";
 import { apiFetch } from "@/lib/api";
 import { formatCop } from "@/lib/deals";
 import { formatQuantity } from "@/lib/listings";
@@ -27,10 +28,10 @@ export default function TransportePage() {
     <>
       <SiteHeader />
       <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-8">
-        <h1 className="text-3xl font-bold sm:text-4xl">Transporte</h1>
-        <p className="mt-1 text-sm text-muted">
-          Cotiza viajes de material reciclable y actualiza tus envíos.
-        </p>
+        <PageHeader
+          title="Transporte"
+          description="Cotiza viajes de material reciclable y actualiza tus envíos."
+        />
         <Suspense fallback={<p className="mt-6 text-muted">Cargando…</p>}>
           <Board />
         </Suspense>

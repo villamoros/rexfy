@@ -5,6 +5,7 @@ import { Suspense } from "react";
 
 import { MaterialIcon } from "@/components/icons";
 import { SiteHeader } from "@/components/site-header";
+import { SuccessNotice } from "@/components/ui";
 import { apiFetch, type Me } from "@/lib/api";
 import {
   CATEGORIES,
@@ -93,10 +94,10 @@ async function Detail({
   return (
     <article className="flex flex-col gap-6">
       {query.nueva === "1" && (
-        <p className="rounded-xl border border-brand/30 bg-brand-soft px-4 py-3 text-sm text-brand-strong">
+        <SuccessNotice>
           ¡Publicación activa! Ya es visible para los compradores en el
           marketplace.
-        </p>
+        </SuccessNotice>
       )}
       <header>
         <div className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-wide">

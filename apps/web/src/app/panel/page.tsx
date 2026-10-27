@@ -6,6 +6,7 @@ import { Suspense } from "react";
 
 import { archiveListing } from "@/app/actions/listings";
 import { SiteHeader } from "@/components/site-header";
+import { EmptyState, PageHeader } from "@/components/ui";
 import { apiFetch } from "@/lib/api";
 import {
   STATUS,
@@ -48,30 +49,26 @@ async function Dashboard() {
 
   return (
     <>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <p className="eyebrow">Tu panel</p>
-          <h1 className="mt-2 text-3xl font-bold sm:text-4xl">
-            Hola, {me.full_name.split(" ")[0]}
-          </h1>
-        </div>
-        <div className="flex gap-2 text-sm">
-          <Link href="/marketplace" className="btn btn-secondary">
-            Buscar material
-          </Link>
-          {isGenerator && (
-            <Link href="/publicar" className="btn btn-primary">
-              Publicar material
+      <PageHeader
+        eyebrow="Tu panel"
+        title={`Hola, ${me.full_name.split(" ")[0]}`}
+        actions={
+          <>
+            <Link href="/marketplace" className="btn btn-secondary">
+              Buscar material
             </Link>
-          )}
-        </div>
-      </div>
+            {isGenerator && (
+              <Link href="/publicar" className="btn btn-primary">
+                Publicar material
+              </Link>
+            )}
+          </>
+        }
+      />
       <ul className="flex flex-col gap-3">
         {me.companies.map((company) => (
           <li key={company.company_id} className="card p-5">
-            <p className="font-display text-xl font-semibold">
-              {company.legal_name}
-            </p>
+            <p className="text-xl font-semibold">{company.legal_name}</p>
             <div className="mt-2 flex flex-wrap gap-2">
               {company.market_roles.map((role) => (
                 <span key={role} className="chip">
@@ -91,9 +88,7 @@ async function Dashboard() {
         <section className="flex flex-col gap-3">
           <h2 className="text-xl font-bold">Mis publicaciones</h2>
           {mine.data.length === 0 ? (
-            <p className="rounded-2xl border border-dashed border-border bg-surface-sunken/50 p-6 text-center text-sm text-muted">
-              Aún no has publicado material.
-            </p>
+            <EmptyState>Aún no has publicado material.</EmptyState>
           ) : (
             <ul className="divide-y divide-border card">
               {mine.data.map((listing) => (

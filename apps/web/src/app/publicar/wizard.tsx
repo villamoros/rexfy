@@ -217,7 +217,7 @@ export function PublishWizard({ companies }: { companies: Company[] }) {
                   value={value}
                   checked={availability === value}
                   onChange={() => setAvailability(value as Availability)}
-                  className="accent-brand-strong"
+                  className="accent-brand"
                 />
                 {label}
               </label>
@@ -440,7 +440,7 @@ function Choices<T extends string>({
             name={name}
             value={value}
             defaultChecked={value === defaultValue}
-            className="accent-brand-strong"
+            className="accent-brand"
           />
           {icon?.(value)}
           {label}
@@ -467,7 +467,7 @@ function Toggle({
         type="checkbox"
         name={name}
         defaultChecked={defaultChecked}
-        className="mt-1 accent-brand-strong"
+        className="mt-1 accent-brand"
       />
       <span>
         <span className="block font-medium">{label}</span>

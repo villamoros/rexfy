@@ -76,7 +76,7 @@ export function TransportQuoteForm({
           <input
             type="checkbox"
             name="includes_insurance"
-            className="accent-brand-strong"
+            className="accent-brand"
           />
           Incluye seguro de carga
         </label>

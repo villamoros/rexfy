@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 
 import { SiteHeader } from "@/components/site-header";
+import { PageHeader } from "@/components/ui";
 import { requireUser } from "@/lib/session";
 
 import { PublishWizard } from "./wizard";
@@ -14,7 +15,7 @@ export default function PublicarPage() {
     <>
       <SiteHeader />
       <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-8">
-        <h1 className="text-3xl font-bold sm:text-4xl">Publicar material</h1>
+        <PageHeader title="Publicar material" />
         <div className="mt-6">
           <Suspense fallback={<p className="text-muted">Cargando…</p>}>
             <GeneratorOnly />

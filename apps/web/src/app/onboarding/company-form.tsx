@@ -52,7 +52,7 @@ export function CompanyForm() {
               name="market_roles"
               value={role.value}
               defaultChecked={state?.roles?.includes(role.value)}
-              className="mt-1 accent-brand-strong"
+              className="mt-1 accent-brand"
             />
             <span>
               <span className="block font-medium">{role.label}</span>

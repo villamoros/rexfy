@@ -5,6 +5,7 @@ import { Suspense } from "react";
 import { MaterialIcon } from "@/components/icons";
 import { ListingCard } from "@/components/listing-card";
 import { SiteHeader } from "@/components/site-header";
+import { EmptyState, PageHeader } from "@/components/ui";
 import { apiFetch } from "@/lib/api";
 import {
   AVAILABILITY,
@@ -35,12 +36,11 @@ export default function MarketplacePage({
     <>
       <SiteHeader />
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8">
-        <p className="eyebrow">Material disponible</p>
-        <h1 className="mt-2 text-3xl font-bold sm:text-4xl">Marketplace</h1>
-        <p className="mt-2 max-w-xl text-muted">
-          Material reciclable publicado por empresas en Colombia, listo para
-          volver a la cadena productiva.
-        </p>
+        <PageHeader
+          eyebrow="Material disponible"
+          title="Marketplace"
+          description="Material reciclable publicado por empresas en Colombia, listo para volver a la cadena productiva."
+        />
         <Suspense
           fallback={<p className="mt-8 text-muted">Buscando material…</p>}
         >
@@ -82,9 +82,7 @@ async function Search({ searchParams }: { searchParams: Promise<Params> }) {
                 : `${result.data.total} resultados`}
             </p>
             {result.data.items.length === 0 ? (
-              <p className="rounded-2xl border border-dashed border-border bg-surface-sunken/50 p-8 text-center text-muted">
-                No hay material con esos filtros todavía.
-              </p>
+              <EmptyState>No hay material con esos filtros todavía.</EmptyState>
             ) : (
               <ul className="flex flex-col gap-3">
                 {result.data.items.map((listing) => (
@@ -166,7 +164,7 @@ function Filters({ params }: { params: Params }) {
                   name="pricing_type"
                   value={value}
                   defaultChecked={one(params, "pricing_type") === value}
-                  className="accent-brand-strong"
+                  className="accent-brand"
                 />
                 {label}
               </label>
@@ -249,7 +247,7 @@ function Check({
         name={name}
         value={value}
         defaultChecked={checked}
-        className="accent-brand-strong"
+        className="accent-brand"
       />
       {label}
     </label>

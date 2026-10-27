@@ -9,6 +9,7 @@ import { AutoRefresh } from "@/components/auto-refresh";
 import { OrderProgress } from "@/components/order-progress";
 import { ShipmentTimeline } from "@/components/shipment-timeline";
 import { SiteHeader } from "@/components/site-header";
+import { SuccessNotice } from "@/components/ui";
 import { apiFetch } from "@/lib/api";
 import {
   TRANSACTION_STATUS,
@@ -86,9 +87,9 @@ async function Order({
   return (
     <article className="flex flex-col gap-6">
       {query.nueva === "1" && (
-        <p className="rounded-xl border border-brand/30 bg-brand-soft px-4 py-3 text-sm text-brand-strong">
+        <SuccessNotice>
           ¡Trato cerrado! Ya pueden coordinar la entrega.
-        </p>
+        </SuccessNotice>
       )}
       <header>
         <p className="text-xs text-muted">
