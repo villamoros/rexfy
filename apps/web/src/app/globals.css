@@ -42,3 +42,16 @@ body {
   color: var(--foreground);
   font-family: var(--font-sans), system-ui, sans-serif;
 }
+
+/* Marketplace filters: a collapsible panel on phones, always open as a sidebar on wide screens. */
+@supports selector(::details-content) {
+  @media (min-width: 64rem) {
+    details.filters::details-content {
+      content-visibility: visible;
+      display: contents;
+    }
+    details.filters > summary {
+      display: none;
+    }
+  }
+}

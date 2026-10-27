@@ -25,6 +25,12 @@ export default function Home() {
           Crear cuenta
         </Link>
         <Link
+          href="/marketplace"
+          className="rounded-lg border border-border px-5 py-2.5 font-medium hover:border-brand"
+        >
+          Ver marketplace
+        </Link>
+        <Link
           href="/ingresar"
           className="rounded-lg border border-border px-5 py-2.5 font-medium hover:border-brand"
         >
