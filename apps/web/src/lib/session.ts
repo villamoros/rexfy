@@ -10,11 +10,19 @@ export async function getToken(): Promise<string | undefined> {
   return (await (await auth()).getToken()) ?? undefined;
 }
 
-/** The signed-in user, or a redirect to the login page. Call it inside a Suspense boundary. */
+/**
+ * The signed-in user, or a redirect to the login page. Call it inside a Suspense boundary.
+ *
+ * When Clerk has a session but the API can't load the account, this throws instead of
+ * redirecting: the login page would send a signed-in user straight back, in a loop.
+ */
 export async function requireUser(): Promise<Me> {
   const token = await getToken();
   if (!token) redirect("/ingresar");
   const result = await apiFetch<Me>("/me", { token });
-  if (!result.ok) redirect("/ingresar");
+  if (!result.ok)
+    throw new Error(
+      `No pudimos cargar tu cuenta (${result.status}): ${result.message}`,
+    );
   return result.data;
 }
