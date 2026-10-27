@@ -12,7 +12,9 @@ from app.domain.deals.pricing import offer_total
 from app.domain.listings.enums import ListingStatus, QuantityUnit
 from app.domain.logistics.enums import ShipmentStatus
 from app.domain.organizations.roles import MarketRole
+from app.domain.trust.enums import DisputeStatus
 from app.infrastructure.db.models import (
+    Dispute,
     Listing,
     Message,
     Offer,
@@ -300,6 +302,12 @@ def confirm_receipt(db: Session, user: User, transaction: Transaction) -> Transa
     shipment = db.scalar(select(Shipment).where(Shipment.transaction_id == transaction.id))
     if shipment is not None and shipment.status is not ShipmentStatus.DELIVERED:
         raise InvalidState("El transportador aún no ha marcado la entrega")
+    if db.scalar(
+        select(Dispute.id).where(
+            Dispute.transaction_id == transaction.id, Dispute.status == DisputeStatus.OPEN
+        )
+    ):
+        raise InvalidState("La orden tiene una disputa abierta; RexFy la está revisando")
     transaction.status = TransactionStatus.COMPLETED
     transaction.completed_at = _now()
     audit.record(db, user, "order.completed", transaction, company_id=transaction.buyer_company_id)

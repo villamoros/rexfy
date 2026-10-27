@@ -79,7 +79,14 @@ async function Conversation({ params }: { params: Promise<{ id: string }> }) {
         <Link href="/mensajes" className="text-xs text-muted underline">
           ← Mensajes
         </Link>
-        <h1 className="mt-1 text-lg font-semibold">{counterpart.legal_name}</h1>
+        <h1 className="mt-1 text-lg font-semibold">
+          <Link
+            href={`/empresas/${counterpart.id}`}
+            className="underline-offset-2 hover:underline"
+          >
+            {counterpart.legal_name}
+          </Link>
+        </h1>
         <p className="text-sm text-muted">
           <Link
             href={`/publicaciones/${thread.listing.id}`}

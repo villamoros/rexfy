@@ -84,11 +84,15 @@ export async function respondToOffer(formData: FormData) {
   redirect(`/mensajes/${thread}`);
 }
 
-export async function confirmReceipt(formData: FormData) {
+export async function confirmReceipt(
+  _: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
   const id = text(formData, "transaction_id");
-  await apiFetch(`/transactions/${id}/confirm-receipt`, {
+  const result = await apiFetch(`/transactions/${id}/confirm-receipt`, {
     method: "POST",
     token: await token(),
   });
+  if (!result.ok) return { message: result.message };
   redirect(`/ordenes/${id}`);
 }

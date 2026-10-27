@@ -85,6 +85,9 @@ export type Transaction = {
   completed_at: string | null;
   thread_id: string;
   my_role: "buyer" | "seller";
+  // Only filled when reading one order.
+  reviewed_by_me: boolean;
+  has_open_dispute: boolean;
 };
 
 export const OFFER_STATUS: Record<OfferStatus, string> = {

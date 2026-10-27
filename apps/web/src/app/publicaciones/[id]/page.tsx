@@ -124,7 +124,13 @@ async function Detail({
         </div>
         <h1 className="mt-3 text-3xl font-bold sm:text-4xl">{listing.title}</h1>
         <p className="mt-1 text-sm text-muted">
-          {listing.company.legal_name} · {listing.company.city}
+          <Link
+            href={`/empresas/${listing.company.id}`}
+            className="underline-offset-2 hover:underline"
+          >
+            {listing.company.legal_name}
+          </Link>{" "}
+          · {listing.company.city}
           {listing.company.is_verified ? " · Empresa verificada" : ""}
         </p>
       </header>

@@ -11,7 +11,9 @@ import { formatDateTime } from "@/lib/deals";
 import { formatPrice, formatQuantity, type Listing } from "@/lib/listings";
 import { roleLabel } from "@/lib/roles";
 import { getToken, requireUser } from "@/lib/session";
+import { DISPUTE_REASONS, type AdminDispute } from "@/lib/trust";
 
+import { ResolveForm } from "./resolve-form";
 import { TakeDownForm } from "./take-down-form";
 
 export const metadata: Metadata = { title: "Admin · RexFy" };
@@ -80,7 +82,8 @@ async function Console() {
   const me = await requireUser();
   if (!me.is_platform_admin) notFound();
   const token = await getToken();
-  const [pending, verified, listings, activity] = await Promise.all([
+  const [disputes, pending, verified, listings, activity] = await Promise.all([
+    apiFetch<AdminDispute[]>("/admin/disputes?status=open", { token }),
     apiFetch<AdminCompany[]>("/admin/companies?verified=false", { token }),
     apiFetch<AdminCompany[]>("/admin/companies?verified=true", { token }),
     apiFetch<Listing[]>("/admin/listings?status=published", { token }),
@@ -89,6 +92,32 @@ async function Console() {
 
   return (
     <>
+      <Section title="Disputas abiertas">
+        {!disputes.ok || disputes.data.length === 0 ? (
+          <EmptyState>No hay disputas abiertas.</EmptyState>
+        ) : (
+          <ul className="divide-y divide-border card">
+            {disputes.data.map((d) => (
+              <li key={d.id} className="flex flex-col gap-2 px-4 py-3 text-sm">
+                <div className="flex flex-wrap justify-between gap-2">
+                  <span className="font-medium">
+                    {d.order_code} · {DISPUTE_REASONS[d.reason]}
+                  </span>
+                  <span className="text-muted">
+                    {formatDateTime(d.created_at)}
+                  </span>
+                </div>
+                <p className="text-muted">
+                  {d.buyer.legal_name} compra a {d.seller.legal_name} ·
+                  reporta {d.opened_by.legal_name}
+                </p>
+                <p className="whitespace-pre-line">{d.description}</p>
+                <ResolveForm dispute={d} />
+              </li>
+            ))}
+          </ul>
+        )}
+      </Section>
       <Section title="Empresas por verificar">
         <Companies result={pending} verify />
       </Section>

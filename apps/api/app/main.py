@@ -2,7 +2,16 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import get_settings
-from app.presentation.routes import admin, auth, companies, deals, health, listings, logistics
+from app.presentation.routes import (
+    admin,
+    auth,
+    companies,
+    deals,
+    health,
+    listings,
+    logistics,
+    trust,
+)
 
 
 def create_app() -> FastAPI:
@@ -21,6 +30,7 @@ def create_app() -> FastAPI:
     app.include_router(listings.router)
     app.include_router(deals.router)
     app.include_router(logistics.router)
+    app.include_router(trust.router)
     app.include_router(admin.router)
     return app
 
