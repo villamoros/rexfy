@@ -1,6 +1,8 @@
 from fastapi import APIRouter
 
-from app.presentation.deps import CurrentUser
+from app.application.dashboard import company_kpis
+from app.presentation.deps import CurrentUser, DbSession
+from app.presentation.schemas.dashboard import CompanyKpisOut
 from app.presentation.schemas.identity import MembershipOut, MeResponse
 
 router = APIRouter(tags=["auth"])
@@ -24,3 +26,8 @@ def me(user: CurrentUser) -> MeResponse:
             for m in user.memberships
         ],
     )
+
+
+@router.get("/me/dashboard")
+def dashboard(user: CurrentUser, db: DbSession) -> list[CompanyKpisOut]:
+    return [CompanyKpisOut.model_validate(k, from_attributes=True) for k in company_kpis(db, user)]

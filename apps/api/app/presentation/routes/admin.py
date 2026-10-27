@@ -5,10 +5,12 @@ from fastapi import APIRouter, HTTPException, Query, status
 
 from app.application import admin as service
 from app.application import audit
+from app.application.dashboard import platform_kpis
 from app.domain.listings.enums import ListingStatus
 from app.infrastructure.db.models import Company
 from app.presentation.deps import AdminUser, DbSession
 from app.presentation.schemas.admin import AdminCompany, AuditEntry, TakeDown
+from app.presentation.schemas.dashboard import PlatformKpisOut
 from app.presentation.schemas.listings import ListingOut
 from app.presentation.schemas.organizations import CompanyOut
 
@@ -80,3 +82,8 @@ def audit_log(
         )
         for e in audit.recent(db, limit=limit, entity_id=entity_id)
     ]
+
+
+@router.get("/metrics")
+def metrics(db: DbSession, _: AdminUser) -> PlatformKpisOut:
+    return PlatformKpisOut.model_validate(platform_kpis(db))

@@ -4,10 +4,12 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 import { setCompanyVerified } from "@/app/actions/admin";
+import { Stat, StatGrid, formatNumber, formatPercent } from "@/components/kpi";
 import { SiteHeader } from "@/components/site-header";
 import { EmptyState, PageHeader } from "@/components/ui";
 import { apiFetch, type MarketRole } from "@/lib/api";
-import { formatDateTime } from "@/lib/deals";
+import type { PlatformKpis } from "@/lib/dashboard";
+import { formatCop, formatDateTime } from "@/lib/deals";
 import { formatPrice, formatQuantity, type Listing } from "@/lib/listings";
 import { roleLabel } from "@/lib/roles";
 import { getToken, requireUser } from "@/lib/session";
@@ -83,16 +85,70 @@ async function Console() {
   const me = await requireUser();
   if (!me.is_platform_admin) notFound();
   const token = await getToken();
-  const [disputes, pending, verified, listings, activity] = await Promise.all([
-    apiFetch<AdminDispute[]>("/admin/disputes?status=open", { token }),
-    apiFetch<AdminCompany[]>("/admin/companies?verified=false", { token }),
-    apiFetch<AdminCompany[]>("/admin/companies?verified=true", { token }),
-    apiFetch<Listing[]>("/admin/listings?status=published", { token }),
-    apiFetch<AuditEntry[]>("/admin/audit?limit=30", { token }),
-  ]);
+  const [metrics, disputes, pending, verified, listings, activity] =
+    await Promise.all([
+      apiFetch<PlatformKpis>("/admin/metrics", { token }),
+      apiFetch<AdminDispute[]>("/admin/disputes?status=open", { token }),
+      apiFetch<AdminCompany[]>("/admin/companies?verified=false", { token }),
+      apiFetch<AdminCompany[]>("/admin/companies?verified=true", { token }),
+      apiFetch<Listing[]>("/admin/listings?status=published", { token }),
+      apiFetch<AuditEntry[]>("/admin/audit?limit=30", { token }),
+    ]);
 
+  const m = metrics.ok ? metrics.data : null;
   return (
     <>
+      {m && (
+        <Section title="La plataforma">
+          <StatGrid>
+            <Stat
+              label="Toneladas reutilizadas"
+              value={formatNumber(m.tons_reused)}
+              hint="Órdenes cerradas, histórico"
+            />
+            <Stat
+              label="GMV"
+              value={formatCop(m.gmv_30d)}
+              hint={`${m.orders_30d} órdenes, últimos 30 días`}
+            />
+            <Stat
+              label="Transacciones exitosas"
+              value={formatPercent(m.completed_rate)}
+            />
+            <Stat
+              label="Publicaciones nuevas"
+              value={m.listings_published_30d}
+              hint="Últimos 30 días"
+            />
+            <Stat
+              label="Empresas activas"
+              value={m.active_companies_30d}
+              hint="Con mensajes en 30 días"
+            />
+            <Stat
+              label="Con logística RexFy"
+              value={formatPercent(m.logistics_attach_rate)}
+            />
+            <Stat
+              label="Disputas abiertas"
+              value={m.open_disputes}
+              hint={`Tasa ${formatPercent(m.dispute_rate)}`}
+            />
+            <Stat
+              label="Resolución de disputas"
+              value={
+                m.avg_dispute_resolution_hours === null
+                  ? "—"
+                  : `${formatNumber(m.avg_dispute_resolution_hours)} h`
+              }
+            />
+            <Stat
+              label="Por verificar"
+              value={m.companies_pending_verification}
+            />
+          </StatGrid>
+        </Section>
+      )}
       <Section title="Disputas abiertas">
         {!disputes.ok || disputes.data.length === 0 ? (
           <EmptyState>No hay disputas abiertas.</EmptyState>
@@ -109,8 +165,8 @@ async function Console() {
                   </span>
                 </div>
                 <p className="text-muted">
-                  {d.buyer.legal_name} compra a {d.seller.legal_name} ·
-                  reporta {d.opened_by.legal_name}
+                  {d.buyer.legal_name} compra a {d.seller.legal_name} · reporta{" "}
+                  {d.opened_by.legal_name}
                 </p>
                 <p className="whitespace-pre-line">{d.description}</p>
                 <ResolveForm dispute={d} />

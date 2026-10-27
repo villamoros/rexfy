@@ -5,9 +5,12 @@ import { redirect } from "next/navigation";
 import { Suspense } from "react";
 
 import { archiveListing } from "@/app/actions/listings";
+import { Stat, StatGrid, formatNumber, formatPercent } from "@/components/kpi";
 import { SiteHeader } from "@/components/site-header";
 import { EmptyState, PageHeader } from "@/components/ui";
 import { apiFetch } from "@/lib/api";
+import type { CompanyKpis } from "@/lib/dashboard";
+import { formatCop } from "@/lib/deals";
 import {
   STATUS,
   formatPrice,
@@ -43,9 +46,13 @@ async function Dashboard() {
   const isGenerator = me.companies.some((c) =>
     c.market_roles.includes("generator"),
   );
-  const mine = isGenerator
-    ? await apiFetch<Listing[]>("/me/listings", { token: await getToken() })
-    : null;
+  const token = await getToken();
+  const [mine, kpis] = await Promise.all([
+    isGenerator ? apiFetch<Listing[]>("/me/listings", { token }) : null,
+    apiFetch<CompanyKpis[]>("/me/dashboard", { token }),
+  ]);
+  const kpisOf = (id: string) =>
+    kpis.ok ? kpis.data.find((k) => k.company_id === id) : undefined;
 
   return (
     <>
@@ -88,6 +95,7 @@ async function Dashboard() {
                 los datos de la empresa.
               </p>
             )}
+            <CompanyStats kpis={kpisOf(company.company_id)} />
           </li>
         ))}
       </ul>
@@ -142,5 +150,86 @@ async function Dashboard() {
         </section>
       )}
     </>
+  );
+}
+
+function hours(value: number | null): string {
+  if (value === null) return "—";
+  return value < 1
+    ? `${Math.round(value * 60)} min`
+    : `${formatNumber(value)} h`;
+}
+
+/** The numbers docs/01 tracks for each role the company plays. */
+function CompanyStats({ kpis }: { kpis?: CompanyKpis }) {
+  if (!kpis) return null;
+  return (
+    <div className="mt-4 flex flex-col gap-3">
+      {kpis.seller && (
+        <StatGrid>
+          <Stat
+            label="Publicaciones activas"
+            value={kpis.seller.active_listings}
+          />
+          <Stat
+            label="Compradores interesados"
+            value={kpis.seller.leads_30d}
+            hint="Últimos 30 días"
+          />
+          <Stat
+            label="Tiempo de respuesta"
+            value={hours(kpis.seller.avg_first_reply_hours)}
+            hint="Promedio al primer mensaje"
+          />
+          <Stat label="Órdenes de venta" value={kpis.seller.orders} />
+          <Stat
+            label="Toneladas vendidas"
+            value={formatNumber(kpis.seller.tons_sold)}
+          />
+          <Stat label="Ventas" value={formatCop(kpis.seller.revenue)} />
+        </StatGrid>
+      )}
+      {kpis.buyer && (
+        <StatGrid>
+          <Stat
+            label="Negociaciones abiertas"
+            value={kpis.buyer.open_negotiations}
+          />
+          <Stat label="Órdenes de compra" value={kpis.buyer.orders} />
+          <Stat
+            label="Días para asegurar material"
+            value={
+              kpis.buyer.avg_days_to_secure === null
+                ? "—"
+                : formatNumber(kpis.buyer.avg_days_to_secure)
+            }
+            hint="Del primer mensaje a la orden"
+          />
+          <Stat
+            label="Toneladas compradas"
+            value={formatNumber(kpis.buyer.tons_bought)}
+          />
+          <Stat label="Compras" value={formatCop(kpis.buyer.spend)} />
+        </StatGrid>
+      )}
+      {kpis.transporter && (
+        <StatGrid>
+          <Stat
+            label="Cotizaciones enviadas"
+            value={kpis.transporter.quotes_sent}
+          />
+          <Stat
+            label="Tasa de éxito"
+            value={formatPercent(kpis.transporter.win_rate)}
+            hint={`${kpis.transporter.quotes_won} ganadas`}
+          />
+          <Stat label="Viajes en curso" value={kpis.transporter.trips_active} />
+          <Stat
+            label="Viajes entregados"
+            value={kpis.transporter.trips_delivered}
+          />
+        </StatGrid>
+      )}
+    </div>
   );
 }
