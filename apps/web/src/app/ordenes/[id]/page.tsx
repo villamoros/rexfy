@@ -4,7 +4,10 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 import { confirmReceipt } from "@/app/actions/deals";
+import { acceptTransportQuote } from "@/app/actions/logistics";
+import { AutoRefresh } from "@/components/auto-refresh";
 import { OrderProgress } from "@/components/order-progress";
+import { ShipmentTimeline } from "@/components/shipment-timeline";
 import { SiteHeader } from "@/components/site-header";
 import { apiFetch } from "@/lib/api";
 import {
@@ -14,7 +17,15 @@ import {
   type Transaction,
 } from "@/lib/deals";
 import { formatQuantity } from "@/lib/listings";
+import {
+  SHIPMENT_STATUS,
+  VEHICLES,
+  formatDate,
+  type Shipment,
+} from "@/lib/logistics";
 import { getToken, requireUser } from "@/lib/session";
+
+import { ShipmentRequestForm } from "./shipment-request-form";
 
 export const metadata: Metadata = { title: "Orden · RexFy" };
 
@@ -54,6 +65,12 @@ async function Order({
     return <p className="text-warn">{result.message}</p>;
   }
   const order = result.data;
+  const shipment = await apiFetch<Shipment>(
+    `/transactions/${order.id}/shipment`,
+    {
+      token: await getToken(),
+    },
+  );
   const rows: [string, string][] = [
     ["Vendedor", order.seller.legal_name],
     ["Comprador", order.buyer.legal_name],
@@ -104,6 +121,95 @@ async function Order({
           </form>
         )}
       </div>
+      <Logistics order={order} shipment={shipment.ok ? shipment.data : null} />
     </article>
+  );
+}
+
+function Logistics({
+  order,
+  shipment,
+}: {
+  order: Transaction;
+  shipment: Shipment | null;
+}) {
+  if (!shipment) {
+    if (order.status !== "agreed") return null;
+    return (
+      <section className="flex flex-col gap-3 rounded-xl border border-border p-5">
+        <h2 className="text-lg font-semibold">Transporte</h2>
+        <p className="text-sm text-muted">
+          Pide cotizaciones a transportistas de RexFy. Si el comprador recoge en
+          planta, puedes omitir este paso.
+        </p>
+        <ShipmentRequestForm
+          transactionId={order.id}
+          pickupCity={order.listing.city}
+        />
+      </section>
+    );
+  }
+  return (
+    <section className="flex flex-col gap-4 rounded-xl border border-border p-5">
+      <AutoRefresh seconds={15} />
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h2 className="text-lg font-semibold">Transporte</h2>
+        <span className="rounded-full bg-brand/15 px-2.5 py-0.5 text-xs font-medium text-brand">
+          {SHIPMENT_STATUS[shipment.status]}
+        </span>
+      </div>
+      <p className="text-sm">
+        {shipment.pickup_city} → {shipment.delivery_city} ·{" "}
+        {VEHICLES[shipment.vehicle_type]} · recogida el{" "}
+        {formatDate(shipment.pickup_date)}
+      </p>
+      {shipment.transporter && (
+        <p className="text-sm">
+          Transportador:{" "}
+          <span className="font-medium">{shipment.transporter.legal_name}</span>
+        </p>
+      )}
+      {shipment.status === "requested" &&
+        (shipment.quotes.length === 0 ? (
+          <p className="text-sm text-muted">
+            Esperando cotizaciones de transportistas…
+          </p>
+        ) : (
+          <ul className="flex flex-col gap-3">
+            {shipment.quotes.map((quote, i) => (
+              <li
+                key={quote.id}
+                className="rounded-lg border border-border p-4 text-sm"
+              >
+                <div className="flex flex-wrap items-baseline justify-between gap-2">
+                  <span className="font-medium">
+                    {quote.transporter.legal_name}
+                  </span>
+                  <span className="text-lg font-semibold">
+                    {formatCop(quote.price)}
+                  </span>
+                </div>
+                <p className="mt-1 text-muted">
+                  Recogida {formatDate(quote.pickup_date)} · entrega estimada{" "}
+                  {formatDate(quote.delivery_date)} ·{" "}
+                  {quote.includes_insurance
+                    ? "seguro de carga incluido"
+                    : "sin seguro de carga"}
+                  {i === 0 && shipment.quotes.length > 1 && " · Menor precio"}
+                </p>
+                {quote.notes && <p className="mt-1">{quote.notes}</p>}
+                <form action={acceptTransportQuote} className="mt-3">
+                  <input type="hidden" name="quote_id" value={quote.id} />
+                  <input type="hidden" name="transaction_id" value={order.id} />
+                  <button className="rounded-lg bg-brand-strong px-4 py-2 font-medium text-white hover:opacity-90">
+                    Aceptar {formatCop(quote.price)}
+                  </button>
+                </form>
+              </li>
+            ))}
+          </ul>
+        ))}
+      <ShipmentTimeline events={shipment.events} />
+    </section>
   );
 }
