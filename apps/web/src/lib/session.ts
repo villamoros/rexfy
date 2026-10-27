@@ -1,28 +1,13 @@
 import "server-only";
 
-import { cookies } from "next/headers";
+import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 
 import { apiFetch, type Me } from "@/lib/api";
 
-export const SESSION_COOKIE = "rexfy_session";
-
+/** A fresh Clerk session token for calling the API, if someone is signed in. */
 export async function getToken(): Promise<string | undefined> {
-  return (await cookies()).get(SESSION_COOKIE)?.value;
-}
-
-export async function setToken(token: string) {
-  (await cookies()).set(SESSION_COOKIE, token, {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    path: "/",
-    maxAge: 60 * 60 * 24,
-  });
-}
-
-export async function clearToken() {
-  (await cookies()).delete(SESSION_COOKIE);
+  return (await (await auth()).getToken()) ?? undefined;
 }
 
 /** The signed-in user, or a redirect to the login page. Call it inside a Suspense boundary. */

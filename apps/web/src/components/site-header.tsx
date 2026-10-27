@@ -1,3 +1,4 @@
+import { UserButton } from "@clerk/nextjs";
 import Link from "next/link";
 
 const LINKS = [
@@ -19,18 +20,21 @@ export function SiteHeader() {
         >
           RexFy
         </Link>
-        <ul className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
-          {LINKS.map((link) => (
-            <li key={link.href}>
-              <Link
-                href={link.href}
-                className="text-muted hover:text-foreground"
-              >
-                {link.label}
-              </Link>
-            </li>
-          ))}
-        </ul>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <ul className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
+            {LINKS.map((link) => (
+              <li key={link.href}>
+                <Link
+                  href={link.href}
+                  className="text-muted hover:text-foreground"
+                >
+                  {link.label}
+                </Link>
+              </li>
+            ))}
+          </ul>
+          <UserButton />
+        </div>
       </nav>
     </header>
   );
