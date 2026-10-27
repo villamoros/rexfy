@@ -62,8 +62,9 @@ class OrderRef(BaseModel):
     listing_title: str
     quantity: float
     quantity_unit: QuantityUnit
-    buyer: CompanyRef
-    seller: CompanyRef
+    # Hidden from transporters that are only bidding.
+    buyer: CompanyRef | None
+    seller: CompanyRef | None
 
 
 class ShipmentOut(BaseModel):

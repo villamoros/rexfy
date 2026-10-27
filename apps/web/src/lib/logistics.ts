@@ -43,8 +43,9 @@ export type Shipment = {
     listing_title: string;
     quantity: number;
     quantity_unit: QuantityUnit;
-    buyer: CompanyRef;
-    seller: CompanyRef;
+    // Null for transporters that are only bidding.
+    buyer: CompanyRef | null;
+    seller: CompanyRef | null;
   };
   pickup_city: string;
   delivery_city: string;

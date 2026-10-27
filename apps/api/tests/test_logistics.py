@@ -1,8 +1,11 @@
+import uuid
 from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy.orm import Session
 
+from app.infrastructure.db.models import Company
 from tests.conftest import company, register
 from tests.test_deals import deal, offer  # noqa: F401  (fixture)
 
@@ -23,9 +26,14 @@ def order(client: TestClient, deal: dict[str, Any]) -> dict[str, Any]:  # noqa: 
     return {**deal, "order_id": accepted.json()["id"]}
 
 
-def transporter(client: TestClient, email: str, base: str) -> tuple[dict[str, str], str]:
+def transporter(
+    client: TestClient, db: Session, email: str, base: str, *, verified: bool = True
+) -> tuple[dict[str, str], str]:
     headers = register(client, email)
-    return headers, company(client, headers, ["transporter"], base)
+    company_id = company(client, headers, ["transporter"], base)
+    db.get(Company, uuid.UUID(company_id)).is_verified = verified
+    db.commit()
+    return headers, company_id
 
 
 def bid(client: TestClient, headers: dict[str, str], shipment_id: str, company_id: str, price: int):
@@ -42,7 +50,7 @@ def bid(client: TestClient, headers: dict[str, str], shipment_id: str, company_i
     )
 
 
-def test_full_logistics_flow(client: TestClient, order: dict[str, Any]) -> None:
+def test_full_logistics_flow(client: TestClient, db: Session, order: dict[str, Any]) -> None:
     oid = order["order_id"]
     created = client.post(f"/transactions/{oid}/shipment", json=REQUEST, headers=order["buyer"])
     assert created.status_code == 201, created.text
@@ -53,13 +61,16 @@ def test_full_logistics_flow(client: TestClient, order: dict[str, Any]) -> None:
     again = client.post(f"/transactions/{oid}/shipment", json=REQUEST, headers=order["seller"])
     assert again.status_code == 409
 
-    andina, andina_co = transporter(client, "andina@example.com", "811000111")
-    logicol, logicol_co = transporter(client, "logicol@example.com", "811000222")
+    andina, andina_co = transporter(client, db, "andina@example.com", "811000111")
+    logicol, logicol_co = transporter(client, db, "logicol@example.com", "811000222")
 
     # Transporters see open requests by city, without the exact addresses.
     open_view = client.get("/logistics/requests", headers=andina).json()
     assert [s["id"] for s in open_view] == [sid]
     assert open_view[0]["pickup_address"] is None
+    assert open_view[0]["order"]["buyer"] is None
+    assert open_view[0]["order"]["seller"] is None
+    assert open_view[0]["events"] == []
     assert client.get("/logistics/requests", headers=order["buyer"]).status_code == 403
 
     assert bid(client, andina, sid, andina_co, 1_850_000).status_code == 201
@@ -118,7 +129,9 @@ def test_full_logistics_flow(client: TestClient, order: dict[str, Any]) -> None:
     assert closed.json()["status"] == "completed"
 
 
-def test_outsiders_cannot_request_or_view(client: TestClient, order: dict[str, Any]) -> None:
+def test_outsiders_cannot_request_or_view(
+    client: TestClient, db: Session, order: dict[str, Any]
+) -> None:
     oid = order["order_id"]
     stranger = register(client, "stranger@example.com")
     assert (
@@ -128,11 +141,13 @@ def test_outsiders_cannot_request_or_view(client: TestClient, order: dict[str, A
     assert client.get(f"/transactions/{oid}/shipment", headers=order["buyer"]).status_code == 404
 
 
-def test_delivery_before_pickup_is_rejected(client: TestClient, order: dict[str, Any]) -> None:
+def test_delivery_before_pickup_is_rejected(
+    client: TestClient, db: Session, order: dict[str, Any]
+) -> None:
     sid = client.post(
         f"/transactions/{order['order_id']}/shipment", json=REQUEST, headers=order["buyer"]
     ).json()["id"]
-    headers, company_id = transporter(client, "andina@example.com", "811000111")
+    headers, company_id = transporter(client, db, "andina@example.com", "811000111")
     late = client.post(
         f"/shipments/{sid}/quotes",
         json={
@@ -146,12 +161,12 @@ def test_delivery_before_pickup_is_rejected(client: TestClient, order: dict[str,
     assert late.status_code == 409
 
 
-def test_shipment_order_is_enforced(client: TestClient, order: dict[str, Any]) -> None:
+def test_shipment_order_is_enforced(client: TestClient, db: Session, order: dict[str, Any]) -> None:
     oid = order["order_id"]
     sid = client.post(f"/transactions/{oid}/shipment", json=REQUEST, headers=order["buyer"]).json()[
         "id"
     ]
-    headers, company_id = transporter(client, "andina@example.com", "811000111")
+    headers, company_id = transporter(client, db, "andina@example.com", "811000111")
     quote = bid(client, headers, sid, company_id, 1_500_000).json()["quotes"][0]
     client.post(f"/transport-quotes/{quote['id']}/accept", headers=order["buyer"])
 
@@ -164,3 +179,18 @@ def test_shipment_order_is_enforced(client: TestClient, order: dict[str, Any]) -
     assert client.post(confirm, headers=order["buyer"]).status_code == 409
     assert client.post(events, json={"status": "delivered"}, headers=headers).status_code == 201
     assert client.post(confirm, headers=order["buyer"]).json()["status"] == "completed"
+
+
+def test_unverified_transporters_cannot_see_requests(
+    client: TestClient, db: Session, order: dict[str, Any]
+) -> None:
+    oid = order["order_id"]
+    sid = client.post(f"/transactions/{oid}/shipment", json=REQUEST, headers=order["buyer"]).json()[
+        "id"
+    ]
+    headers, company_id = transporter(client, db, "nuevo@example.com", "811000333", verified=False)
+    listing = client.get("/logistics/requests", headers=headers)
+    assert listing.status_code == 403
+    assert "verificada" in listing.json()["detail"]
+    assert client.get(f"/shipments/{sid}", headers=headers).status_code == 404
+    assert bid(client, headers, sid, company_id, 1_000_000).status_code == 404

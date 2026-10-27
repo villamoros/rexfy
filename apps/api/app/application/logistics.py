@@ -29,10 +29,18 @@ def _company_ids(user: User) -> set[uuid.UUID]:
     return {m.company_id for m in user.memberships}
 
 
-def _transporter_ids(user: User) -> set[uuid.UUID]:
+def _transporter_ids(user: User, *, verified: bool = False) -> set[uuid.UUID]:
+    """The user's transporter companies; with `verified`, only those RexFy has verified."""
     return {
-        m.company_id for m in user.memberships if MarketRole.TRANSPORTER in m.company.market_roles
+        m.company_id
+        for m in user.memberships
+        if MarketRole.TRANSPORTER in m.company.market_roles
+        and (m.company.is_verified or not verified)
     }
+
+
+class NotVerified(Exception):
+    pass
 
 
 def _parties(shipment: Shipment) -> set[uuid.UUID]:
@@ -47,7 +55,7 @@ def relation(user: User, shipment: Shipment) -> str | None:
         return "party"
     if shipment.transporter_company_id in mine:
         return "transporter"
-    if shipment.status is ShipmentStatus.REQUESTED and _transporter_ids(user):
+    if shipment.status is ShipmentStatus.REQUESTED and _transporter_ids(user, verified=True):
         return "bidder"
     return None
 
@@ -106,9 +114,14 @@ def get_shipment(db: Session, user: User, shipment_id: uuid.UUID) -> Shipment | 
 
 
 def open_requests(db: Session, user: User) -> list[Shipment]:
-    """Requests a transporter can quote: still open and not for their own orders."""
+    """Requests a transporter can quote: still open and not for their own orders.
+
+    Only verified transporters see them, since they reveal who trades what and where.
+    """
     if not _transporter_ids(user):
         raise NotAllowed
+    if not _transporter_ids(user, verified=True):
+        raise NotVerified
     mine = _company_ids(user)
     stmt = (
         select(Shipment)
@@ -139,7 +152,7 @@ def submit_quote(
     includes_insurance: bool,
     notes: str | None,
 ) -> TransportQuote:
-    if company_id not in _transporter_ids(user) or company_id in _parties(shipment):
+    if company_id not in _transporter_ids(user, verified=True) or company_id in _parties(shipment):
         raise NotAllowed
     if shipment.status is not ShipmentStatus.REQUESTED:
         raise InvalidState("Esta solicitud ya tiene transportador asignado")
