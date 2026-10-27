@@ -1,6 +1,7 @@
 import { UserButton } from "@clerk/nextjs";
 import { Suspense } from "react";
 
+import { ClientOnly } from "@/components/client-only";
 import { Logo } from "@/components/logo";
 import { NavLinks, NavList } from "@/components/nav-links";
 
@@ -15,7 +16,9 @@ export function SiteHeader() {
           </Suspense>
         </div>
         <div className="ml-auto sm:ml-0">
-          <UserButton />
+          <ClientOnly>
+            <UserButton />
+          </ClientOnly>
         </div>
       </nav>
     </header>
