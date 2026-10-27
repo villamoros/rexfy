@@ -44,5 +44,5 @@ Para levantar también la API dentro de Docker: `docker compose --profile full u
 
 ```bash
 cd apps/api && uv run pytest && uv run ruff check .
-cd apps/web && npm run lint && npm run build
+cd apps/web && npm run lint && npm run typecheck && npm run build
 ```
