@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 
 from app.application import audit
 from app.application.deals import InvalidState, NotAllowed
+from app.application.notifications import notify
 from app.domain.deals.enums import TransactionStatus
 from app.domain.listings.enums import ListingStatus
 from app.domain.trust.enums import DisputeReason, DisputeStatus
@@ -51,6 +52,14 @@ def leave_review(
         db.rollback()
         raise InvalidState("Tu empresa ya calificó esta orden") from None
     audit.record(db, user, "review.created", review, company_id=mine, rating=rating)
+    notify(
+        db,
+        other,
+        kind="review",
+        title=f"Recibiste una calificación de {rating} de 5",
+        body=f"Orden {transaction.code}" + (f": {review.comment}" if review.comment else ""),
+        link=f"/empresas/{other}",
+    )
     db.commit()
     return review
 
@@ -74,7 +83,7 @@ def open_dispute(
     reason: DisputeReason,
     description: str,
 ) -> Dispute:
-    mine, _ = _my_side(user, transaction)
+    mine, other = _my_side(user, transaction)
     if open_dispute_for(db, transaction) is not None:
         raise InvalidState("Esta orden ya tiene una disputa abierta")
     dispute = Dispute(
@@ -86,6 +95,14 @@ def open_dispute(
     )
     db.add(dispute)
     audit.record(db, user, "dispute.opened", dispute, company_id=mine, reason=reason)
+    notify(
+        db,
+        other,
+        kind="dispute",
+        title=f"Reportaron un problema con la orden {transaction.code}",
+        body=description.strip()[:300],
+        link=f"/ordenes/{transaction.id}",
+    )
     db.commit()
     return dispute
 
@@ -140,6 +157,15 @@ def resolve_dispute(
         at_fault_company_id=at_fault_company_id,
         reason=resolution,
     )
+    for party in (t.buyer_company_id, t.seller_company_id):
+        notify(
+            db,
+            party,
+            kind="dispute_resolved",
+            title=f"RexFy resolvió la disputa de la orden {t.code}",
+            body=resolution.strip()[:300],
+            link=f"/ordenes/{t.id}",
+        )
     db.commit()
     return dispute
 

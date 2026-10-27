@@ -7,6 +7,7 @@ from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from app.application import audit
+from app.application.notifications import notify
 from app.domain.deals.enums import OfferStatus, TransactionStatus
 from app.domain.deals.pricing import offer_total
 from app.domain.listings.enums import ListingStatus, QuantityUnit
@@ -14,6 +15,7 @@ from app.domain.logistics.enums import ShipmentStatus
 from app.domain.organizations.roles import MarketRole
 from app.domain.trust.enums import DisputeStatus
 from app.infrastructure.db.models import (
+    Company,
     Dispute,
     Listing,
     Message,
@@ -104,6 +106,25 @@ def _add_message(db: Session, user: User, thread: Thread, company_id: uuid.UUID,
         )
     )
     thread.last_activity_at = _now()
+    db.flush()
+    notify(
+        db,
+        _other_side(thread, company_id),
+        kind="message",
+        title=f"Mensaje de {_company_name(db, company_id)}",
+        body=f"{thread.listing.title}: {body.strip()[:200]}",
+        link=f"/mensajes/{thread.id}",
+    )
+
+
+def _other_side(thread: Thread, company_id: uuid.UUID) -> uuid.UUID:
+    if company_id == thread.buyer_company_id:
+        return thread.seller_company_id
+    return thread.buyer_company_id
+
+
+def _company_name(db: Session, company_id: uuid.UUID) -> str:
+    return db.get(Company, company_id).legal_name
 
 
 def threads_of(db: Session, user: User) -> list[Thread]:
@@ -186,6 +207,15 @@ def send_offer(
     audit.record(
         db, user, "offer.sent", offer, company_id=company_id, quantity=quantity, price=price
     )
+    notify(
+        db,
+        _other_side(thread, company_id),
+        kind="offer",
+        title=f"Nueva cotización de {_company_name(db, company_id)}",
+        body=f"{thread.listing.title}: {quantity} {thread.listing.quantity_unit} "
+        f"a ${price:,.0f} / {price_unit}",
+        link=f"/mensajes/{thread.id}",
+    )
     db.commit()
     return offer
 
@@ -243,6 +273,14 @@ def accept_offer(db: Session, user: User, offer: Offer) -> Transaction:
         order=transaction.code,
         total=transaction.total,
     )
+    notify(
+        db,
+        offer.from_company_id,
+        kind="offer_accepted",
+        title=f"Aceptaron tu cotización · orden {transaction.code}",
+        body=thread.listing.title,
+        link=f"/ordenes/{transaction.id}",
+    )
     db.commit()
     return transaction
 
@@ -253,6 +291,14 @@ def decline_offer(db: Session, user: User, offer: Offer) -> Offer:
     offer.status = OfferStatus.DECLINED
     offer.responded_at = _now()
     audit.record(db, user, "offer.declined", offer, company_id=acting_company(user, offer.thread))
+    notify(
+        db,
+        offer.from_company_id,
+        kind="offer_declined",
+        title="Rechazaron tu cotización",
+        body=offer.thread.listing.title,
+        link=f"/mensajes/{offer.thread_id}",
+    )
     db.commit()
     return offer
 
@@ -311,5 +357,13 @@ def confirm_receipt(db: Session, user: User, transaction: Transaction) -> Transa
     transaction.status = TransactionStatus.COMPLETED
     transaction.completed_at = _now()
     audit.record(db, user, "order.completed", transaction, company_id=transaction.buyer_company_id)
+    notify(
+        db,
+        transaction.seller_company_id,
+        kind="order_completed",
+        title=f"Orden {transaction.code} cerrada",
+        body="El comprador confirmó la recepción. Ya puedes calificarlo.",
+        link=f"/ordenes/{transaction.id}",
+    )
     db.commit()
     return transaction

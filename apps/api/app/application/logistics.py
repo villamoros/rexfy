@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.application import audit
 from app.application.deals import InvalidState, NotAllowed, lock
+from app.application.notifications import notify
 from app.domain.deals.enums import TransactionStatus
 from app.domain.logistics.enums import SHIPMENT_FLOW, QuoteStatus, ShipmentStatus, VehicleType
 from app.domain.organizations.roles import MarketRole
@@ -17,6 +18,12 @@ from app.infrastructure.db.models import (
     TransportQuote,
     User,
 )
+
+_STATUS_LABEL = {
+    ShipmentStatus.PICKED_UP: "material recogido",
+    ShipmentStatus.IN_TRANSIT: "en ruta",
+    ShipmentStatus.DELIVERED: "entregado",
+}
 
 # How a shipment status moves its order forward.
 _ORDER_STATUS = {
@@ -174,6 +181,15 @@ def submit_quote(
         notes=notes,
     )
     db.add(quote)
+    t = shipment.transaction
+    notify(
+        db,
+        shipment.requested_by_company_id,
+        kind="transport_quote",
+        title="Nueva cotización de transporte",
+        body=f"Orden {t.code}: {shipment.pickup_city} → {shipment.delivery_city}, ${price:,.0f}",
+        link=f"/ordenes/{t.id}",
+    )
     db.commit()
     return quote
 
@@ -211,6 +227,14 @@ def accept_quote(db: Session, user: User, quote: TransportQuote) -> Shipment:
         company_id=next(iter(_parties(shipment) & _company_ids(user))),
         price=quote.price,
     )
+    notify(
+        db,
+        quote.transporter_company_id,
+        kind="transport_assigned",
+        title="Ganaste un viaje",
+        body=f"{shipment.pickup_city} → {shipment.delivery_city}, recogida {shipment.pickup_date}",
+        link="/transporte",
+    )
     db.commit()
     return shipment
 
@@ -245,5 +269,15 @@ def advance(
         company_id=shipment.transporter_company_id,
         status=status,
     )
+    for party in _parties(shipment):
+        notify(
+            db,
+            party,
+            kind="shipment",
+            title=f"Envío de la orden {order.code}: {_STATUS_LABEL[status]}",
+            body=note or "",
+            link=f"/ordenes/{order.id}",
+            email=status is ShipmentStatus.DELIVERED,
+        )
     db.commit()
     return shipment

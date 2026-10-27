@@ -20,6 +20,18 @@ class Settings(BaseSettings):
     # Origins allowed in the token's `azp` claim; defaults to cors_origins.
     clerk_authorized_parties: list[str] | None = None
 
+    # Background jobs: "rq" on Redis (run `python -m app.worker`), "inline" runs them in the
+    # request, "off" drops them (tests).
+    task_queue: Literal["rq", "inline", "off"] = "rq"
+    # The web app, for links in emails.
+    public_web_url: str = "http://localhost:3000"
+    # Without smtp_host, emails are written to the worker's log instead of sent.
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: str = ""
+    email_from: str = "RexFy <notificaciones@rexfy.co>"
+
     # Where this API is reachable from browsers; used to build links to local files.
     public_api_url: str = "http://localhost:8000"
     # "local" keeps uploads in local_storage_dir; "s3" uses any S3-compatible bucket.

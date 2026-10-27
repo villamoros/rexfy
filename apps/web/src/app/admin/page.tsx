@@ -48,6 +48,7 @@ const ACTIONS: Record<string, string> = {
   "listing.updated": "editó una publicación",
   "listing.archived": "archivó una publicación",
   "listing.taken_down": "retiró una publicación",
+  "listing.images_added": "subió fotos",
   "offer.sent": "envió una cotización",
   "offer.accepted": "aceptó una cotización",
   "offer.declined": "rechazó una cotización",

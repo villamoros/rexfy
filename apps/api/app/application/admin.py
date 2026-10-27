@@ -6,6 +6,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.application import audit
+from app.application.notifications import notify
 from app.domain.listings.enums import ListingStatus
 from app.infrastructure.db.models import Company, CompanyMember, Listing, User
 
@@ -31,6 +32,15 @@ def set_verified(db: Session, admin: User, company: Company, verified: bool) -> 
     if company.is_verified != verified:
         company.is_verified = verified
         audit.record(db, admin, "company.verified" if verified else "company.unverified", company)
+        if verified:
+            notify(
+                db,
+                company.id,
+                kind="company_verified",
+                title="Tu empresa está verificada",
+                body=f"{company.legal_name} ya muestra el sello de empresa verificada.",
+                link="/panel",
+            )
         db.commit()
     return company
 
@@ -48,6 +58,14 @@ def take_down(db: Session, admin: User, listing: Listing, reason: str) -> Listin
     listing.moderation_note = reason.strip()
     audit.record(
         db, admin, "listing.taken_down", listing, company_id=listing.company_id, reason=reason
+    )
+    notify(
+        db,
+        listing.company_id,
+        kind="listing_taken_down",
+        title="RexFy retiró una publicación",
+        body=f"{listing.title}: {reason.strip()}",
+        link=f"/publicaciones/{listing.id}",
     )
     db.commit()
     return listing

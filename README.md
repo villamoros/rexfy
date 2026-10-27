@@ -29,7 +29,10 @@ uv sync
 uv run alembic upgrade head
 uv run uvicorn app.main:app --reload
 
-# 3. Web (http://localhost:3000), en otra terminal
+# 3. Worker de tareas (emails), en otra terminal desde apps/api
+uv run python -m app.worker
+
+# 4. Web (http://localhost:3000), en otra terminal
 cd apps/web
 cp .env.example .env.local
 npm install
@@ -55,6 +58,13 @@ uv run python -m app.cli.seed
 ```
 
 Se puede correr varias veces: solo crea lo que falta. Solo funciona con `REXFY_ENV=local`.
+
+### Notificaciones
+
+Mensajes, cotizaciones, órdenes, envíos, disputas y verificaciones crean una notificación en la
+app (la campana del encabezado) y un email a los miembros de la empresa. Los emails los manda el
+worker; sin `REXFY_SMTP_HOST` solo se escriben en su log. Para no correr el worker en local,
+usa `REXFY_TASK_QUEUE=inline`.
 
 ### Admin de RexFy
 

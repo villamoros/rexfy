@@ -12,6 +12,7 @@ from app.presentation.routes import (
     health,
     listings,
     logistics,
+    notifications,
     trust,
 )
 
@@ -33,6 +34,7 @@ def create_app() -> FastAPI:
     app.include_router(deals.router)
     app.include_router(logistics.router)
     app.include_router(trust.router)
+    app.include_router(notifications.router)
     app.include_router(admin.router)
     storage = get_storage()
     if isinstance(storage, LocalStorage):
