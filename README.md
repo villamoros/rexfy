@@ -45,6 +45,17 @@ El ingreso y registro los maneja [Clerk](https://clerk.com). Crea una aplicació
 
 La API valida el token de sesión de Clerk con sus llaves públicas (JWKS) y, la primera vez que ve a un usuario, lee su correo y nombre de Clerk y lo crea en la base. Las empresas, roles y permisos siguen viviendo en nuestra base.
 
+### Datos de demo
+
+La base arranca vacía. Para ver el marketplace con publicaciones de ejemplo (3 empresas, 6 materiales):
+
+```bash
+cd apps/api
+uv run python -m app.cli.seed
+```
+
+Se puede correr varias veces: solo crea lo que falta. Solo funciona con `REXFY_ENV=local`.
+
 La página de inicio muestra el estado de la API, la base de datos y Redis. Si los tres dicen `ok`, todo está conectado.
 
 Para levantar también la API dentro de Docker: `docker compose --profile full up`.
