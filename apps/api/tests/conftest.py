@@ -16,11 +16,9 @@ get_settings.cache_clear()
 
 _admin = create_engine(_dev_url.set(database="postgres"), isolation_level="AUTOCOMMIT")
 with _admin.connect() as conn:
-    exists = conn.scalar(
-        text("SELECT 1 FROM pg_database WHERE datname = :name"), {"name": _test_url.database}
-    )
-    if not exists:
-        conn.execute(text(f'CREATE DATABASE "{_test_url.database}"'))
+    # Recreated on every run so a schema left by another branch never gets in the way.
+    conn.execute(text(f'DROP DATABASE IF EXISTS "{_test_url.database}" WITH (FORCE)'))
+    conn.execute(text(f'CREATE DATABASE "{_test_url.database}"'))
 _admin.dispose()
 
 from alembic import command  # noqa: E402
