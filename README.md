@@ -88,3 +88,11 @@ Para levantar también la API dentro de Docker: `docker compose --profile full u
 cd apps/api && uv run pytest && uv run ruff check .
 cd apps/web && npm run lint && npm run typecheck && npm run build
 ```
+
+Los tipos de la web salen del esquema OpenAPI de la API. Si cambias un esquema de la API,
+regenéralos (CI falla si quedaron desactualizados):
+
+```bash
+cd apps/api && uv run python -m app.cli.openapi openapi.json
+cd apps/web && npm run api:types
+```

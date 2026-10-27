@@ -1,93 +1,23 @@
-import type { QuantityUnit } from "@/lib/listings";
+import type { Schemas } from "@/lib/api";
 
-export type CompanyRef = {
-  id: string;
-  legal_name: string;
-  city: string;
-  is_verified: boolean;
-};
+export type CompanyRef = Schemas["CompanyRef"];
 
-export type ListingRef = {
-  id: string;
-  title: string;
-  category: string;
-  quantity: number;
-  quantity_unit: QuantityUnit;
-  price: number | null;
-  price_unit: QuantityUnit | null;
-  city: string;
-};
+export type ListingRef = Schemas["ListingRef"];
 
-export type OfferStatus = "pending" | "accepted" | "declined" | "countered";
+export type OfferStatus = Schemas["OfferStatus"];
 
-export type Offer = {
-  id: string;
-  from_company_id: string;
-  status: OfferStatus;
-  quantity: number;
-  quantity_unit: QuantityUnit;
-  price: number;
-  price_unit: QuantityUnit;
-  total: number | null;
-  notes: string | null;
-  valid_until: string;
-  created_at: string;
-};
+export type Offer = Schemas["OfferOut"];
 
-export type ThreadMessage = {
-  id: string;
-  body: string;
-  sender_name: string;
-  sender_company_id: string;
-  created_at: string;
-};
+export type ThreadMessage = Schemas["MessageOut"];
 
-export type ThreadSummary = {
-  id: string;
-  listing: ListingRef;
-  counterpart: CompanyRef;
-  my_company_id: string;
-  last_message: string | null;
-  last_activity_at: string;
-  pending_offer_from_me: boolean | null;
-};
+export type ThreadSummary = Schemas["ThreadSummary"];
 
-export type ThreadDetail = {
-  id: string;
-  listing: ListingRef;
-  buyer: CompanyRef;
-  seller: CompanyRef;
-  my_company_id: string;
-  messages: ThreadMessage[];
-  offers: Offer[];
-  transaction_id: string | null;
-};
+export type ThreadDetail = Schemas["ThreadDetail"];
 
-export type TransactionStatus =
-  | "agreed"
-  | "in_transit"
-  | "delivered"
-  | "completed";
+export type TransactionStatus = Schemas["TransactionStatus"];
 
-export type Transaction = {
-  id: string;
-  code: string;
-  status: TransactionStatus;
-  listing: ListingRef;
-  buyer: CompanyRef;
-  seller: CompanyRef;
-  quantity: number;
-  quantity_unit: QuantityUnit;
-  price: number;
-  price_unit: QuantityUnit;
-  total: number | null;
-  created_at: string;
-  completed_at: string | null;
-  thread_id: string;
+export type Transaction = Omit<Schemas["TransactionOut"], "my_role"> & {
   my_role: "buyer" | "seller";
-  // Only filled when reading one order.
-  reviewed_by_me: boolean;
-  has_open_dispute: boolean;
 };
 
 export const OFFER_STATUS: Record<OfferStatus, string> = {

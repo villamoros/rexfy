@@ -1,0 +1,5633 @@
+{
+  "components": {
+    "schemas": {
+      "AdminCompany": {
+        "properties": {
+          "city": {
+            "title": "City",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "is_verified": {
+            "title": "Is Verified",
+            "type": "boolean"
+          },
+          "legal_name": {
+            "title": "Legal Name",
+            "type": "string"
+          },
+          "market_roles": {
+            "items": {
+              "$ref": "#/components/schemas/MarketRole"
+            },
+            "title": "Market Roles",
+            "type": "array"
+          },
+          "members": {
+            "title": "Members",
+            "type": "integer"
+          },
+          "nit": {
+            "title": "Nit",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "legal_name",
+          "nit",
+          "city",
+          "market_roles",
+          "is_verified",
+          "created_at",
+          "members"
+        ],
+        "title": "AdminCompany",
+        "type": "object"
+      },
+      "AdminDisputeOut": {
+        "properties": {
+          "at_fault_company_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "At Fault Company Id"
+          },
+          "buyer": {
+            "$ref": "#/components/schemas/CompanyRef"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "opened_by": {
+            "$ref": "#/components/schemas/CompanyRef"
+          },
+          "order_code": {
+            "title": "Order Code",
+            "type": "string"
+          },
+          "reason": {
+            "$ref": "#/components/schemas/DisputeReason"
+          },
+          "resolution": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolution"
+          },
+          "resolved_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolved At"
+          },
+          "seller": {
+            "$ref": "#/components/schemas/CompanyRef"
+          },
+          "status": {
+            "$ref": "#/components/schemas/DisputeStatus"
+          },
+          "transaction_id": {
+            "format": "uuid",
+            "title": "Transaction Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "transaction_id",
+          "opened_by",
+          "reason",
+          "description",
+          "status",
+          "resolution",
+          "at_fault_company_id",
+          "created_at",
+          "resolved_at",
+          "order_code",
+          "buyer",
+          "seller"
+        ],
+        "title": "AdminDisputeOut",
+        "type": "object"
+      },
+      "AuditEntry": {
+        "properties": {
+          "action": {
+            "title": "Action",
+            "type": "string"
+          },
+          "actor_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actor Name"
+          },
+          "company_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Company Id"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "data": {
+            "additionalProperties": true,
+            "title": "Data",
+            "type": "object"
+          },
+          "entity_id": {
+            "format": "uuid",
+            "title": "Entity Id",
+            "type": "string"
+          },
+          "entity_type": {
+            "title": "Entity Type",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "created_at",
+          "actor_name",
+          "company_id",
+          "action",
+          "entity_type",
+          "entity_id",
+          "data"
+        ],
+        "title": "AuditEntry",
+        "type": "object"
+      },
+      "Availability": {
+        "enum": [
+          "immediate",
+          "this_week",
+          "this_month",
+          "specific_date"
+        ],
+        "title": "Availability",
+        "type": "string"
+      },
+      "Body_upload_images_listings__listing_id__images_post": {
+        "properties": {
+          "files": {
+            "items": {
+              "contentMediaType": "application/octet-stream",
+              "type": "string"
+            },
+            "title": "Files",
+            "type": "array"
+          }
+        },
+        "required": [
+          "files"
+        ],
+        "title": "Body_upload_images_listings__listing_id__images_post",
+        "type": "object"
+      },
+      "BuyerKpisOut": {
+        "properties": {
+          "avg_days_to_secure": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avg Days To Secure"
+          },
+          "open_negotiations": {
+            "title": "Open Negotiations",
+            "type": "integer"
+          },
+          "orders": {
+            "title": "Orders",
+            "type": "integer"
+          },
+          "spend": {
+            "title": "Spend",
+            "type": "number"
+          },
+          "tons_bought": {
+            "title": "Tons Bought",
+            "type": "number"
+          }
+        },
+        "required": [
+          "open_negotiations",
+          "orders",
+          "tons_bought",
+          "spend",
+          "avg_days_to_secure"
+        ],
+        "title": "BuyerKpisOut",
+        "type": "object"
+      },
+      "CompanyCreate": {
+        "properties": {
+          "city": {
+            "maxLength": 100,
+            "minLength": 2,
+            "title": "City",
+            "type": "string"
+          },
+          "legal_name": {
+            "maxLength": 200,
+            "minLength": 2,
+            "title": "Legal Name",
+            "type": "string"
+          },
+          "market_roles": {
+            "items": {
+              "$ref": "#/components/schemas/MarketRole"
+            },
+            "minItems": 1,
+            "title": "Market Roles",
+            "type": "array"
+          },
+          "nit": {
+            "title": "Nit",
+            "type": "string"
+          }
+        },
+        "required": [
+          "legal_name",
+          "nit",
+          "city",
+          "market_roles"
+        ],
+        "title": "CompanyCreate",
+        "type": "object"
+      },
+      "CompanyKpisOut": {
+        "properties": {
+          "buyer": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BuyerKpisOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "company_id": {
+            "format": "uuid",
+            "title": "Company Id",
+            "type": "string"
+          },
+          "seller": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SellerKpisOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "transporter": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TransporterKpisOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "company_id",
+          "seller",
+          "buyer",
+          "transporter"
+        ],
+        "title": "CompanyKpisOut",
+        "type": "object"
+      },
+      "CompanyOut": {
+        "properties": {
+          "city": {
+            "title": "City",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "is_verified": {
+            "title": "Is Verified",
+            "type": "boolean"
+          },
+          "legal_name": {
+            "title": "Legal Name",
+            "type": "string"
+          },
+          "market_roles": {
+            "items": {
+              "$ref": "#/components/schemas/MarketRole"
+            },
+            "title": "Market Roles",
+            "type": "array"
+          },
+          "nit": {
+            "title": "Nit",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "legal_name",
+          "nit",
+          "city",
+          "market_roles",
+          "is_verified",
+          "created_at"
+        ],
+        "title": "CompanyOut",
+        "type": "object"
+      },
+      "CompanyProfile": {
+        "properties": {
+          "average_rating": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Average Rating"
+          },
+          "city": {
+            "title": "City",
+            "type": "string"
+          },
+          "completed_orders": {
+            "title": "Completed Orders",
+            "type": "integer"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "is_verified": {
+            "title": "Is Verified",
+            "type": "boolean"
+          },
+          "legal_name": {
+            "title": "Legal Name",
+            "type": "string"
+          },
+          "listings": {
+            "items": {
+              "$ref": "#/components/schemas/ListingOut"
+            },
+            "title": "Listings",
+            "type": "array"
+          },
+          "market_roles": {
+            "items": {
+              "$ref": "#/components/schemas/MarketRole"
+            },
+            "title": "Market Roles",
+            "type": "array"
+          },
+          "member_since": {
+            "format": "date-time",
+            "title": "Member Since",
+            "type": "string"
+          },
+          "review_count": {
+            "title": "Review Count",
+            "type": "integer"
+          },
+          "reviews": {
+            "items": {
+              "$ref": "#/components/schemas/ReviewOut"
+            },
+            "title": "Reviews",
+            "type": "array"
+          },
+          "trust_score": {
+            "title": "Trust Score",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "legal_name",
+          "city",
+          "market_roles",
+          "is_verified",
+          "member_since",
+          "trust_score",
+          "average_rating",
+          "review_count",
+          "completed_orders",
+          "reviews",
+          "listings"
+        ],
+        "title": "CompanyProfile",
+        "type": "object"
+      },
+      "CompanyRef": {
+        "properties": {
+          "city": {
+            "title": "City",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "is_verified": {
+            "title": "Is Verified",
+            "type": "boolean"
+          },
+          "legal_name": {
+            "title": "Legal Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "legal_name",
+          "city",
+          "is_verified"
+        ],
+        "title": "CompanyRef",
+        "type": "object"
+      },
+      "DisputeCreate": {
+        "properties": {
+          "description": {
+            "maxLength": 4000,
+            "minLength": 10,
+            "title": "Description",
+            "type": "string"
+          },
+          "reason": {
+            "$ref": "#/components/schemas/DisputeReason"
+          }
+        },
+        "required": [
+          "reason",
+          "description"
+        ],
+        "title": "DisputeCreate",
+        "type": "object"
+      },
+      "DisputeOut": {
+        "properties": {
+          "at_fault_company_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "At Fault Company Id"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "opened_by": {
+            "$ref": "#/components/schemas/CompanyRef"
+          },
+          "reason": {
+            "$ref": "#/components/schemas/DisputeReason"
+          },
+          "resolution": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolution"
+          },
+          "resolved_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolved At"
+          },
+          "status": {
+            "$ref": "#/components/schemas/DisputeStatus"
+          },
+          "transaction_id": {
+            "format": "uuid",
+            "title": "Transaction Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "transaction_id",
+          "opened_by",
+          "reason",
+          "description",
+          "status",
+          "resolution",
+          "at_fault_company_id",
+          "created_at",
+          "resolved_at"
+        ],
+        "title": "DisputeOut",
+        "type": "object"
+      },
+      "DisputeReason": {
+        "enum": [
+          "quality",
+          "quantity",
+          "delivery",
+          "payment",
+          "other"
+        ],
+        "title": "DisputeReason",
+        "type": "string"
+      },
+      "DisputeResolve": {
+        "properties": {
+          "at_fault_company_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "At Fault Company Id"
+          },
+          "resolution": {
+            "maxLength": 4000,
+            "minLength": 10,
+            "title": "Resolution",
+            "type": "string"
+          }
+        },
+        "required": [
+          "resolution"
+        ],
+        "title": "DisputeResolve",
+        "type": "object"
+      },
+      "DisputeStatus": {
+        "enum": [
+          "open",
+          "resolved"
+        ],
+        "title": "DisputeStatus",
+        "type": "string"
+      },
+      "EventCreate": {
+        "properties": {
+          "note": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ShipmentStatus"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "EventCreate",
+        "type": "object"
+      },
+      "EventOut": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ShipmentStatus"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "note",
+          "created_at"
+        ],
+        "title": "EventOut",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "InvitationOut": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "role": {
+            "$ref": "#/components/schemas/MemberRole"
+          }
+        },
+        "required": [
+          "id",
+          "email",
+          "role",
+          "created_at"
+        ],
+        "title": "InvitationOut",
+        "type": "object"
+      },
+      "InviteIn": {
+        "properties": {
+          "email": {
+            "maxLength": 320,
+            "pattern": "^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$",
+            "title": "Email",
+            "type": "string"
+          },
+          "role": {
+            "$ref": "#/components/schemas/MemberRole",
+            "default": "member"
+          }
+        },
+        "required": [
+          "email"
+        ],
+        "title": "InviteIn",
+        "type": "object"
+      },
+      "ListingCompany": {
+        "properties": {
+          "city": {
+            "title": "City",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "is_verified": {
+            "title": "Is Verified",
+            "type": "boolean"
+          },
+          "legal_name": {
+            "title": "Legal Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "legal_name",
+          "city",
+          "is_verified"
+        ],
+        "title": "ListingCompany",
+        "type": "object"
+      },
+      "ListingCreate": {
+        "properties": {
+          "availability": {
+            "$ref": "#/components/schemas/Availability"
+          },
+          "available_from": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Available From"
+          },
+          "category": {
+            "$ref": "#/components/schemas/MaterialCategory"
+          },
+          "city": {
+            "maxLength": 100,
+            "minLength": 2,
+            "title": "City",
+            "type": "string"
+          },
+          "company_id": {
+            "format": "uuid",
+            "title": "Company Id",
+            "type": "string"
+          },
+          "condition": {
+            "$ref": "#/components/schemas/MaterialCondition"
+          },
+          "conditions": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Conditions"
+          },
+          "description": {
+            "default": "",
+            "maxLength": 4000,
+            "title": "Description",
+            "type": "string"
+          },
+          "facility_name": {
+            "anyOf": [
+              {
+                "maxLength": 160,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Facility Name"
+          },
+          "is_recurring": {
+            "default": false,
+            "title": "Is Recurring",
+            "type": "boolean"
+          },
+          "min_order_quantity": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min Order Quantity"
+          },
+          "pickup_allowed": {
+            "default": true,
+            "title": "Pickup Allowed",
+            "type": "boolean"
+          },
+          "price": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price"
+          },
+          "price_negotiable": {
+            "default": false,
+            "title": "Price Negotiable",
+            "type": "boolean"
+          },
+          "price_unit": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/QuantityUnit"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "pricing_type": {
+            "$ref": "#/components/schemas/PricingType"
+          },
+          "publish": {
+            "default": false,
+            "title": "Publish",
+            "type": "boolean"
+          },
+          "quantity": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Quantity"
+          },
+          "quantity_unit": {
+            "$ref": "#/components/schemas/QuantityUnit"
+          },
+          "title": {
+            "maxLength": 160,
+            "minLength": 5,
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "category",
+          "title",
+          "condition",
+          "quantity",
+          "quantity_unit",
+          "availability",
+          "city",
+          "pricing_type",
+          "company_id"
+        ],
+        "title": "ListingCreate",
+        "type": "object"
+      },
+      "ListingImageOut": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "url"
+        ],
+        "title": "ListingImageOut",
+        "type": "object"
+      },
+      "ListingOut": {
+        "properties": {
+          "availability": {
+            "$ref": "#/components/schemas/Availability"
+          },
+          "available_from": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Available From"
+          },
+          "category": {
+            "$ref": "#/components/schemas/MaterialCategory"
+          },
+          "city": {
+            "title": "City",
+            "type": "string"
+          },
+          "company": {
+            "$ref": "#/components/schemas/ListingCompany"
+          },
+          "condition": {
+            "$ref": "#/components/schemas/MaterialCondition"
+          },
+          "conditions": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Conditions"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "facility_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Facility Name"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "images": {
+            "items": {
+              "$ref": "#/components/schemas/ListingImageOut"
+            },
+            "title": "Images",
+            "type": "array"
+          },
+          "is_recurring": {
+            "title": "Is Recurring",
+            "type": "boolean"
+          },
+          "min_order_quantity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min Order Quantity"
+          },
+          "moderation_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Moderation Note"
+          },
+          "pickup_allowed": {
+            "title": "Pickup Allowed",
+            "type": "boolean"
+          },
+          "price": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price"
+          },
+          "price_negotiable": {
+            "title": "Price Negotiable",
+            "type": "boolean"
+          },
+          "price_unit": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/QuantityUnit"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "pricing_type": {
+            "$ref": "#/components/schemas/PricingType"
+          },
+          "published_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Published At"
+          },
+          "quantity": {
+            "title": "Quantity",
+            "type": "number"
+          },
+          "quantity_unit": {
+            "$ref": "#/components/schemas/QuantityUnit"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ListingStatus"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "published_at",
+          "created_at",
+          "company",
+          "category",
+          "title",
+          "description",
+          "condition",
+          "is_recurring",
+          "quantity",
+          "quantity_unit",
+          "min_order_quantity",
+          "availability",
+          "available_from",
+          "city",
+          "facility_name",
+          "pickup_allowed",
+          "pricing_type",
+          "price",
+          "price_unit",
+          "price_negotiable",
+          "conditions",
+          "moderation_note",
+          "images"
+        ],
+        "title": "ListingOut",
+        "type": "object"
+      },
+      "ListingPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ListingOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "limit",
+          "offset"
+        ],
+        "title": "ListingPage",
+        "type": "object"
+      },
+      "ListingRef": {
+        "properties": {
+          "category": {
+            "title": "Category",
+            "type": "string"
+          },
+          "city": {
+            "title": "City",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "price": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price"
+          },
+          "price_unit": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/QuantityUnit"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "quantity": {
+            "title": "Quantity",
+            "type": "number"
+          },
+          "quantity_unit": {
+            "$ref": "#/components/schemas/QuantityUnit"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "category",
+          "quantity",
+          "quantity_unit",
+          "price",
+          "price_unit",
+          "city"
+        ],
+        "title": "ListingRef",
+        "type": "object"
+      },
+      "ListingStatus": {
+        "enum": [
+          "draft",
+          "published",
+          "archived"
+        ],
+        "title": "ListingStatus",
+        "type": "string"
+      },
+      "ListingUpdate": {
+        "description": "Every field optional; only the ones sent are changed.",
+        "properties": {
+          "availability": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Availability"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "available_from": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Available From"
+          },
+          "category": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MaterialCategory"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "city": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "minLength": 2,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "City"
+          },
+          "condition": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MaterialCondition"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "conditions": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Conditions"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "maxLength": 4000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "facility_name": {
+            "anyOf": [
+              {
+                "maxLength": 160,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Facility Name"
+          },
+          "is_recurring": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Recurring"
+          },
+          "min_order_quantity": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min Order Quantity"
+          },
+          "pickup_allowed": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pickup Allowed"
+          },
+          "price": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price"
+          },
+          "price_negotiable": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price Negotiable"
+          },
+          "price_unit": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/QuantityUnit"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "pricing_type": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PricingType"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "quantity": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quantity"
+          },
+          "quantity_unit": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/QuantityUnit"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "title": {
+            "anyOf": [
+              {
+                "maxLength": 160,
+                "minLength": 5,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          }
+        },
+        "title": "ListingUpdate",
+        "type": "object"
+      },
+      "MarketRole": {
+        "description": "What a company does on the marketplace. A company can hold more than one.",
+        "enum": [
+          "generator",
+          "buyer",
+          "transporter"
+        ],
+        "title": "MarketRole",
+        "type": "string"
+      },
+      "MaterialCategory": {
+        "enum": [
+          "plastic",
+          "metal",
+          "paper_cardboard",
+          "wood",
+          "textile",
+          "glass",
+          "electronic",
+          "agro"
+        ],
+        "title": "MaterialCategory",
+        "type": "string"
+      },
+      "MaterialCondition": {
+        "enum": [
+          "clean_separated",
+          "mixed",
+          "preprocessed",
+          "needs_sorting"
+        ],
+        "title": "MaterialCondition",
+        "type": "string"
+      },
+      "MeResponse": {
+        "properties": {
+          "companies": {
+            "items": {
+              "$ref": "#/components/schemas/MembershipOut"
+            },
+            "title": "Companies",
+            "type": "array"
+          },
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "full_name": {
+            "title": "Full Name",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "is_platform_admin": {
+            "title": "Is Platform Admin",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "email",
+          "full_name",
+          "is_platform_admin",
+          "companies"
+        ],
+        "title": "MeResponse",
+        "type": "object"
+      },
+      "MemberOut": {
+        "properties": {
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "full_name": {
+            "title": "Full Name",
+            "type": "string"
+          },
+          "role": {
+            "$ref": "#/components/schemas/MemberRole"
+          },
+          "user_id": {
+            "format": "uuid",
+            "title": "User Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "full_name",
+          "email",
+          "role"
+        ],
+        "title": "MemberOut",
+        "type": "object"
+      },
+      "MemberRole": {
+        "description": "A user's permissions inside one company.\n\nMembers do the daily work (publish, chat, quote, request transport). Owners and admins\nalso commit the company: accept quotes, pick transporters, close orders and manage the\nteam. There is one owner, who cannot be removed.",
+        "enum": [
+          "owner",
+          "admin",
+          "member"
+        ],
+        "title": "MemberRole",
+        "type": "string"
+      },
+      "MembershipOut": {
+        "properties": {
+          "company_id": {
+            "format": "uuid",
+            "title": "Company Id",
+            "type": "string"
+          },
+          "is_verified": {
+            "title": "Is Verified",
+            "type": "boolean"
+          },
+          "legal_name": {
+            "title": "Legal Name",
+            "type": "string"
+          },
+          "market_roles": {
+            "items": {
+              "$ref": "#/components/schemas/MarketRole"
+            },
+            "title": "Market Roles",
+            "type": "array"
+          },
+          "role": {
+            "$ref": "#/components/schemas/MemberRole"
+          }
+        },
+        "required": [
+          "company_id",
+          "legal_name",
+          "market_roles",
+          "is_verified",
+          "role"
+        ],
+        "title": "MembershipOut",
+        "type": "object"
+      },
+      "MessageCreate": {
+        "properties": {
+          "body": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Body",
+            "type": "string"
+          }
+        },
+        "required": [
+          "body"
+        ],
+        "title": "MessageCreate",
+        "type": "object"
+      },
+      "MessageOut": {
+        "properties": {
+          "body": {
+            "title": "Body",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "sender_company_id": {
+            "format": "uuid",
+            "title": "Sender Company Id",
+            "type": "string"
+          },
+          "sender_name": {
+            "title": "Sender Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "body",
+          "sender_name",
+          "sender_company_id",
+          "created_at"
+        ],
+        "title": "MessageOut",
+        "type": "object"
+      },
+      "NotificationOut": {
+        "properties": {
+          "body": {
+            "title": "Body",
+            "type": "string"
+          },
+          "company_id": {
+            "format": "uuid",
+            "title": "Company Id",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "link": {
+            "title": "Link",
+            "type": "string"
+          },
+          "read_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Read At"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "company_id",
+          "kind",
+          "title",
+          "body",
+          "link",
+          "read_at",
+          "created_at"
+        ],
+        "title": "NotificationOut",
+        "type": "object"
+      },
+      "OfferCreate": {
+        "properties": {
+          "notes": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "price": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Price"
+          },
+          "price_unit": {
+            "$ref": "#/components/schemas/QuantityUnit"
+          },
+          "quantity": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Quantity"
+          },
+          "valid_hours": {
+            "default": 48,
+            "maximum": 720.0,
+            "minimum": 1.0,
+            "title": "Valid Hours",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "quantity",
+          "price",
+          "price_unit"
+        ],
+        "title": "OfferCreate",
+        "type": "object"
+      },
+      "OfferOut": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "from_company_id": {
+            "format": "uuid",
+            "title": "From Company Id",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "price": {
+            "title": "Price",
+            "type": "number"
+          },
+          "price_unit": {
+            "$ref": "#/components/schemas/QuantityUnit"
+          },
+          "quantity": {
+            "title": "Quantity",
+            "type": "number"
+          },
+          "quantity_unit": {
+            "$ref": "#/components/schemas/QuantityUnit"
+          },
+          "status": {
+            "$ref": "#/components/schemas/OfferStatus"
+          },
+          "total": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total"
+          },
+          "valid_until": {
+            "format": "date-time",
+            "title": "Valid Until",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "from_company_id",
+          "status",
+          "quantity",
+          "quantity_unit",
+          "price",
+          "price_unit",
+          "total",
+          "notes",
+          "valid_until",
+          "created_at"
+        ],
+        "title": "OfferOut",
+        "type": "object"
+      },
+      "OfferStatus": {
+        "enum": [
+          "pending",
+          "accepted",
+          "declined",
+          "countered"
+        ],
+        "title": "OfferStatus",
+        "type": "string"
+      },
+      "OrderRef": {
+        "properties": {
+          "buyer": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CompanyRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "listing_title": {
+            "title": "Listing Title",
+            "type": "string"
+          },
+          "quantity": {
+            "title": "Quantity",
+            "type": "number"
+          },
+          "quantity_unit": {
+            "$ref": "#/components/schemas/QuantityUnit"
+          },
+          "seller": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CompanyRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "listing_title",
+          "quantity",
+          "quantity_unit",
+          "buyer",
+          "seller"
+        ],
+        "title": "OrderRef",
+        "type": "object"
+      },
+      "PlatformKpisOut": {
+        "properties": {
+          "active_companies_30d": {
+            "title": "Active Companies 30D",
+            "type": "integer"
+          },
+          "avg_dispute_resolution_hours": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avg Dispute Resolution Hours"
+          },
+          "companies_pending_verification": {
+            "title": "Companies Pending Verification",
+            "type": "integer"
+          },
+          "completed_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed Rate"
+          },
+          "dispute_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dispute Rate"
+          },
+          "gmv_30d": {
+            "title": "Gmv 30D",
+            "type": "number"
+          },
+          "listings_published_30d": {
+            "title": "Listings Published 30D",
+            "type": "integer"
+          },
+          "logistics_attach_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Logistics Attach Rate"
+          },
+          "open_disputes": {
+            "title": "Open Disputes",
+            "type": "integer"
+          },
+          "orders_30d": {
+            "title": "Orders 30D",
+            "type": "integer"
+          },
+          "tons_reused": {
+            "title": "Tons Reused",
+            "type": "number"
+          }
+        },
+        "required": [
+          "tons_reused",
+          "gmv_30d",
+          "orders_30d",
+          "completed_rate",
+          "listings_published_30d",
+          "active_companies_30d",
+          "companies_pending_verification",
+          "open_disputes",
+          "dispute_rate",
+          "avg_dispute_resolution_hours",
+          "logistics_attach_rate"
+        ],
+        "title": "PlatformKpisOut",
+        "type": "object"
+      },
+      "PricingType": {
+        "enum": [
+          "paid",
+          "free"
+        ],
+        "title": "PricingType",
+        "type": "string"
+      },
+      "QuantityUnit": {
+        "enum": [
+          "t",
+          "kg",
+          "unit",
+          "m3",
+          "l"
+        ],
+        "title": "QuantityUnit",
+        "type": "string"
+      },
+      "QuoteCreate": {
+        "properties": {
+          "company_id": {
+            "format": "uuid",
+            "title": "Company Id",
+            "type": "string"
+          },
+          "delivery_date": {
+            "format": "date",
+            "title": "Delivery Date",
+            "type": "string"
+          },
+          "includes_insurance": {
+            "default": false,
+            "title": "Includes Insurance",
+            "type": "boolean"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "pickup_date": {
+            "format": "date",
+            "title": "Pickup Date",
+            "type": "string"
+          },
+          "price": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Price"
+          }
+        },
+        "required": [
+          "company_id",
+          "price",
+          "pickup_date",
+          "delivery_date"
+        ],
+        "title": "QuoteCreate",
+        "type": "object"
+      },
+      "QuoteOut": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "delivery_date": {
+            "format": "date",
+            "title": "Delivery Date",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "includes_insurance": {
+            "title": "Includes Insurance",
+            "type": "boolean"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "pickup_date": {
+            "format": "date",
+            "title": "Pickup Date",
+            "type": "string"
+          },
+          "price": {
+            "title": "Price",
+            "type": "number"
+          },
+          "status": {
+            "$ref": "#/components/schemas/QuoteStatus"
+          },
+          "transporter": {
+            "$ref": "#/components/schemas/CompanyRef"
+          }
+        },
+        "required": [
+          "id",
+          "transporter",
+          "status",
+          "price",
+          "pickup_date",
+          "delivery_date",
+          "includes_insurance",
+          "notes",
+          "created_at"
+        ],
+        "title": "QuoteOut",
+        "type": "object"
+      },
+      "QuoteStatus": {
+        "enum": [
+          "pending",
+          "accepted",
+          "rejected"
+        ],
+        "title": "QuoteStatus",
+        "type": "string"
+      },
+      "ReviewCreate": {
+        "properties": {
+          "comment": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comment"
+          },
+          "rating": {
+            "maximum": 5.0,
+            "minimum": 1.0,
+            "title": "Rating",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "rating"
+        ],
+        "title": "ReviewCreate",
+        "type": "object"
+      },
+      "ReviewOut": {
+        "properties": {
+          "comment": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comment"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "from_company": {
+            "$ref": "#/components/schemas/CompanyRef"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "rating": {
+            "title": "Rating",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "rating",
+          "comment",
+          "from_company",
+          "created_at"
+        ],
+        "title": "ReviewOut",
+        "type": "object"
+      },
+      "RoleChange": {
+        "properties": {
+          "role": {
+            "$ref": "#/components/schemas/MemberRole"
+          }
+        },
+        "required": [
+          "role"
+        ],
+        "title": "RoleChange",
+        "type": "object"
+      },
+      "SellerKpisOut": {
+        "properties": {
+          "active_listings": {
+            "title": "Active Listings",
+            "type": "integer"
+          },
+          "avg_first_reply_hours": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avg First Reply Hours"
+          },
+          "leads_30d": {
+            "title": "Leads 30D",
+            "type": "integer"
+          },
+          "orders": {
+            "title": "Orders",
+            "type": "integer"
+          },
+          "revenue": {
+            "title": "Revenue",
+            "type": "number"
+          },
+          "tons_sold": {
+            "title": "Tons Sold",
+            "type": "number"
+          }
+        },
+        "required": [
+          "active_listings",
+          "leads_30d",
+          "avg_first_reply_hours",
+          "orders",
+          "tons_sold",
+          "revenue"
+        ],
+        "title": "SellerKpisOut",
+        "type": "object"
+      },
+      "ShipmentOut": {
+        "properties": {
+          "delivery_address": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Delivery Address"
+          },
+          "delivery_city": {
+            "title": "Delivery City",
+            "type": "string"
+          },
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/EventOut"
+            },
+            "title": "Events",
+            "type": "array"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "my_relation": {
+            "title": "My Relation",
+            "type": "string"
+          },
+          "order": {
+            "$ref": "#/components/schemas/OrderRef"
+          },
+          "pickup_address": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pickup Address"
+          },
+          "pickup_city": {
+            "title": "Pickup City",
+            "type": "string"
+          },
+          "pickup_date": {
+            "format": "date",
+            "title": "Pickup Date",
+            "type": "string"
+          },
+          "quotes": {
+            "items": {
+              "$ref": "#/components/schemas/QuoteOut"
+            },
+            "title": "Quotes",
+            "type": "array"
+          },
+          "requirements": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Requirements"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ShipmentStatus"
+          },
+          "transporter": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CompanyRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "vehicle_type": {
+            "$ref": "#/components/schemas/VehicleType"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "order",
+          "pickup_city",
+          "delivery_city",
+          "pickup_address",
+          "delivery_address",
+          "vehicle_type",
+          "pickup_date",
+          "requirements",
+          "transporter",
+          "quotes",
+          "events",
+          "my_relation"
+        ],
+        "title": "ShipmentOut",
+        "type": "object"
+      },
+      "ShipmentRequest": {
+        "properties": {
+          "delivery_address": {
+            "maxLength": 300,
+            "minLength": 5,
+            "title": "Delivery Address",
+            "type": "string"
+          },
+          "delivery_city": {
+            "maxLength": 100,
+            "minLength": 2,
+            "title": "Delivery City",
+            "type": "string"
+          },
+          "pickup_address": {
+            "maxLength": 300,
+            "minLength": 5,
+            "title": "Pickup Address",
+            "type": "string"
+          },
+          "pickup_city": {
+            "maxLength": 100,
+            "minLength": 2,
+            "title": "Pickup City",
+            "type": "string"
+          },
+          "pickup_date": {
+            "format": "date",
+            "title": "Pickup Date",
+            "type": "string"
+          },
+          "requirements": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Requirements"
+          },
+          "vehicle_type": {
+            "$ref": "#/components/schemas/VehicleType"
+          }
+        },
+        "required": [
+          "pickup_city",
+          "pickup_address",
+          "delivery_city",
+          "delivery_address",
+          "vehicle_type",
+          "pickup_date"
+        ],
+        "title": "ShipmentRequest",
+        "type": "object"
+      },
+      "ShipmentStatus": {
+        "enum": [
+          "requested",
+          "assigned",
+          "picked_up",
+          "in_transit",
+          "delivered"
+        ],
+        "title": "ShipmentStatus",
+        "type": "string"
+      },
+      "TakeDown": {
+        "properties": {
+          "reason": {
+            "maxLength": 1000,
+            "minLength": 5,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "title": "TakeDown",
+        "type": "object"
+      },
+      "TeamOut": {
+        "properties": {
+          "invitations": {
+            "items": {
+              "$ref": "#/components/schemas/InvitationOut"
+            },
+            "title": "Invitations",
+            "type": "array"
+          },
+          "members": {
+            "items": {
+              "$ref": "#/components/schemas/MemberOut"
+            },
+            "title": "Members",
+            "type": "array"
+          }
+        },
+        "required": [
+          "members",
+          "invitations"
+        ],
+        "title": "TeamOut",
+        "type": "object"
+      },
+      "ThreadDetail": {
+        "properties": {
+          "buyer": {
+            "$ref": "#/components/schemas/CompanyRef"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "listing": {
+            "$ref": "#/components/schemas/ListingRef"
+          },
+          "messages": {
+            "items": {
+              "$ref": "#/components/schemas/MessageOut"
+            },
+            "title": "Messages",
+            "type": "array"
+          },
+          "my_company_id": {
+            "format": "uuid",
+            "title": "My Company Id",
+            "type": "string"
+          },
+          "offers": {
+            "items": {
+              "$ref": "#/components/schemas/OfferOut"
+            },
+            "title": "Offers",
+            "type": "array"
+          },
+          "seller": {
+            "$ref": "#/components/schemas/CompanyRef"
+          },
+          "transaction_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Transaction Id"
+          }
+        },
+        "required": [
+          "id",
+          "listing",
+          "buyer",
+          "seller",
+          "my_company_id",
+          "messages",
+          "offers",
+          "transaction_id"
+        ],
+        "title": "ThreadDetail",
+        "type": "object"
+      },
+      "ThreadStart": {
+        "properties": {
+          "body": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Body",
+            "type": "string"
+          },
+          "company_id": {
+            "format": "uuid",
+            "title": "Company Id",
+            "type": "string"
+          },
+          "listing_id": {
+            "format": "uuid",
+            "title": "Listing Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "listing_id",
+          "company_id",
+          "body"
+        ],
+        "title": "ThreadStart",
+        "type": "object"
+      },
+      "ThreadSummary": {
+        "properties": {
+          "counterpart": {
+            "$ref": "#/components/schemas/CompanyRef"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "last_activity_at": {
+            "format": "date-time",
+            "title": "Last Activity At",
+            "type": "string"
+          },
+          "last_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Message"
+          },
+          "listing": {
+            "$ref": "#/components/schemas/ListingRef"
+          },
+          "my_company_id": {
+            "format": "uuid",
+            "title": "My Company Id",
+            "type": "string"
+          },
+          "pending_offer_from_me": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pending Offer From Me"
+          }
+        },
+        "required": [
+          "id",
+          "listing",
+          "counterpart",
+          "my_company_id",
+          "last_message",
+          "last_activity_at",
+          "pending_offer_from_me"
+        ],
+        "title": "ThreadSummary",
+        "type": "object"
+      },
+      "TransactionOut": {
+        "properties": {
+          "buyer": {
+            "$ref": "#/components/schemas/CompanyRef"
+          },
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "completed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "has_open_dispute": {
+            "default": false,
+            "title": "Has Open Dispute",
+            "type": "boolean"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "listing": {
+            "$ref": "#/components/schemas/ListingRef"
+          },
+          "my_role": {
+            "default": "",
+            "title": "My Role",
+            "type": "string"
+          },
+          "price": {
+            "title": "Price",
+            "type": "number"
+          },
+          "price_unit": {
+            "$ref": "#/components/schemas/QuantityUnit"
+          },
+          "quantity": {
+            "title": "Quantity",
+            "type": "number"
+          },
+          "quantity_unit": {
+            "$ref": "#/components/schemas/QuantityUnit"
+          },
+          "reviewed_by_me": {
+            "default": false,
+            "title": "Reviewed By Me",
+            "type": "boolean"
+          },
+          "seller": {
+            "$ref": "#/components/schemas/CompanyRef"
+          },
+          "status": {
+            "$ref": "#/components/schemas/TransactionStatus"
+          },
+          "thread_id": {
+            "format": "uuid",
+            "title": "Thread Id",
+            "type": "string"
+          },
+          "total": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "status",
+          "listing",
+          "buyer",
+          "seller",
+          "quantity",
+          "quantity_unit",
+          "price",
+          "price_unit",
+          "total",
+          "created_at",
+          "completed_at",
+          "thread_id"
+        ],
+        "title": "TransactionOut",
+        "type": "object"
+      },
+      "TransactionStatus": {
+        "enum": [
+          "agreed",
+          "in_transit",
+          "delivered",
+          "completed"
+        ],
+        "title": "TransactionStatus",
+        "type": "string"
+      },
+      "TransporterKpisOut": {
+        "properties": {
+          "quotes_sent": {
+            "title": "Quotes Sent",
+            "type": "integer"
+          },
+          "quotes_won": {
+            "title": "Quotes Won",
+            "type": "integer"
+          },
+          "trips_active": {
+            "title": "Trips Active",
+            "type": "integer"
+          },
+          "trips_delivered": {
+            "title": "Trips Delivered",
+            "type": "integer"
+          },
+          "win_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Win Rate"
+          }
+        },
+        "required": [
+          "quotes_sent",
+          "quotes_won",
+          "win_rate",
+          "trips_active",
+          "trips_delivered"
+        ],
+        "title": "TransporterKpisOut",
+        "type": "object"
+      },
+      "UnreadCount": {
+        "properties": {
+          "unread": {
+            "title": "Unread",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "unread"
+        ],
+        "title": "UnreadCount",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      },
+      "VehicleType": {
+        "enum": [
+          "single_truck",
+          "double_axle",
+          "tractor_trailer",
+          "bulk",
+          "special"
+        ],
+        "title": "VehicleType",
+        "type": "string"
+      }
+    },
+    "securitySchemes": {
+      "HTTPBearer": {
+        "scheme": "bearer",
+        "type": "http"
+      }
+    }
+  },
+  "info": {
+    "title": "Rexfy API",
+    "version": "0.1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/admin/audit": {
+      "get": {
+        "operationId": "audit_log_admin_audit_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "entity_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Entity Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AuditEntry"
+                  },
+                  "title": "Response Audit Log Admin Audit Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Audit Log",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/admin/companies": {
+      "get": {
+        "operationId": "companies_admin_companies_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "verified",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Verified"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AdminCompany"
+                  },
+                  "title": "Response Companies Admin Companies Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Companies",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/admin/companies/{company_id}/unverify": {
+      "post": {
+        "operationId": "unverify_admin_companies__company_id__unverify_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "company_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Company Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompanyOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Unverify",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/admin/companies/{company_id}/verify": {
+      "post": {
+        "operationId": "verify_admin_companies__company_id__verify_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "company_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Company Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompanyOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Verify",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/admin/disputes": {
+      "get": {
+        "operationId": "admin_disputes_admin_disputes_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/DisputeStatus"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AdminDisputeOut"
+                  },
+                  "title": "Response Admin Disputes Admin Disputes Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Admin Disputes",
+        "tags": [
+          "trust",
+          "admin"
+        ]
+      }
+    },
+    "/admin/disputes/{dispute_id}": {
+      "patch": {
+        "operationId": "resolve_admin_disputes__dispute_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "dispute_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Dispute Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DisputeResolve"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminDisputeOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Resolve",
+        "tags": [
+          "trust",
+          "admin"
+        ]
+      }
+    },
+    "/admin/listings": {
+      "get": {
+        "operationId": "listings_admin_listings_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/ListingStatus"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ListingOut"
+                  },
+                  "title": "Response Listings Admin Listings Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Listings",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/admin/listings/{listing_id}/take-down": {
+      "post": {
+        "operationId": "take_down_admin_listings__listing_id__take_down_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "listing_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Listing Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TakeDown"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListingOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Take Down",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/admin/metrics": {
+      "get": {
+        "operationId": "metrics_admin_metrics_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlatformKpisOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Metrics",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/companies": {
+      "post": {
+        "operationId": "create_companies_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompanyCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompanyOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Create",
+        "tags": [
+          "companies"
+        ]
+      }
+    },
+    "/companies/{company_id}": {
+      "get": {
+        "operationId": "read_companies__company_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "company_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Company Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompanyOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read",
+        "tags": [
+          "companies"
+        ]
+      }
+    },
+    "/companies/{company_id}/profile": {
+      "get": {
+        "description": "Public trust profile: what any visitor can check before doing business.",
+        "operationId": "company_profile_companies__company_id__profile_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "company_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Company Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompanyProfile"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Company Profile",
+        "tags": [
+          "trust"
+        ]
+      }
+    },
+    "/companies/{company_id}/team": {
+      "get": {
+        "operationId": "team_companies__company_id__team_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "company_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Company Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TeamOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Team",
+        "tags": [
+          "companies"
+        ]
+      },
+      "post": {
+        "operationId": "invite_companies__company_id__team_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "company_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Company Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InviteIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TeamOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Invite",
+        "tags": [
+          "companies"
+        ]
+      }
+    },
+    "/companies/{company_id}/team/invitations/{invitation_id}": {
+      "delete": {
+        "operationId": "cancel_invitation_companies__company_id__team_invitations__invitation_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "company_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Company Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "invitation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Invitation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TeamOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Cancel Invitation",
+        "tags": [
+          "companies"
+        ]
+      }
+    },
+    "/companies/{company_id}/team/{user_id}": {
+      "delete": {
+        "operationId": "remove_companies__company_id__team__user_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "company_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Company Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "User Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Remove",
+        "tags": [
+          "companies"
+        ]
+      },
+      "patch": {
+        "operationId": "change_role_companies__company_id__team__user_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "company_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Company Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "User Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RoleChange"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TeamOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Change Role",
+        "tags": [
+          "companies"
+        ]
+      }
+    },
+    "/health": {
+      "get": {
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Health Health Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Health",
+        "tags": [
+          "health"
+        ]
+      }
+    },
+    "/health/ready": {
+      "get": {
+        "operationId": "readiness_health_ready_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Readiness Health Ready Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Readiness",
+        "tags": [
+          "health"
+        ]
+      }
+    },
+    "/listings": {
+      "get": {
+        "operationId": "search_listings_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          },
+          {
+            "in": "query",
+            "name": "category",
+            "required": false,
+            "schema": {
+              "default": [],
+              "items": {
+                "$ref": "#/components/schemas/MaterialCategory"
+              },
+              "title": "Category",
+              "type": "array"
+            }
+          },
+          {
+            "in": "query",
+            "name": "city",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "City"
+            }
+          },
+          {
+            "in": "query",
+            "name": "availability",
+            "required": false,
+            "schema": {
+              "default": [],
+              "items": {
+                "$ref": "#/components/schemas/Availability"
+              },
+              "title": "Availability",
+              "type": "array"
+            }
+          },
+          {
+            "in": "query",
+            "name": "pricing_type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/PricingType"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Pricing Type"
+            }
+          },
+          {
+            "in": "query",
+            "name": "recurring",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Recurring"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "default": "recent",
+              "enum": [
+                "recent",
+                "price_asc"
+              ],
+              "title": "Sort",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 50,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListingPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Search",
+        "tags": [
+          "listings"
+        ]
+      },
+      "post": {
+        "operationId": "create_listings_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ListingCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListingOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Create",
+        "tags": [
+          "listings"
+        ]
+      }
+    },
+    "/listings/{listing_id}": {
+      "get": {
+        "operationId": "read_listings__listing_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "listing_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Listing Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListingOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read",
+        "tags": [
+          "listings"
+        ]
+      },
+      "patch": {
+        "operationId": "update_listings__listing_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "listing_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Listing Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ListingUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListingOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Update",
+        "tags": [
+          "listings"
+        ]
+      }
+    },
+    "/listings/{listing_id}/archive": {
+      "post": {
+        "operationId": "archive_listings__listing_id__archive_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "listing_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Listing Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListingOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Archive",
+        "tags": [
+          "listings"
+        ]
+      }
+    },
+    "/listings/{listing_id}/images": {
+      "post": {
+        "operationId": "upload_images_listings__listing_id__images_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "listing_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Listing Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_images_listings__listing_id__images_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListingOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Upload Images",
+        "tags": [
+          "listings"
+        ]
+      }
+    },
+    "/listings/{listing_id}/images/{image_id}": {
+      "delete": {
+        "operationId": "delete_image_listings__listing_id__images__image_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "listing_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Listing Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "image_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Image Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListingOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Delete Image",
+        "tags": [
+          "listings"
+        ]
+      }
+    },
+    "/listings/{listing_id}/publish": {
+      "post": {
+        "operationId": "publish_listings__listing_id__publish_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "listing_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Listing Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListingOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Publish",
+        "tags": [
+          "listings"
+        ]
+      }
+    },
+    "/logistics/requests": {
+      "get": {
+        "operationId": "open_requests_logistics_requests_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ShipmentOut"
+                  },
+                  "title": "Response Open Requests Logistics Requests Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Open Requests",
+        "tags": [
+          "logistics"
+        ]
+      }
+    },
+    "/logistics/shipments": {
+      "get": {
+        "operationId": "my_shipments_logistics_shipments_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ShipmentOut"
+                  },
+                  "title": "Response My Shipments Logistics Shipments Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "My Shipments",
+        "tags": [
+          "logistics"
+        ]
+      }
+    },
+    "/materials": {
+      "get": {
+        "operationId": "materials_materials_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/MaterialCategory"
+                  },
+                  "title": "Response Materials Materials Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Materials",
+        "tags": [
+          "listings"
+        ]
+      }
+    },
+    "/me": {
+      "get": {
+        "operationId": "me_me_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Me",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/me/dashboard": {
+      "get": {
+        "operationId": "dashboard_me_dashboard_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CompanyKpisOut"
+                  },
+                  "title": "Response Dashboard Me Dashboard Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Dashboard",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/me/listings": {
+      "get": {
+        "operationId": "my_listings_me_listings_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ListingOut"
+                  },
+                  "title": "Response My Listings Me Listings Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "My Listings",
+        "tags": [
+          "listings"
+        ]
+      }
+    },
+    "/notifications": {
+      "get": {
+        "operationId": "inbox_notifications_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/NotificationOut"
+                  },
+                  "title": "Response Inbox Notifications Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Inbox",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/notifications/read": {
+      "post": {
+        "operationId": "read_all_notifications_read_post",
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read All",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/notifications/unread-count": {
+      "get": {
+        "operationId": "unread_notifications_unread_count_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnreadCount"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Unread",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/notifications/{notification_id}/read": {
+      "post": {
+        "operationId": "read_one_notifications__notification_id__read_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "notification_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Notification Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read One",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/offers/{offer_id}/accept": {
+      "post": {
+        "operationId": "accept_offers__offer_id__accept_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "offer_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Offer Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransactionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Accept",
+        "tags": [
+          "negotiation"
+        ]
+      }
+    },
+    "/offers/{offer_id}/decline": {
+      "post": {
+        "operationId": "decline_offers__offer_id__decline_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "offer_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Offer Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OfferOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Decline",
+        "tags": [
+          "negotiation"
+        ]
+      }
+    },
+    "/shipments/{shipment_id}": {
+      "get": {
+        "operationId": "read_shipments__shipment_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "shipment_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Shipment Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShipmentOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read",
+        "tags": [
+          "logistics"
+        ]
+      }
+    },
+    "/shipments/{shipment_id}/events": {
+      "post": {
+        "operationId": "add_event_shipments__shipment_id__events_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "shipment_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Shipment Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EventCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShipmentOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Add Event",
+        "tags": [
+          "logistics"
+        ]
+      }
+    },
+    "/shipments/{shipment_id}/quotes": {
+      "post": {
+        "operationId": "quote_shipments__shipment_id__quotes_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "shipment_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Shipment Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuoteCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShipmentOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Quote",
+        "tags": [
+          "logistics"
+        ]
+      }
+    },
+    "/threads": {
+      "get": {
+        "operationId": "list_threads_threads_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ThreadSummary"
+                  },
+                  "title": "Response List Threads Threads Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Threads",
+        "tags": [
+          "negotiation"
+        ]
+      },
+      "post": {
+        "operationId": "start_threads_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ThreadStart"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ThreadDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Start",
+        "tags": [
+          "negotiation"
+        ]
+      }
+    },
+    "/threads/{thread_id}": {
+      "get": {
+        "operationId": "read_thread_threads__thread_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "thread_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Thread Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ThreadDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Thread",
+        "tags": [
+          "negotiation"
+        ]
+      }
+    },
+    "/threads/{thread_id}/messages": {
+      "post": {
+        "operationId": "post_message_threads__thread_id__messages_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "thread_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Thread Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MessageCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ThreadDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Post Message",
+        "tags": [
+          "negotiation"
+        ]
+      }
+    },
+    "/threads/{thread_id}/offers": {
+      "post": {
+        "operationId": "post_offer_threads__thread_id__offers_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "thread_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Thread Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OfferCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ThreadDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Post Offer",
+        "tags": [
+          "negotiation"
+        ]
+      }
+    },
+    "/transactions": {
+      "get": {
+        "operationId": "list_transactions_transactions_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/TransactionOut"
+                  },
+                  "title": "Response List Transactions Transactions Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Transactions",
+        "tags": [
+          "negotiation"
+        ]
+      }
+    },
+    "/transactions/{transaction_id}": {
+      "get": {
+        "operationId": "read_transaction_transactions__transaction_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "transaction_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Transaction Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransactionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Transaction",
+        "tags": [
+          "negotiation"
+        ]
+      }
+    },
+    "/transactions/{transaction_id}/confirm-receipt": {
+      "post": {
+        "operationId": "confirm_transactions__transaction_id__confirm_receipt_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "transaction_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Transaction Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransactionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Confirm",
+        "tags": [
+          "negotiation"
+        ]
+      }
+    },
+    "/transactions/{transaction_id}/disputes": {
+      "get": {
+        "operationId": "order_disputes_transactions__transaction_id__disputes_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "transaction_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Transaction Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/DisputeOut"
+                  },
+                  "title": "Response Order Disputes Transactions  Transaction Id  Disputes Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Order Disputes",
+        "tags": [
+          "negotiation"
+        ]
+      },
+      "post": {
+        "operationId": "open_dispute_transactions__transaction_id__disputes_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "transaction_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Transaction Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DisputeCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DisputeOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Open Dispute",
+        "tags": [
+          "trust"
+        ]
+      }
+    },
+    "/transactions/{transaction_id}/reviews": {
+      "post": {
+        "operationId": "review_transactions__transaction_id__reviews_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "transaction_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Transaction Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Review",
+        "tags": [
+          "trust"
+        ]
+      }
+    },
+    "/transactions/{transaction_id}/shipment": {
+      "get": {
+        "operationId": "for_transaction_transactions__transaction_id__shipment_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "transaction_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Transaction Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShipmentOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "For Transaction",
+        "tags": [
+          "logistics"
+        ]
+      },
+      "post": {
+        "operationId": "request_transactions__transaction_id__shipment_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "transaction_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Transaction Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ShipmentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShipmentOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Request",
+        "tags": [
+          "logistics"
+        ]
+      }
+    },
+    "/transport-quotes/{quote_id}/accept": {
+      "post": {
+        "operationId": "accept_transport_quotes__quote_id__accept_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "quote_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Quote Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShipmentOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Accept",
+        "tags": [
+          "logistics"
+        ]
+      }
+    }
+  }
+}
