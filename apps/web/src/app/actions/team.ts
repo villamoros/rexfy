@@ -4,6 +4,11 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { apiFetch } from "@/lib/api";
+import {
+  mutationFailure,
+  mutationSuccess,
+  type MutationState,
+} from "@/lib/action-state";
 import { getToken } from "@/lib/session";
 
 export type TeamState = { message?: string; done?: boolean } | undefined;
@@ -42,35 +47,50 @@ export async function inviteMember(
   return { done: true };
 }
 
-export async function changeRole(formData: FormData) {
+export async function changeRole(
+  _: MutationState,
+  formData: FormData,
+): Promise<MutationState> {
   const companyId = encodeURIComponent(text(formData, "company_id"));
   const userId = encodeURIComponent(text(formData, "user_id"));
-  await apiFetch(`/companies/${companyId}/team/${userId}`, {
+  const result = await apiFetch(`/companies/${companyId}/team/${userId}`, {
     method: "PATCH",
     token: await token(),
     body: { role: text(formData, "role") },
   });
+  if (!result.ok) return mutationFailure(result);
   revalidatePath(path(companyId));
+  return mutationSuccess("Rol actualizado.");
 }
 
-export async function removeMember(formData: FormData) {
+export async function removeMember(
+  _: MutationState,
+  formData: FormData,
+): Promise<MutationState> {
   const companyId = encodeURIComponent(text(formData, "company_id"));
   const userId = encodeURIComponent(text(formData, "user_id"));
   const leaving = formData.get("self") === "true";
-  await apiFetch(`/companies/${companyId}/team/${userId}`, {
+  const result = await apiFetch(`/companies/${companyId}/team/${userId}`, {
     method: "DELETE",
     token: await token(),
   });
+  if (!result.ok) return mutationFailure(result);
   if (leaving) redirect("/panel");
   revalidatePath(path(companyId));
+  return mutationSuccess("Miembro eliminado del equipo.");
 }
 
-export async function cancelInvitation(formData: FormData) {
+export async function cancelInvitation(
+  _: MutationState,
+  formData: FormData,
+): Promise<MutationState> {
   const companyId = encodeURIComponent(text(formData, "company_id"));
   const id = encodeURIComponent(text(formData, "invitation_id"));
-  await apiFetch(`/companies/${companyId}/team/invitations/${id}`, {
+  const result = await apiFetch(`/companies/${companyId}/team/invitations/${id}`, {
     method: "DELETE",
     token: await token(),
   });
+  if (!result.ok) return mutationFailure(result);
   revalidatePath(path(companyId));
+  return mutationSuccess("Invitación cancelada.");
 }

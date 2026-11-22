@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 
 import { apiFetch } from "@/lib/api";
+import { mutationFailure, type MutationState } from "@/lib/action-state";
 import type { ThreadDetail, Transaction } from "@/lib/deals";
 import { getToken } from "@/lib/session";
 
@@ -70,7 +71,10 @@ export async function sendOffer(
   redirect(`/mensajes/${id}`);
 }
 
-export async function respondToOffer(formData: FormData) {
+export async function respondToOffer(
+  _: MutationState,
+  formData: FormData,
+): Promise<MutationState> {
   const thread = text(formData, "thread_id");
   const offer = text(formData, "offer_id");
   const decision =
@@ -79,6 +83,7 @@ export async function respondToOffer(formData: FormData) {
     method: "POST",
     token: await token(),
   });
+  if (!result.ok) return mutationFailure(result);
   if (result.ok && decision === "accept")
     redirect(`/ordenes/${result.data.id}?nueva=1`);
   redirect(`/mensajes/${thread}`);

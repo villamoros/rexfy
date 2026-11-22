@@ -5,7 +5,9 @@ import { Suspense } from "react";
 
 import { acceptTransportQuote } from "@/app/actions/logistics";
 import { AutoRefresh } from "@/components/auto-refresh";
+import { MutationForm } from "@/components/mutation-form";
 import { OrderProgress } from "@/components/order-progress";
+import { RequestError } from "@/components/request-error";
 import { ShipmentTimeline } from "@/components/shipment-timeline";
 import { SiteHeader } from "@/components/site-header";
 import { SuccessNotice } from "@/components/ui";
@@ -64,7 +66,9 @@ async function Order({
   );
   if (!result.ok) {
     if (result.status === 404 || result.status === 422) notFound();
-    return <p className="text-warn">{result.message}</p>;
+    return (
+      <RequestError message={result.message} requestId={result.requestId} />
+    );
   }
   const order = result.data;
   const token = await getToken();
@@ -83,7 +87,8 @@ async function Order({
     canCommit &&
     order.status !== "completed" &&
     !order.has_open_dispute &&
-    (!shipment.ok || shipment.data.status === "delivered");
+    ((!shipment.ok && shipment.status === 404) ||
+      (shipment.ok && shipment.data.status === "delivered"));
   const rows: [string, string][] = [
     ["Vendedor", order.seller.legal_name],
     ["Comprador", order.buyer.legal_name],
@@ -140,6 +145,12 @@ async function Order({
           <ReviewForm orderId={order.id} counterpart={counterpart.legal_name} />
         </section>
       )}
+      {!disputes.ok && (
+        <RequestError
+          message={disputes.message}
+          requestId={disputes.requestId}
+        />
+      )}
       {disputes.ok &&
         disputes.data.map((d) => (
           <section
@@ -168,11 +179,18 @@ async function Order({
           </section>
         ))}
       {!order.has_open_dispute && <DisputeForm orderId={order.id} />}
-      <Logistics
-        order={order}
-        shipment={shipment.ok ? shipment.data : null}
-        canCommit={canCommit}
-      />
+      {!shipment.ok && shipment.status !== 404 ? (
+        <RequestError
+          message={shipment.message}
+          requestId={shipment.requestId}
+        />
+      ) : (
+        <Logistics
+          order={order}
+          shipment={shipment.ok ? shipment.data : null}
+          canCommit={canCommit}
+        />
+      )}
     </article>
   );
 }
@@ -250,7 +268,10 @@ function Logistics({
                 </p>
                 {quote.notes && <p className="mt-1">{quote.notes}</p>}
                 {canCommit && (
-                  <form action={acceptTransportQuote} className="mt-3">
+                  <MutationForm
+                    action={acceptTransportQuote}
+                    className="mt-3"
+                  >
                     <input type="hidden" name="quote_id" value={quote.id} />
                     <input
                       type="hidden"
@@ -260,7 +281,7 @@ function Logistics({
                     <button className="btn btn-primary">
                       Aceptar {formatCop(quote.price)}
                     </button>
-                  </form>
+                  </MutationForm>
                 )}
               </li>
             ))}

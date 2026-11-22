@@ -4,6 +4,8 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 import { cancelInvitation, changeRole, removeMember } from "@/app/actions/team";
+import { MutationForm } from "@/components/mutation-form";
+import { RequestError } from "@/components/request-error";
 import { SiteHeader } from "@/components/site-header";
 import { PageHeader } from "@/components/ui";
 import { apiFetch } from "@/lib/api";
@@ -47,7 +49,10 @@ async function TeamView({ params }: { params: Promise<{ id: string }> }) {
     `/companies/${encodeURIComponent(id)}/team`,
     { token: await getToken() },
   );
-  if (!result.ok) return <p className="text-warn">{result.message}</p>;
+  if (!result.ok)
+    return (
+      <RequestError message={result.message} requestId={result.requestId} />
+    );
   const canManage = company.role === "owner" || company.role === "admin";
 
   return (
@@ -79,7 +84,10 @@ async function TeamView({ params }: { params: Promise<{ id: string }> }) {
               </div>
               <div className="flex items-center gap-3">
                 {canManage && m.role !== "owner" && !isMe ? (
-                  <form action={changeRole} className="flex items-center gap-2">
+                  <MutationForm
+                    action={changeRole}
+                    className="flex flex-wrap items-center gap-2"
+                  >
                     <input type="hidden" name="company_id" value={id} />
                     <input type="hidden" name="user_id" value={m.user_id} />
                     <input
@@ -91,19 +99,19 @@ async function TeamView({ params }: { params: Promise<{ id: string }> }) {
                     <button className="text-muted underline hover:text-foreground">
                       {m.role === "admin" ? "Hacer miembro" : "Hacer admin"}
                     </button>
-                  </form>
+                  </MutationForm>
                 ) : (
                   <span className="chip">{ROLES[m.role]}</span>
                 )}
                 {m.role !== "owner" && (canManage || isMe) && (
-                  <form action={removeMember}>
+                  <MutationForm action={removeMember}>
                     <input type="hidden" name="company_id" value={id} />
                     <input type="hidden" name="user_id" value={m.user_id} />
                     <input type="hidden" name="self" value={String(isMe)} />
                     <button className="text-muted underline hover:text-warn">
                       {isMe ? "Salir" : "Quitar"}
                     </button>
-                  </form>
+                  </MutationForm>
                 )}
               </div>
             </li>
@@ -121,13 +129,13 @@ async function TeamView({ params }: { params: Promise<{ id: string }> }) {
               </p>
             </div>
             {canManage && (
-              <form action={cancelInvitation}>
+              <MutationForm action={cancelInvitation}>
                 <input type="hidden" name="company_id" value={id} />
                 <input type="hidden" name="invitation_id" value={i.id} />
                 <button className="text-muted underline hover:text-warn">
                   Cancelar
                 </button>
-              </form>
+              </MutationForm>
             )}
           </li>
         ))}

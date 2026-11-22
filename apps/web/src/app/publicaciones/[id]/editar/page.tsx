@@ -4,6 +4,8 @@ import { Suspense } from "react";
 
 import { removePhoto } from "@/app/actions/listings";
 import { PublishWizard } from "@/app/publicar/wizard";
+import { MutationForm } from "@/components/mutation-form";
+import { RequestError } from "@/components/request-error";
 import { SiteHeader } from "@/components/site-header";
 import { PageHeader } from "@/components/ui";
 import { apiFetch } from "@/lib/api";
@@ -35,7 +37,9 @@ async function Editor({ params }: { params: Promise<{ id: string }> }) {
   );
   if (!result.ok) {
     if (result.status === 404 || result.status === 422) notFound();
-    return <p className="text-warn">{result.message}</p>;
+    return (
+      <RequestError message={result.message} requestId={result.requestId} />
+    );
   }
   const listing = result.data;
   const owner = me.companies.find(
@@ -68,13 +72,16 @@ async function Editor({ params }: { params: Promise<{ id: string }> }) {
                   alt=""
                   className="aspect-square w-full rounded-lg object-cover"
                 />
-                <form action={removePhoto} className="absolute right-1 top-1">
+                <MutationForm
+                  action={removePhoto}
+                  className="absolute right-1 top-1"
+                >
                   <input type="hidden" name="listing_id" value={listing.id} />
                   <input type="hidden" name="image_id" value={image.id} />
                   <button className="rounded-md bg-surface/90 px-2 py-1 text-xs font-medium shadow">
                     Quitar
                   </button>
-                </form>
+                </MutationForm>
               </li>
             ))}
           </ul>

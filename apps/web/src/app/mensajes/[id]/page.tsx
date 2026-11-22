@@ -5,6 +5,8 @@ import { Suspense } from "react";
 
 import { respondToOffer } from "@/app/actions/deals";
 import { AutoRefresh } from "@/components/auto-refresh";
+import { MutationForm } from "@/components/mutation-form";
+import { RequestError } from "@/components/request-error";
 import { SiteHeader } from "@/components/site-header";
 import { apiFetch } from "@/lib/api";
 import {
@@ -53,7 +55,9 @@ async function Conversation({ params }: { params: Promise<{ id: string }> }) {
   );
   if (!result.ok) {
     if (result.status === 404 || result.status === 422) notFound();
-    return <p className="text-warn">{result.message}</p>;
+    return (
+      <RequestError message={result.message} requestId={result.requestId} />
+    );
   }
   const thread = result.data;
   const iAmBuyer = thread.my_company_id === thread.buyer.id;
@@ -234,7 +238,10 @@ function OfferCard({
           </p>
         )}
         {offer.status === "pending" && !mine && (
-          <form action={respondToOffer} className="mt-3 grid grid-cols-2 gap-2">
+          <MutationForm
+            action={respondToOffer}
+            className="mt-3 grid grid-cols-2 gap-2"
+          >
             <input type="hidden" name="thread_id" value={threadId} />
             <input type="hidden" name="offer_id" value={offer.id} />
             {canCommit ? (
@@ -257,7 +264,7 @@ function OfferCard({
             >
               Declinar
             </button>
-          </form>
+          </MutationForm>
         )}
       </div>
     </li>

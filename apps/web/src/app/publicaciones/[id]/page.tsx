@@ -5,6 +5,7 @@ import { Suspense } from "react";
 
 import { MaterialIcon } from "@/components/icons";
 import { SiteHeader } from "@/components/site-header";
+import { RequestError } from "@/components/request-error";
 import { SuccessNotice } from "@/components/ui";
 import { apiFetch, type Me } from "@/lib/api";
 import {
@@ -58,7 +59,9 @@ async function Detail({
   );
   if (!result.ok) {
     if (result.status === 404 || result.status === 422) notFound();
-    return <p className="text-warn">{result.message}</p>;
+    return (
+      <RequestError message={result.message} requestId={result.requestId} />
+    );
   }
   const listing = result.data;
   const me = token ? await apiFetch<Me>("/me", { token }) : null;
@@ -180,7 +183,13 @@ async function Detail({
               : "Editar publicación"}
           </Link>
         )}
-        {listing.status !== "published" || isOwner ? null : !me?.ok ? (
+        {listing.status !== "published" || isOwner ? null : token && me && !me.ok ? (
+          <RequestError
+            message={me.message}
+            requestId={me.requestId}
+            className="mt-4"
+          />
+        ) : !me?.ok ? (
           <Link href="/ingresar" className="btn btn-primary mt-4 w-full">
             Ingresa para contactar al generador
           </Link>

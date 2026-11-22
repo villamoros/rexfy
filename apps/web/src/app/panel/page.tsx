@@ -6,6 +6,8 @@ import { Suspense } from "react";
 
 import { archiveListing } from "@/app/actions/listings";
 import { Stat, StatGrid, formatNumber, formatPercent } from "@/components/kpi";
+import { MutationForm } from "@/components/mutation-form";
+import { RequestError } from "@/components/request-error";
 import { SiteHeader } from "@/components/site-header";
 import { EmptyState, PageHeader } from "@/components/ui";
 import { apiFetch } from "@/lib/api";
@@ -72,6 +74,9 @@ async function Dashboard() {
           </>
         }
       />
+      {!kpis.ok && (
+        <RequestError message={kpis.message} requestId={kpis.requestId} />
+      )}
       <ul className="flex flex-col gap-3">
         {me.companies.map((company) => (
           <li key={company.company_id} className="card p-5">
@@ -116,6 +121,9 @@ async function Dashboard() {
         ))}
       </ul>
 
+      {mine && !mine.ok && (
+        <RequestError message={mine.message} requestId={mine.requestId} />
+      )}
       {mine?.ok && (
         <section className="flex flex-col gap-3">
           <h2 className="text-xl font-bold">Mis publicaciones</h2>
@@ -151,12 +159,12 @@ async function Dashboard() {
                       </Link>
                     )}
                     {listing.status === "published" && (
-                      <form action={archiveListing}>
+                      <MutationForm action={archiveListing}>
                         <input type="hidden" name="id" value={listing.id} />
                         <button className="text-muted underline hover:text-foreground">
                           Archivar
                         </button>
-                      </form>
+                      </MutationForm>
                     )}
                   </div>
                 </li>

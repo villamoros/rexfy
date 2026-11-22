@@ -3,6 +3,8 @@ import Link from "next/link";
 import { Suspense } from "react";
 
 import { advanceShipment } from "@/app/actions/logistics";
+import { MutationForm } from "@/components/mutation-form";
+import { RequestError } from "@/components/request-error";
 import { ShipmentTimeline } from "@/components/shipment-timeline";
 import { SiteHeader } from "@/components/site-header";
 import { PageHeader } from "@/components/ui";
@@ -70,7 +72,9 @@ async function Board() {
     <div className="mt-6 flex flex-col gap-8">
       <section className="flex flex-col gap-3">
         <h2 className="text-xl font-bold">Mis envíos</h2>
-        {!mine.ok || mine.data.length === 0 ? (
+        {!mine.ok ? (
+          <RequestError message={mine.message} requestId={mine.requestId} />
+        ) : mine.data.length === 0 ? (
           <p className="text-sm text-muted">
             Cuando un cliente acepte tu cotización, el envío aparecerá aquí.
           </p>
@@ -91,7 +95,7 @@ async function Board() {
                     {SHIPMENT_STATUS[s.status]}
                   </span>
                   {next && (
-                    <form
+                    <MutationForm
                       action={advanceShipment}
                       className="flex flex-col gap-2 sm:flex-row"
                     >
@@ -106,7 +110,7 @@ async function Board() {
                       <button className="btn btn-primary">
                         {NEXT_ACTION[next]}
                       </button>
-                    </form>
+                    </MutationForm>
                   )}
                   <ShipmentTimeline events={s.events} />
                 </li>
@@ -119,11 +123,13 @@ async function Board() {
       <section className="flex flex-col gap-3">
         <h2 className="text-xl font-bold">Solicitudes abiertas</h2>
         {!open.ok ? (
-          <p className="card p-4 text-sm text-muted">
-            {open.status === 403
-              ? `${open.message}. El equipo de RexFy la revisará pronto.`
-              : open.message}
-          </p>
+          open.status === 403 ? (
+            <p className="card p-4 text-sm text-muted">
+              {open.message}. El equipo de RexFy la revisará pronto.
+            </p>
+          ) : (
+            <RequestError message={open.message} requestId={open.requestId} />
+          )
         ) : open.data.length === 0 ? (
           <p className="text-sm text-muted">
             No hay solicitudes de transporte abiertas en este momento.

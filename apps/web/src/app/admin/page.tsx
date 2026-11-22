@@ -5,6 +5,8 @@ import { Suspense } from "react";
 
 import { setCompanyVerified } from "@/app/actions/admin";
 import { Stat, StatGrid, formatNumber, formatPercent } from "@/components/kpi";
+import { MutationForm } from "@/components/mutation-form";
+import { RequestError } from "@/components/request-error";
 import { SiteHeader } from "@/components/site-header";
 import { EmptyState, PageHeader } from "@/components/ui";
 import { apiFetch, type MarketRole } from "@/lib/api";
@@ -102,6 +104,12 @@ async function Console() {
   const m = metrics.ok ? metrics.data : null;
   return (
     <>
+      {!metrics.ok && (
+        <RequestError
+          message={metrics.message}
+          requestId={metrics.requestId}
+        />
+      )}
       {m && (
         <Section title="La plataforma">
           <StatGrid>
@@ -154,7 +162,12 @@ async function Console() {
         </Section>
       )}
       <Section title="Disputas abiertas">
-        {!disputes.ok || disputes.data.length === 0 ? (
+        {!disputes.ok ? (
+          <RequestError
+            message={disputes.message}
+            requestId={disputes.requestId}
+          />
+        ) : disputes.data.length === 0 ? (
           <EmptyState>No hay disputas abiertas.</EmptyState>
         ) : (
           <ul className="divide-y divide-border card">
@@ -183,7 +196,12 @@ async function Console() {
         <Companies result={pending} verify />
       </Section>
       <Section title="Publicaciones activas">
-        {!listings.ok || listings.data.length === 0 ? (
+        {!listings.ok ? (
+          <RequestError
+            message={listings.message}
+            requestId={listings.requestId}
+          />
+        ) : listings.data.length === 0 ? (
           <EmptyState>No hay publicaciones activas.</EmptyState>
         ) : (
           <ul className="divide-y divide-border card">
@@ -215,7 +233,12 @@ async function Console() {
         <Companies result={verified} />
       </Section>
       <Section title="Actividad reciente">
-        {!activity.ok || activity.data.length === 0 ? (
+        {!activity.ok ? (
+          <RequestError
+            message={activity.message}
+            requestId={activity.requestId}
+          />
+        ) : activity.data.length === 0 ? (
           <EmptyState>Sin actividad todavía.</EmptyState>
         ) : (
           <ul className="divide-y divide-border card text-sm">
@@ -264,7 +287,10 @@ function Companies({
   result: Awaited<ReturnType<typeof apiFetch<AdminCompany[]>>>;
   verify?: boolean;
 }) {
-  if (!result.ok) return <p className="text-sm text-warn">{result.message}</p>;
+  if (!result.ok)
+    return (
+      <RequestError message={result.message} requestId={result.requestId} />
+    );
   if (result.data.length === 0)
     return (
       <EmptyState>
@@ -287,7 +313,7 @@ function Companies({
               {formatDateTime(c.created_at)}
             </p>
           </div>
-          <form action={setCompanyVerified}>
+          <MutationForm action={setCompanyVerified}>
             <input type="hidden" name="company_id" value={c.id} />
             <input type="hidden" name="verified" value={String(verify)} />
             <button
@@ -295,7 +321,7 @@ function Companies({
             >
               {verify ? "Verificar" : "Quitar verificación"}
             </button>
-          </form>
+          </MutationForm>
         </li>
       ))}
     </ul>

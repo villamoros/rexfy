@@ -4,6 +4,7 @@ import { Suspense } from "react";
 
 import { OrderProgress } from "@/components/order-progress";
 import { SiteHeader } from "@/components/site-header";
+import { RequestError } from "@/components/request-error";
 import { EmptyState, PageHeader } from "@/components/ui";
 import { apiFetch } from "@/lib/api";
 import { formatCop, type Transaction } from "@/lib/deals";
@@ -36,7 +37,14 @@ async function Orders() {
   const result = await apiFetch<Transaction[]>("/transactions", {
     token: await getToken(),
   });
-  if (!result.ok) return <p className="mt-6 text-warn">{result.message}</p>;
+  if (!result.ok)
+    return (
+      <RequestError
+        message={result.message}
+        requestId={result.requestId}
+        className="mt-6"
+      />
+    );
   if (result.data.length === 0) {
     return (
       <EmptyState className="mt-6">

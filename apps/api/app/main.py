@@ -42,6 +42,7 @@ def create_app() -> FastAPI:
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
+        expose_headers=["X-Request-ID"],
     )
     app.include_router(health.router)
     app.include_router(auth.router)

@@ -4,6 +4,7 @@ import { Suspense } from "react";
 
 import { MaterialIcon } from "@/components/icons";
 import { ListingCard } from "@/components/listing-card";
+import { RequestError } from "@/components/request-error";
 import { SiteHeader } from "@/components/site-header";
 import { EmptyState, PageHeader } from "@/components/ui";
 import { apiFetch } from "@/lib/api";
@@ -73,7 +74,10 @@ async function Search({ searchParams }: { searchParams: Promise<Params> }) {
       <Filters params={params} />
       <section aria-live="polite">
         {!result.ok ? (
-          <p className="text-warn">{result.message}</p>
+          <RequestError
+            message={result.message}
+            requestId={result.requestId}
+          />
         ) : (
           <>
             <p className="mb-3 font-mono text-xs text-muted">

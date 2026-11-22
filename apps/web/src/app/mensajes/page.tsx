@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 
 import { SiteHeader } from "@/components/site-header";
+import { RequestError } from "@/components/request-error";
 import { EmptyState, PageHeader } from "@/components/ui";
 import { apiFetch } from "@/lib/api";
 import { formatDateTime, type ThreadSummary } from "@/lib/deals";
@@ -31,7 +32,14 @@ async function Inbox() {
   const result = await apiFetch<ThreadSummary[]>("/threads", {
     token: await getToken(),
   });
-  if (!result.ok) return <p className="mt-6 text-warn">{result.message}</p>;
+  if (!result.ok)
+    return (
+      <RequestError
+        message={result.message}
+        requestId={result.requestId}
+        className="mt-6"
+      />
+    );
   if (result.data.length === 0) {
     return (
       <EmptyState className="mt-6">

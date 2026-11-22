@@ -5,6 +5,8 @@ import {
   markAllRead,
   openNotification,
 } from "@/app/actions/notifications";
+import { MutationForm } from "@/components/mutation-form";
+import { RequestError } from "@/components/request-error";
 import { SiteHeader } from "@/components/site-header";
 import { EmptyState, PageHeader } from "@/components/ui";
 import { apiFetch } from "@/lib/api";
@@ -30,11 +32,11 @@ export default function NotificationsPage() {
         <PageHeader
           title="Notificaciones"
           actions={
-            <form action={markAllRead}>
+            <MutationForm action={markAllRead}>
               <button className="btn btn-secondary text-sm">
                 Marcar todo como leído
               </button>
-            </form>
+            </MutationForm>
           }
         />
         <Suspense fallback={<p className="text-muted">Cargando…</p>}>
@@ -50,7 +52,10 @@ async function Inbox() {
   const result = await apiFetch<Notification[]>("/notifications", {
     token: await getToken(),
   });
-  if (!result.ok) return <p className="text-warn">{result.message}</p>;
+  if (!result.ok)
+    return (
+      <RequestError message={result.message} requestId={result.requestId} />
+    );
   if (result.data.length === 0)
     return (
       <EmptyState>
@@ -61,7 +66,7 @@ async function Inbox() {
     <ul className="divide-y divide-border card">
       {result.data.map((n) => (
         <li key={n.id}>
-          <form action={openNotification}>
+          <MutationForm action={openNotification}>
             <input type="hidden" name="id" value={n.id} />
             <input type="hidden" name="link" value={n.link} />
             <button className="flex w-full gap-3 px-4 py-3 text-left text-sm hover:bg-surface-sunken">
@@ -85,7 +90,7 @@ async function Inbox() {
                 {formatDateTime(n.created_at)}
               </span>
             </button>
-          </form>
+          </MutationForm>
         </li>
       ))}
     </ul>

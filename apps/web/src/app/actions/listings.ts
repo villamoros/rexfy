@@ -4,6 +4,11 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { apiFetch } from "@/lib/api";
+import {
+  mutationFailure,
+  mutationSuccess,
+  type MutationState,
+} from "@/lib/action-state";
 import type { Listing } from "@/lib/listings";
 import { getToken } from "@/lib/session";
 
@@ -112,24 +117,37 @@ export async function saveListing(
   );
 }
 
-export async function archiveListing(formData: FormData) {
+export async function archiveListing(
+  _: MutationState,
+  formData: FormData,
+): Promise<MutationState> {
   const token = await getToken();
   if (!token) redirect("/ingresar");
-  await apiFetch(`/listings/${String(formData.get("id"))}/archive`, {
-    method: "POST",
-    token,
-  });
-  redirect("/panel");
+  const result = await apiFetch(
+    `/listings/${encodeURIComponent(String(formData.get("id")))}/archive`,
+    {
+      method: "POST",
+      token,
+    },
+  );
+  if (!result.ok) return mutationFailure(result);
+  revalidatePath("/panel");
+  return mutationSuccess("Publicación archivada.");
 }
 
-export async function removePhoto(formData: FormData) {
+export async function removePhoto(
+  _: MutationState,
+  formData: FormData,
+): Promise<MutationState> {
   const token = await getToken();
   if (!token) redirect("/ingresar");
   const listingId = encodeURIComponent(String(formData.get("listing_id")));
   const imageId = encodeURIComponent(String(formData.get("image_id")));
-  await apiFetch(`/listings/${listingId}/images/${imageId}`, {
+  const result = await apiFetch(`/listings/${listingId}/images/${imageId}`, {
     method: "DELETE",
     token,
   });
+  if (!result.ok) return mutationFailure(result);
   revalidatePath(`/publicaciones/${listingId}/editar`);
+  return mutationSuccess("Foto eliminada.");
 }

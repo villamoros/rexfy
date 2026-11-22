@@ -4,6 +4,7 @@ import { Suspense } from "react";
 
 import { ListingCard } from "@/components/listing-card";
 import { SiteHeader } from "@/components/site-header";
+import { RequestError } from "@/components/request-error";
 import { EmptyState } from "@/components/ui";
 import { apiFetch } from "@/lib/api";
 import { formatDateTime } from "@/lib/deals";
@@ -32,7 +33,9 @@ async function Profile({ params }: { params: Promise<{ id: string }> }) {
   );
   if (!result.ok) {
     if (result.status === 404 || result.status === 422) notFound();
-    return <p className="text-warn">{result.message}</p>;
+    return (
+      <RequestError message={result.message} requestId={result.requestId} />
+    );
   }
   const p = result.data;
   const since = new Date(p.member_since).toLocaleDateString("es-CO", {

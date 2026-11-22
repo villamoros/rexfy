@@ -4,6 +4,11 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { apiFetch } from "@/lib/api";
+import {
+  mutationFailure,
+  mutationSuccess,
+  type MutationState,
+} from "@/lib/action-state";
 import { getToken } from "@/lib/session";
 
 async function token(): Promise<string> {
@@ -12,14 +17,21 @@ async function token(): Promise<string> {
   return value;
 }
 
-export async function setCompanyVerified(formData: FormData) {
+export async function setCompanyVerified(
+  _: MutationState,
+  formData: FormData,
+): Promise<MutationState> {
   const id = encodeURIComponent(String(formData.get("company_id")));
   const verb = formData.get("verified") === "true" ? "verify" : "unverify";
-  await apiFetch(`/admin/companies/${id}/${verb}`, {
+  const result = await apiFetch(`/admin/companies/${id}/${verb}`, {
     method: "POST",
     token: await token(),
   });
+  if (!result.ok) return mutationFailure(result);
   revalidatePath("/admin");
+  return mutationSuccess(
+    verb === "verify" ? "Empresa verificada." : "Se quitó la verificación.",
+  );
 }
 
 export type TakeDownState = { message?: string; done?: boolean } | undefined;

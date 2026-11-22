@@ -36,13 +36,22 @@ export function SiteHeader() {
 
 /** Each user sees only the sections their companies' roles use. */
 async function RoleNav() {
-  return <NavLinks links={linksFor(await getMe())} />;
+  const me = await getMe();
+  if (!me || me.ok) return <NavLinks links={linksFor(me?.data ?? null)} />;
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <NavLinks links={VISITOR_LINKS} />
+      <span role="status" className="text-xs text-warn">
+        Cuenta sin conexión
+      </span>
+    </div>
+  );
 }
 
 /** Link to the notifications, with how many are unread. */
 async function Bell() {
   const me = await getMe();
-  if (!me) return null;
+  if (!me?.ok) return null;
   const count = await apiFetch<{ unread: number }>(
     "/notifications/unread-count",
     { token: await getToken() },

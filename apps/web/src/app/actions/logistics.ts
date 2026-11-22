@@ -1,8 +1,14 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { apiFetch } from "@/lib/api";
+import {
+  mutationFailure,
+  mutationSuccess,
+  type MutationState,
+} from "@/lib/action-state";
 import { getToken } from "@/lib/session";
 
 export type ActionState =
@@ -66,16 +72,23 @@ export async function submitTransportQuote(
   redirect("/transporte");
 }
 
-export async function acceptTransportQuote(formData: FormData) {
-  await apiFetch(`/transport-quotes/${text(formData, "quote_id")}/accept`, {
-    method: "POST",
-    token: await token(),
-  });
+export async function acceptTransportQuote(
+  _: MutationState,
+  formData: FormData,
+): Promise<MutationState> {
+  const result = await apiFetch(
+    `/transport-quotes/${encodeURIComponent(text(formData, "quote_id"))}/accept`,
+    { method: "POST", token: await token() },
+  );
+  if (!result.ok) return mutationFailure(result);
   redirect(`/ordenes/${text(formData, "transaction_id")}`);
 }
 
-export async function advanceShipment(formData: FormData) {
-  await apiFetch(`/shipments/${text(formData, "shipment_id")}/events`, {
+export async function advanceShipment(
+  _: MutationState,
+  formData: FormData,
+): Promise<MutationState> {
+  const result = await apiFetch(`/shipments/${text(formData, "shipment_id")}/events`, {
     method: "POST",
     token: await token(),
     body: {
@@ -83,5 +96,7 @@ export async function advanceShipment(formData: FormData) {
       note: text(formData, "note") || null,
     },
   });
-  redirect("/transporte");
+  if (!result.ok) return mutationFailure(result);
+  revalidatePath("/transporte");
+  return mutationSuccess("Estado del envío actualizado.");
 }
