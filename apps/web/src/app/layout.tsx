@@ -1,19 +1,10 @@
 import { ClerkProvider } from "@clerk/nextjs";
 import { esMX } from "@clerk/localizations";
+import "@fontsource-variable/manrope";
+import "@fontsource/ibm-plex-mono/400.css";
+import "@fontsource/ibm-plex-mono/500.css";
 import type { Metadata } from "next";
-import { IBM_Plex_Mono, Manrope } from "next/font/google";
 import "./globals.css";
-
-const manrope = Manrope({
-  variable: "--font-manrope",
-  subsets: ["latin"],
-});
-
-const plexMono = IBM_Plex_Mono({
-  variable: "--font-plex-mono",
-  subsets: ["latin"],
-  weight: ["400", "500"],
-});
 
 export const metadata: Metadata = {
   title: "RexFy",
@@ -22,29 +13,31 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
+  const clerkEnabled = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
   return (
-    <html
-      lang="es"
-      className={`${manrope.variable} ${plexMono.variable} h-full antialiased`}
-    >
+    <html lang="es" className="h-full antialiased">
       <body className="min-h-full flex flex-col">
-        <ClerkProvider
-          localization={esMX}
-          signInUrl="/ingresar"
-          signUpUrl="/registro"
-          signInFallbackRedirectUrl="/panel"
-          signUpFallbackRedirectUrl="/onboarding"
-          appearance={{
-            variables: {
-              colorPrimary: "#0b1f3b",
-              colorBackground: "#ffffff",
-              fontFamily: "var(--font-manrope)",
-              borderRadius: "0.5rem",
-            },
-          }}
-        >
-          {children}
-        </ClerkProvider>
+        {clerkEnabled ? (
+          <ClerkProvider
+            localization={esMX}
+            signInUrl="/ingresar"
+            signUpUrl="/registro"
+            signInFallbackRedirectUrl="/panel"
+            signUpFallbackRedirectUrl="/onboarding"
+            appearance={{
+              variables: {
+                colorPrimary: "#0b1f3b",
+                colorBackground: "#ffffff",
+                fontFamily: "var(--font-manrope)",
+                borderRadius: "0.5rem",
+              },
+            }}
+          >
+            {children}
+          </ClerkProvider>
+        ) : (
+          children
+        )}
       </body>
     </html>
   );

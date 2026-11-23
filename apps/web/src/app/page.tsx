@@ -82,8 +82,8 @@ const STEPS = [
 export default function Home() {
   return (
     <div className="flex flex-1 flex-col">
-      <Hero />
       <main className="flex-1">
+        <Hero />
         <Fronts />
         <ChainSection />
         <Audience />

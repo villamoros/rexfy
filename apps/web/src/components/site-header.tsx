@@ -10,6 +10,7 @@ import { apiFetch } from "@/lib/api";
 import { getMe, getToken } from "@/lib/session";
 
 export function SiteHeader() {
+  const clerkEnabled = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
   return (
     <header className="sticky top-0 z-20 border-b border-border bg-surface/90 backdrop-blur-md">
       <nav className="mx-auto flex w-full max-w-6xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3">
@@ -25,9 +26,11 @@ export function SiteHeader() {
           <Suspense fallback={null}>
             <Bell />
           </Suspense>
-          <ClientOnly>
-            <UserButton />
-          </ClientOnly>
+          {clerkEnabled ? (
+            <ClientOnly>
+              <UserButton />
+            </ClientOnly>
+          ) : null}
         </div>
       </nav>
     </header>

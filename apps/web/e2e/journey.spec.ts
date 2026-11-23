@@ -5,14 +5,14 @@ import { clerk } from "@clerk/testing/playwright";
 import { expect, test, type Browser, type Page } from "@playwright/test";
 
 /**
- * The whole marketplace in one journey: a generator publishes, a buyer negotiates and
- * closes the deal, a verified transporter moves the load and the buyer confirms and rates.
+ * Serial domain tests share one commercial transaction. A failure is reported against
+ * auth, publishing, negotiation, logistics or trust instead of one monolithic test.
  *
  * Runs against a Clerk development instance (see README). Each run makes its own users,
  * which are deleted from Clerk at the end, and unique companies, so runs never collide.
  */
 
-const run = Date.now().toString().slice(-9);
+let run = "";
 const clerkBackend = createClerkClient({
   secretKey: process.env.CLERK_SECRET_KEY,
 });
@@ -62,26 +62,41 @@ async function registerCompany(
   await expect(page).toHaveURL(/\/panel/);
 }
 
-test.afterAll(async () => {
-  await Promise.all(
-    clerkUserIds.map((id) => clerkBackend.users.deleteUser(id)),
-  );
-});
+test.describe.serial("journey comercial por dominio", () => {
+  let seller: Page;
+  let buyer: Page;
+  let carrier: Page;
+  let sellerName: string;
+  let buyerName: string;
+  let carrierName: string;
+  let pickupAddress: string;
+  let requirements: string;
+  let listingPath = "";
+  let threadPath = "";
+  let orderPath = "";
 
-test("de la publicación a la orden cerrada y calificada", async ({
-  browser,
-}) => {
-  const sellerName = `Plásticos E2E ${run} SAS`;
-  const buyerName = `Transformadora E2E ${run} SAS`;
-  const carrierName = `Fletes E2E ${run} SAS`;
-  const pickupAddress = `Calle ${run} # 5-20`;
-  const requirements = `Viaje E2E ${run}`;
+  test.beforeAll(async ({ browser }, testInfo) => {
+    run = `${Date.now().toString().slice(-7)}${testInfo.project.name.endsWith("mobile") ? "1" : "0"}`;
+    sellerName = `Plásticos E2E ${run} SAS`;
+    buyerName = `Transformadora E2E ${run} SAS`;
+    carrierName = `Fletes E2E ${run} SAS`;
+    pickupAddress = `Calle ${run} # 5-20`;
+    requirements = `Viaje E2E ${run}`;
+    seller = (await signedIn(browser, "generador")).page;
+    buyer = (await signedIn(browser, "comprador")).page;
+    carrier = (await signedIn(browser, "transportador")).page;
+  });
 
-  const { page: seller } = await signedIn(browser, "generador");
-  const { page: buyer } = await signedIn(browser, "comprador");
-  const { page: carrier } = await signedIn(browser, "transportador");
+  test.afterAll(async () => {
+    await Promise.all(
+      clerkUserIds.map((id) => clerkBackend.users.deleteUser(id)),
+    );
+  });
 
-  await test.step("cada empresa se registra con su rol", async () => {
+  test("auth y empresas: registra roles y verifica transportador", async ({
+    browser,
+  }) => {
+    await test.step("cada empresa se registra con su rol", async () => {
     await registerCompany(seller, {
       name: sellerName,
       role: "Generador",
@@ -97,14 +112,14 @@ test("de la publicación a la orden cerrada y calificada", async ({
       role: "Transportista",
       nitBase: `${run}3`,
     });
-  });
+    });
 
-  await test.step("un transportador sin verificar no ve solicitudes", async () => {
-    await carrier.goto("/transporte");
-    await expect(carrier.getByText(/RexFy la revisará pronto/)).toBeVisible();
-  });
+    await test.step("un transportador sin verificar no ve solicitudes", async () => {
+      await carrier.goto("/transporte");
+      await expect(carrier.getByText(/RexFy la revisará pronto/)).toBeVisible();
+    });
 
-  await test.step("RexFy verifica al transportador", async () => {
+    await test.step("RexFy verifica al transportador", async () => {
     const { page: admin, email } = await signedIn(browser, "admin");
     // The first signed-in page creates the user in RexFy; then it gets admin access.
     await admin.goto("/panel");
@@ -121,10 +136,10 @@ test("de la publicación a la orden cerrada y calificada", async ({
     await expect(
       company.getByRole("button", { name: "Quitar verificación" }),
     ).toBeVisible();
+    });
   });
 
-  let listingPath = "";
-  await test.step("el generador publica su material", async () => {
+  test("publicación: el generador publica material", async () => {
     await seller.goto("/publicar");
     const next = seller.getByRole("button", { name: "Siguiente →" });
     await seller
@@ -142,8 +157,8 @@ test("de la publicación a la orden cerrada y calificada", async ({
     listingPath = new URL(seller.url()).pathname;
   });
 
-  let threadPath = "";
-  await test.step("el comprador escribe y envía una cotización formal", async () => {
+  test("negociación: cotiza y crea una orden", async () => {
+    await test.step("el comprador escribe y envía una cotización formal", async () => {
     await buyer.goto(listingPath);
     await buyer.getByRole("button", { name: "Contactar al generador" }).click();
     await expect(buyer).toHaveURL(/\/mensajes\/[\w-]+$/);
@@ -156,17 +171,18 @@ test("de la publicación a la orden cerrada y calificada", async ({
       .getByRole("button", { name: "Enviar cotización formal" })
       .click();
     await expect(buyer.getByText(/Válida hasta el/)).toBeVisible();
+    });
+
+    await test.step("el generador acepta y se crea la orden", async () => {
+      await seller.goto(threadPath);
+      await seller.getByRole("button", { name: "Aceptar", exact: true }).click();
+      await expect(seller).toHaveURL(/\/ordenes\/[\w-]+\?nueva=1/);
+      orderPath = new URL(seller.url()).pathname;
+    });
   });
 
-  let orderPath = "";
-  await test.step("el generador acepta y se crea la orden", async () => {
-    await seller.goto(threadPath);
-    await seller.getByRole("button", { name: "Aceptar", exact: true }).click();
-    await expect(seller).toHaveURL(/\/ordenes\/[\w-]+\?nueva=1/);
-    orderPath = new URL(seller.url()).pathname;
-  });
-
-  await test.step("el comprador pide transporte", async () => {
+  test("logística: solicita, cotiza y entrega transporte", async () => {
+    await test.step("el comprador pide transporte", async () => {
     await buyer.goto(orderPath);
     await buyer.getByLabel("Dirección de recogida").fill(pickupAddress);
     await buyer.getByLabel("Ciudad de entrega").fill("Bogotá");
@@ -180,9 +196,9 @@ test("de la publicación a la orden cerrada y calificada", async ({
     });
     await request.click();
     await expect(request).toBeHidden();
-  });
+    });
 
-  await test.step("el transportador verificado cotiza el viaje", async () => {
+    await test.step("el transportador verificado cotiza el viaje", async () => {
     await carrier.goto("/transporte");
     const trip = carrier
       .getByRole("listitem")
@@ -191,16 +207,16 @@ test("de la publicación a la orden cerrada y calificada", async ({
     await trip.getByLabel("Precio total (COP)").fill("1200000");
     await trip.getByRole("button", { name: "Enviar cotización" }).click();
     await expect(trip.getByText(/Ya cotizaste/)).toBeVisible();
-  });
+    });
 
-  await test.step("el comprador acepta la cotización de transporte", async () => {
+    await test.step("el comprador acepta la cotización de transporte", async () => {
     await buyer.goto(orderPath);
     const accept = buyer.getByRole("button", { name: /^Aceptar/ });
     await accept.click();
     await expect(accept).toBeHidden();
-  });
+    });
 
-  await test.step("el transportador recoge, lleva y entrega", async () => {
+    await test.step("el transportador recoge, lleva y entrega", async () => {
     await carrier.goto("/transporte");
     const trip = carrier
       .getByRole("listitem")
@@ -213,9 +229,10 @@ test("de la publicación a la orden cerrada y calificada", async ({
       await trip.getByRole("button", { name: action }).click();
       await expect(trip.getByRole("button", { name: action })).toBeHidden();
     }
+    });
   });
 
-  await test.step("el comprador confirma la recepción y califica", async () => {
+  test("trust: confirma la recepción y califica", async () => {
     await buyer.goto(orderPath);
     await buyer
       .getByRole("button", { name: "Confirmar recepción del material" })

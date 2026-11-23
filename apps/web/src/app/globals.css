@@ -6,6 +6,8 @@
  * Señal and Red are never text on light surfaces; use brand (Taller) and info instead.
  */
 :root {
+  --font-manrope: "Manrope Variable";
+  --font-plex-mono: "IBM Plex Mono";
   --background: #f5f7fa;
   --foreground: #0b1f3b;
   --surface: #ffffff;
@@ -32,8 +34,19 @@
   --net-line: #1e4a7a;
   --net-node: #2a5c8f;
   --info: #0069a8;
-  --warn: #b45309;
+  --warn: #944000;
   --danger: #c0352b;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 @media (prefers-color-scheme: dark) {

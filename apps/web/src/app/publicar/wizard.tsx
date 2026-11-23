@@ -11,52 +11,29 @@ import {
 import { flushSync } from "react-dom";
 
 import { saveListing } from "@/app/actions/listings";
-import { Field, FormMessage, SubmitButton } from "@/components/form";
-import { MaterialIcon } from "@/components/icons";
+import { SubmitButton } from "@/components/form";
+import { DRAFT_KEY, parseDraft, writeDraft } from "@/features/publish/draft";
 import {
-  AVAILABILITY,
-  CATEGORIES,
-  CONDITIONS,
-  UNITS,
-  availabilityLabel,
-  formatPrice,
-  formatQuantity,
-  type Availability,
-  MAX_PHOTOS,
-  type Listing,
-  type MaterialCategory,
-  type MaterialCondition,
-  type QuantityUnit,
-} from "@/lib/listings";
+  buildSummary,
+  fillForm,
+  minimumError,
+  readForm,
+  STEPS,
+  valuesOf,
+  type Company,
+} from "@/features/publish/model";
+import {
+  LocationStep,
+  MaterialStep,
+  PriceStep,
+  QuantityStep,
+  ReviewStep,
+} from "@/features/publish/steps";
+import type { Availability, Listing } from "@/lib/listings";
 
-const STEPS = [
-  "Material",
-  "Cantidad",
-  "Ubicación",
-  "Precio",
-  "Revisión",
-] as const;
+const noSubscribe = () => () => {};
 
-const FIELD_LABELS: Record<string, string> = {
-  title: "Título",
-  description: "Descripción",
-  quantity: "Cantidad",
-  min_order_quantity: "Cantidad mínima",
-  available_from: "Fecha de disponibilidad",
-  city: "Ciudad",
-  price: "Precio",
-  price_unit: "Unidad del precio",
-};
-
-type Company = { id: string; name: string };
-
-/** Form values by field name: text for inputs and radios, true/false for checkboxes. */
-type Values = Record<string, string | boolean>;
-
-// Unsent new listings are kept in this browser, so closing the tab at the plant loses nothing.
-const DRAFT_KEY = "rexfy:publicar:borrador";
-
-function readDraft(): string | null {
+function readDraftSnapshot(): string | null {
   try {
     return localStorage.getItem(DRAFT_KEY);
   } catch {
@@ -64,90 +41,11 @@ function readDraft(): string | null {
   }
 }
 
-function writeDraft(values: Values | null) {
-  try {
-    if (values) localStorage.setItem(DRAFT_KEY, JSON.stringify(values));
-    else localStorage.removeItem(DRAFT_KEY);
-  } catch {
-    // Storage blocked or full: the wizard still works, just without the local copy.
-  }
-}
-
-const noSubscribe = () => () => {};
-
-function readForm(form: HTMLFormElement): Values {
-  const values: Values = {};
-  for (const el of Array.from(form.elements)) {
-    if (
-      !(
-        el instanceof HTMLInputElement ||
-        el instanceof HTMLSelectElement ||
-        el instanceof HTMLTextAreaElement
-      ) ||
-      !el.name ||
-      ["hidden", "file"].includes(el.type)
-    )
-      continue;
-    if (el instanceof HTMLInputElement && el.type === "checkbox")
-      values[el.name] = el.checked;
-    else if (el instanceof HTMLInputElement && el.type === "radio") {
-      if (el.checked) values[el.name] = el.value;
-    } else values[el.name] = el.value;
-  }
-  return values;
-}
-
-function fillForm(form: HTMLFormElement, values: Values) {
-  for (const el of Array.from(form.elements)) {
-    if (
-      !(
-        el instanceof HTMLInputElement ||
-        el instanceof HTMLSelectElement ||
-        el instanceof HTMLTextAreaElement
-      ) ||
-      !(el.name in values) ||
-      ["hidden", "file"].includes(el.type)
-    )
-      continue;
-    const value = values[el.name];
-    if (el instanceof HTMLInputElement && el.type === "checkbox")
-      el.checked = value === true;
-    else if (el instanceof HTMLInputElement && el.type === "radio")
-      el.checked = el.value === value;
-    else el.value = String(value);
-  }
-}
-
-function valuesOf(listing: Listing): Values {
-  const text = (v: string | number | null) => (v === null ? "" : String(v));
-  return {
-    category: listing.category,
-    title: listing.title,
-    description: listing.description,
-    condition: listing.condition,
-    is_recurring: listing.is_recurring,
-    quantity: text(listing.quantity),
-    quantity_unit: listing.quantity_unit,
-    min_order_quantity: text(listing.min_order_quantity),
-    availability: listing.availability,
-    available_from: text(listing.available_from),
-    city: listing.city,
-    facility_name: text(listing.facility_name),
-    pickup_allowed: listing.pickup_allowed,
-    pricing_type: listing.pricing_type,
-    price: text(listing.price),
-    price_unit: listing.price_unit ?? "kg",
-    price_negotiable: listing.price_negotiable,
-    conditions: text(listing.conditions),
-  };
-}
-
 export function PublishWizard({
   companies,
   listing,
 }: {
   companies: Company[];
-  /** The listing being edited; without it the wizard creates a new one. */
   listing?: Listing;
 }) {
   const [state, action, pending] = useActionState(saveListing, undefined);
@@ -158,15 +56,23 @@ export function PublishWizard({
   );
   const [free, setFree] = useState(listing?.pricing_type === "free");
   const [draftHandled, setDraftHandled] = useState(false);
-  const savedDraft = useSyncExternalStore(noSubscribe, readDraft, () => null);
+  const savedDraft = useSyncExternalStore(
+    noSubscribe,
+    readDraftSnapshot,
+    () => null,
+  );
   const formRef = useRef<HTMLFormElement>(null);
   const filled = useRef(false);
   const sectionRefs = useRef<(HTMLElement | null)[]>([]);
   const offerDraft = !listing && !draftHandled && savedDraft !== null;
 
   function restoreDraft() {
-    const values = JSON.parse(savedDraft ?? "{}") as Values;
-    // Render the fields that depend on these choices before filling them in.
+    const values = parseDraft(savedDraft);
+    if (!values) {
+      writeDraft(localStorage, null);
+      setDraftHandled(true);
+      return;
+    }
     flushSync(() => {
       setAvailability((values.availability as Availability) ?? "immediate");
       setFree(values.pricing_type === "free");
@@ -176,12 +82,13 @@ export function PublishWizard({
   }
 
   function discardDraft() {
-    writeDraft(null);
+    writeDraft(localStorage, null);
     setDraftHandled(true);
   }
 
   function rememberDraft() {
-    if (!listing && formRef.current) writeDraft(readForm(formRef.current));
+    if (!listing && formRef.current)
+      writeDraft(localStorage, readForm(formRef.current));
   }
 
   function next() {
@@ -189,48 +96,44 @@ export function PublishWizard({
     const fields =
       section?.querySelectorAll<HTMLInputElement>("input, select, textarea") ??
       [];
-    const quantity =
-      section?.querySelector<HTMLInputElement>("[name=quantity]");
+    const quantity = section?.querySelector<HTMLInputElement>("[name=quantity]");
     const minimum = section?.querySelector<HTMLInputElement>(
       "[name=min_order_quantity]",
     );
     minimum?.setCustomValidity(
-      quantity &&
-        minimum?.value &&
-        Number(minimum.value) > Number(quantity.value)
-        ? "La cantidad mínima no puede superar la cantidad disponible"
-        : "",
+      minimumError(quantity?.value ?? "", minimum.value),
     );
     for (const field of fields) {
       if (!field.reportValidity()) return;
     }
     if (step === STEPS.length - 2 && formRef.current)
       setSummary(buildSummary(new FormData(formRef.current)));
-    setStep(step + 1);
+    setStep((current) => Math.min(current + 1, STEPS.length - 1));
     window.scrollTo({ top: 0 });
   }
 
-  const section = (index: number, children: ReactNode) => (
-    <section
-      ref={(el) => {
-        sectionRefs.current[index] = el;
-      }}
-      hidden={step !== index}
-      className="flex flex-col gap-4"
-    >
-      {children}
-    </section>
-  );
-
-  const serverFieldErrors = Object.entries(state?.fieldErrors ?? {});
+  function section(index: number, children: ReactNode) {
+    return (
+      <section
+        ref={(element) => {
+          sectionRefs.current[index] = element;
+        }}
+        hidden={step !== index}
+        aria-labelledby={`publish-step-${index}`}
+        className="flex flex-col gap-4"
+      >
+        <h2 id={`publish-step-${index}`} className="sr-only">
+          {STEPS[index]}
+        </h2>
+        {children}
+      </section>
+    );
+  }
 
   return (
-    // Submitting through onSubmit (not the form's action prop) keeps every step's values
-    // if the server rejects the listing, since React resets forms after an action.
     <form
       ref={(form) => {
         formRef.current = form;
-        // An edited listing's values go in once, after the first render.
         if (form && listing && !filled.current) {
           fillForm(form, valuesOf(listing));
           filled.current = true;
@@ -243,13 +146,15 @@ export function PublishWizard({
           event.currentTarget,
           (event.nativeEvent as SubmitEvent).submitter,
         );
-        if (!listing) writeDraft(null);
+        if (!listing) writeDraft(localStorage, null);
         startTransition(() => action(data));
       }}
       className="flex flex-col gap-6"
     >
-      {listing && <input type="hidden" name="listing_id" value={listing.id} />}
-      {offerDraft && (
+      {listing ? (
+        <input type="hidden" name="listing_id" value={listing.id} />
+      ) : null}
+      {offerDraft ? (
         <div className="flex flex-wrap items-center justify-between gap-3 card p-4 text-sm">
           <span>Tienes una publicación sin terminar en este dispositivo.</span>
           <span className="flex gap-2">
@@ -269,262 +174,53 @@ export function PublishWizard({
             </button>
           </span>
         </div>
-      )}
-      <ol className="flex gap-1.5" aria-label="Pasos">
-        {STEPS.map((label, i) => (
+      ) : null}
+      <ol className="flex gap-1.5" aria-label="Progreso de publicación">
+        {STEPS.map((label, index) => (
           <li
             key={label}
-            aria-current={i === step ? "step" : undefined}
-            className={`h-1.5 flex-1 rounded-full ${i <= step ? "bg-brand" : "bg-border"}`}
+            aria-current={index === step ? "step" : undefined}
+            className={`h-1.5 flex-1 rounded-full ${index <= step ? "bg-brand" : "bg-border"}`}
             title={label}
-          />
+          >
+            <span className="sr-only">{label}</span>
+          </li>
         ))}
       </ol>
-      <p className="text-sm text-muted">
+      <p className="text-sm text-muted" aria-live="polite">
         Paso {step + 1} de {STEPS.length} · {STEPS[step]}
       </p>
 
-      {section(
-        0,
-        <>
-          {listing ? null : companies.length > 1 ? (
-            <label className="flex flex-col gap-1.5 text-sm">
-              <span className="font-medium">Empresa que publica</span>
-              <select name="company_id" className="input text-base">
-                {companies.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-          ) : (
-            <input type="hidden" name="company_id" value={companies[0].id} />
-          )}
-          <Choices
-            legend="¿Qué material quieres publicar?"
-            name="category"
-            options={CATEGORIES as Record<MaterialCategory, string>}
-            defaultValue="plastic"
-            grid
-            icon={(value) => (
-              <MaterialIcon category={value} className="size-5 shrink-0" />
-            )}
-          />
-          <Field
-            label="Título de la publicación"
-            name="title"
-            required
-            minLength={5}
-            maxLength={160}
-            placeholder="Plástico PET post-industrial grado alimenticio"
-          />
-          <label className="flex flex-col gap-1.5 text-sm">
-            <span className="font-medium">
-              Descripción técnica del material
-            </span>
-            <textarea
-              name="description"
-              rows={4}
-              maxLength={4000}
-              placeholder="Material transparente, limpio y separado post proceso industrial."
-              className="input text-base"
-            />
-          </label>
-          <Choices
-            legend="Estado del material"
-            name="condition"
-            options={CONDITIONS as Record<MaterialCondition, string>}
-            defaultValue="clean_separated"
-          />
-          <Toggle
-            name="is_recurring"
-            label="¿Oferta recurrente?"
-            hint="Generas este material de forma continua"
-          />
-          <PhotoInput already={listing?.images.length ?? 0} />
-        </>,
-      )}
-
+      {section(0, <MaterialStep companies={companies} listing={listing} />)}
       {section(
         1,
-        <>
-          <div className="grid grid-cols-[1fr_auto] gap-2">
-            <Field
-              label="Cantidad disponible"
-              name="quantity"
-              type="number"
-              step="any"
-              min="0.001"
-              required
-              inputMode="decimal"
-              placeholder="4.5"
-            />
-            <UnitSelect name="quantity_unit" label="Unidad" />
-          </div>
-          <Field
-            label="Cantidad mínima de compra (opcional)"
-            name="min_order_quantity"
-            type="number"
-            step="any"
-            min="0.001"
-            inputMode="decimal"
-            placeholder="1"
-          />
-          <fieldset className="flex flex-col gap-2 text-sm">
-            <legend className="mb-1.5 font-medium">Disponibilidad</legend>
-            {Object.entries(AVAILABILITY).map(([value, label]) => (
-              <label key={value} className="flex items-center gap-2">
-                <input
-                  type="radio"
-                  name="availability"
-                  value={value}
-                  checked={availability === value}
-                  onChange={() => setAvailability(value as Availability)}
-                  className="accent-brand"
-                />
-                {label}
-              </label>
-            ))}
-          </fieldset>
-          {availability === "specific_date" && (
-            <Field
-              label="Disponible desde"
-              name="available_from"
-              type="date"
-              required
-            />
-          )}
-        </>,
+        <QuantityStep
+          availability={availability}
+          setAvailability={setAvailability}
+        />,
       )}
-
-      {section(
-        2,
-        <>
-          <Field
-            label="Ciudad / municipio"
-            name="city"
-            required
-            minLength={2}
-            placeholder="Bogotá D.C."
-          />
-          <Field
-            label="Nombre de la instalación (opcional)"
-            name="facility_name"
-            placeholder="Planta Fontibón"
-          />
-          <p className="-mt-2 text-xs text-muted">
-            La dirección exacta se comparte solo con compradores verificados.
-          </p>
-          <Toggle
-            name="pickup_allowed"
-            label="¿Permites retiro en sitio?"
-            hint="El comprador puede recoger directamente en tu planta"
-            defaultChecked
-          />
-        </>,
-      )}
-
-      {section(
-        3,
-        <>
-          <fieldset className="grid grid-cols-2 gap-2 text-sm">
-            <legend className="mb-1.5 font-medium">Precio</legend>
-            {[
-              ["paid", "De pago"],
-              ["free", "Gratuito"],
-            ].map(([value, label]) => (
-              <label
-                key={value}
-                className="flex cursor-pointer items-center justify-center card p-3 transition hover:border-brand/60 has-checked:border-brand has-checked:bg-brand-soft"
-              >
-                <input
-                  type="radio"
-                  name="pricing_type"
-                  value={value}
-                  checked={free === (value === "free")}
-                  onChange={() => setFree(value === "free")}
-                  className="sr-only"
-                />
-                {label}
-              </label>
-            ))}
-          </fieldset>
-          {!free && (
-            <>
-              <div className="grid grid-cols-[1fr_auto] gap-2">
-                <Field
-                  label="Precio por unidad (COP)"
-                  name="price"
-                  type="number"
-                  min="1"
-                  step="any"
-                  required
-                  inputMode="numeric"
-                  placeholder="850"
-                />
-                <UnitSelect name="price_unit" label="Por" defaultValue="kg" />
-              </div>
-              <Toggle
-                name="price_negotiable"
-                label="Precio negociable"
-                hint="Aceptas ofertas por encima o debajo del precio publicado"
-              />
-            </>
-          )}
-          <label className="flex flex-col gap-1.5 text-sm">
-            <span className="font-medium">
-              Condiciones adicionales (opcional)
-            </span>
-            <textarea
-              name="conditions"
-              rows={3}
-              maxLength={2000}
-              className="input text-base"
-            />
-          </label>
-        </>,
-      )}
-
+      {section(2, <LocationStep />)}
+      {section(3, <PriceStep free={free} setFree={setFree} />)}
       {section(
         4,
-        <>
-          <dl className="divide-y divide-border card text-sm">
-            {summary.map(([label, value]) => (
-              <div key={label} className="flex justify-between gap-4 px-4 py-3">
-                <dt className="text-muted">{label}</dt>
-                <dd className="text-right font-medium">{value}</dd>
-              </div>
-            ))}
-          </dl>
-          <p className="text-sm text-muted">
-            {listing?.status === "published"
-              ? "Los cambios se verán de inmediato en el marketplace. Las cotizaciones ya enviadas conservan sus condiciones."
-              : "Tu publicación será visible de inmediato en el marketplace."}
-          </p>
-          <FormMessage message={state?.message} />
-          {serverFieldErrors.length > 0 && (
-            <ul className="list-disc pl-5 text-sm text-warn">
-              {serverFieldErrors.map(([field, msg]) => (
-                <li key={field}>
-                  {FIELD_LABELS[field] ?? field}: {msg}
-                </li>
-              ))}
-            </ul>
-          )}
-        </>,
+        <ReviewStep
+          summary={summary}
+          listing={listing}
+          message={state?.message}
+          fieldErrors={state?.fieldErrors}
+        />,
       )}
 
       <div className="flex gap-2">
-        {step > 0 && (
+        {step > 0 ? (
           <button
             type="button"
-            onClick={() => setStep(step - 1)}
+            onClick={() => setStep((current) => Math.max(0, current - 1))}
             className="btn btn-secondary"
           >
             Atrás
           </button>
-        )}
+        ) : null}
         <div className="flex flex-1 flex-col">
           {step < STEPS.length - 1 ? (
             <button type="button" onClick={next} className="btn btn-primary">
@@ -533,11 +229,9 @@ export function PublishWizard({
           ) : (
             <div className="flex flex-col gap-2">
               <SubmitButton pending={pending}>
-                {listing?.status === "published"
-                  ? "Guardar cambios"
-                  : "Publicar"}
+                {listing?.status === "published" ? "Guardar cambios" : "Publicar"}
               </SubmitButton>
-              {listing?.status !== "published" && (
+              {listing?.status !== "published" ? (
                 <button
                   type="submit"
                   name="intent"
@@ -547,239 +241,11 @@ export function PublishWizard({
                 >
                   Guardar como borrador
                 </button>
-              )}
+              ) : null}
             </div>
           )}
         </div>
       </div>
     </form>
-  );
-}
-
-function buildSummary(data: FormData): [string, string][] {
-  const get = (name: string) => String(data.get(name) ?? "").trim();
-  const unit = get("quantity_unit") as QuantityUnit;
-  const rows: [string, string][] = [
-    ["Material", CATEGORIES[get("category") as MaterialCategory]],
-    ["Título", get("title")],
-    ["Estado", CONDITIONS[get("condition") as MaterialCondition]],
-    ["Cantidad", formatQuantity(Number(get("quantity")), unit)],
-  ];
-  if (get("min_order_quantity"))
-    rows.push([
-      "Mínimo de compra",
-      formatQuantity(Number(get("min_order_quantity")), unit),
-    ]);
-  rows.push(
-    [
-      "Disponibilidad",
-      availabilityLabel({
-        availability: get("availability") as Availability,
-        available_from: get("available_from") || null,
-      }),
-    ],
-    ["Ubicación", get("city")],
-    ["Retiro en sitio", data.get("pickup_allowed") === "on" ? "Sí" : "No"],
-    [
-      "Precio",
-      formatPrice({
-        pricing_type: get("pricing_type") === "free" ? "free" : "paid",
-        price: get("price") ? Number(get("price")) : null,
-        price_unit: (get("price_unit") || null) as QuantityUnit | null,
-      }) + (data.get("price_negotiable") === "on" ? " · Negociable" : ""),
-    ],
-    ["Oferta", data.get("is_recurring") === "on" ? "Recurrente" : "Puntual"],
-  );
-  const photos = data
-    .getAll("photos")
-    .filter((f) => f instanceof File && f.size > 0).length;
-  if (photos > 0)
-    rows.push(["Fotos nuevas", `${photos} ${photos === 1 ? "foto" : "fotos"}`]);
-  return rows;
-}
-
-function Choices<T extends string>({
-  legend,
-  name,
-  options,
-  defaultValue,
-  grid = false,
-  icon,
-}: {
-  legend: string;
-  name: string;
-  options: Record<T, string>;
-  defaultValue: T;
-  grid?: boolean;
-  icon?: (value: T) => React.ReactNode;
-}) {
-  return (
-    <fieldset
-      className={`text-sm ${grid ? "grid grid-cols-2 gap-2 sm:grid-cols-4" : "flex flex-col gap-2"}`}
-    >
-      <legend className="mb-1.5 font-medium">{legend}</legend>
-      {(Object.entries(options) as [T, string][]).map(([value, label]) => (
-        <label
-          key={value}
-          className="flex cursor-pointer items-center gap-2 card p-3 transition hover:border-brand/60 has-checked:border-brand has-checked:bg-brand-soft"
-        >
-          <input
-            type="radio"
-            name={name}
-            value={value}
-            defaultChecked={value === defaultValue}
-            className="accent-brand"
-          />
-          {icon?.(value)}
-          {label}
-        </label>
-      ))}
-    </fieldset>
-  );
-}
-
-const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
-// The hosting platform takes at most 4.5 MB per request, so photos are shrunk in the
-// browser to fit all six in one upload.
-const PHOTO_MAX_SIDE = 1600;
-const PHOTO_TARGET_BYTES = 600 * 1024;
-
-async function shrinkPhoto(file: File): Promise<File> {
-  if (file.size <= PHOTO_TARGET_BYTES) return file;
-  let bitmap: ImageBitmap;
-  try {
-    bitmap = await createImageBitmap(file);
-  } catch {
-    return file;
-  }
-  const scale = Math.min(
-    1,
-    PHOTO_MAX_SIDE / Math.max(bitmap.width, bitmap.height),
-  );
-  const canvas = document.createElement("canvas");
-  canvas.width = Math.round(bitmap.width * scale);
-  canvas.height = Math.round(bitmap.height * scale);
-  const context = canvas.getContext("2d");
-  if (!context) return file;
-  // JPEG has no transparency: paint transparent PNGs over white instead of black.
-  context.fillStyle = "#fff";
-  context.fillRect(0, 0, canvas.width, canvas.height);
-  context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-  bitmap.close();
-  for (const quality of [0.82, 0.7, 0.55]) {
-    const blob = await new Promise<Blob | null>((resolve) =>
-      canvas.toBlob(resolve, "image/jpeg", quality),
-    );
-    if (blob && (blob.size <= PHOTO_TARGET_BYTES || quality === 0.55)) {
-      const name = file.name.replace(/\.\w+$/, "") + ".jpg";
-      return new File([blob], name, { type: "image/jpeg" });
-    }
-  }
-  return file;
-}
-
-function PhotoInput({ already }: { already: number }) {
-  const room = MAX_PHOTOS - already;
-  const [chosen, setChosen] = useState(0);
-  const [shrinking, setShrinking] = useState(false);
-  if (room <= 0) return null;
-  return (
-    <label className="flex flex-col gap-1.5 text-sm">
-      <span className="font-medium">
-        Fotos del material (opcional, hasta {room})
-      </span>
-      <input
-        type="file"
-        name="photos"
-        multiple
-        accept="image/jpeg,image/png,image/webp"
-        onChange={async (event) => {
-          const input = event.currentTarget;
-          const original = Array.from(input.files ?? []);
-          setChosen(original.length);
-          if (original.length > room) {
-            input.setCustomValidity(`Puedes subir máximo ${room} fotos`);
-            return;
-          }
-          // Still being shrunk: block submitting until the smaller copies are in place.
-          input.setCustomValidity(
-            "Espera a que terminemos de preparar las fotos",
-          );
-          setShrinking(true);
-          const files = await Promise.all(original.map(shrinkPhoto));
-          const smaller = new DataTransfer();
-          for (const file of files) smaller.items.add(file);
-          input.files = smaller.files;
-          setShrinking(false);
-          input.setCustomValidity(
-            files.some((f) => f.size > MAX_PHOTO_BYTES)
-              ? "Cada foto puede pesar máximo 5 MB"
-              : "",
-          );
-        }}
-        className="input text-sm file:mr-3 file:rounded-md file:border-0 file:bg-surface-sunken file:px-3 file:py-1.5 file:text-sm file:font-medium"
-      />
-      <span className="text-muted">
-        {shrinking
-          ? "Preparando las fotos…"
-          : chosen > 0
-            ? `${chosen} ${chosen === 1 ? "foto lista" : "fotos listas"} para subir`
-            : "Una buena foto es la mejor prueba de la calidad del material. JPG, PNG o WebP, 5 MB cada una."}
-      </span>
-    </label>
-  );
-}
-
-function Toggle({
-  name,
-  label,
-  hint,
-  defaultChecked = false,
-}: {
-  name: string;
-  label: string;
-  hint: string;
-  defaultChecked?: boolean;
-}) {
-  return (
-    <label className="flex cursor-pointer items-start gap-3 card p-3 transition hover:border-brand/60 text-sm has-checked:border-brand has-checked:bg-brand-soft">
-      <input
-        type="checkbox"
-        name={name}
-        defaultChecked={defaultChecked}
-        className="mt-1 accent-brand"
-      />
-      <span>
-        <span className="block font-medium">{label}</span>
-        <span className="text-muted">{hint}</span>
-      </span>
-    </label>
-  );
-}
-
-function UnitSelect({
-  name,
-  label,
-  defaultValue = "t",
-}: {
-  name: string;
-  label: string;
-  defaultValue?: QuantityUnit;
-}) {
-  return (
-    <label className="flex flex-col gap-1.5 text-sm">
-      <span className="font-medium">{label}</span>
-      <select
-        name={name}
-        defaultValue={defaultValue}
-        className="input text-base"
-      >
-        {Object.entries(UNITS).map(([value, unitLabel]) => (
-          <option key={value} value={value}>
-            {unitLabel}
-          </option>
-        ))}
-      </select>
-    </label>
   );
 }

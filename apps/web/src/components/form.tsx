@@ -1,4 +1,4 @@
-import type { InputHTMLAttributes, ReactNode } from "react";
+import { useId, type InputHTMLAttributes, type ReactNode } from "react";
 
 export function Field({
   label,
@@ -9,16 +9,26 @@ export function Field({
   error?: string;
   name: string;
 } & InputHTMLAttributes<HTMLInputElement>) {
+  const inputId = useId();
+  const errorId = useId();
   return (
-    <label className="flex flex-col gap-1.5 text-left text-sm">
-      <span className="font-medium">{label}</span>
+    <div className="flex flex-col gap-1.5 text-left text-sm">
+      <label htmlFor={props.id ?? inputId} className="font-medium">
+        {label}
+      </label>
       <input
         {...props}
+        id={props.id ?? inputId}
         aria-invalid={error ? true : undefined}
+        aria-describedby={error ? errorId : undefined}
         className="input text-base"
       />
-      {error && <span className="text-warn">{error}</span>}
-    </label>
+      {error && (
+        <span id={errorId} className="text-warn">
+          {error}
+        </span>
+      )}
+    </div>
   );
 }
 

@@ -20,7 +20,7 @@ export function RequestError({
       role="alert"
       className={`rounded-xl border border-warn/30 bg-warn/5 p-4 text-sm ${className}`}
     >
-      <p className="font-medium text-warn">{message}</p>
+      <p className="font-medium text-foreground">{message}</p>
       <div className="mt-3 flex flex-wrap items-center gap-3">
         <button
           type="button"

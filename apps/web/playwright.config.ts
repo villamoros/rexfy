@@ -13,14 +13,39 @@ const ci = Boolean(process.env.CI);
 export default defineConfig({
   testDir: "e2e",
   globalSetup: "./e2e/global-setup.ts",
-  // One shared journey: the companies, listing and order build on each other.
   workers: 1,
   timeout: 180_000,
   expect: { timeout: 15_000 },
   reporter: ci ? [["list"], ["html", { open: "never" }]] : "list",
-  use: { baseURL, locale: "es-CO", trace: "retain-on-failure" },
-  projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
-  // The API must already be running (see README); the web starts here unless it is too.
+  use: {
+    baseURL,
+    locale: "es-CO",
+    trace: "retain-on-failure",
+    channel: process.env.PLAYWRIGHT_CHANNEL,
+  },
+  projects: [
+    {
+      name: "public-desktop",
+      testMatch: /public-smoke\.spec\.ts/,
+      use: { ...devices["Desktop Chrome"] },
+    },
+    {
+      name: "public-mobile",
+      testMatch: /public-smoke\.spec\.ts/,
+      use: { ...devices["Pixel 7"] },
+    },
+    {
+      name: "commercial-desktop",
+      testIgnore: /public-smoke\.spec\.ts/,
+      use: { ...devices["Desktop Chrome"] },
+    },
+    {
+      name: "commercial-mobile",
+      testIgnore: /public-smoke\.spec\.ts/,
+      use: { ...devices["Pixel 7"] },
+    },
+  ],
+  outputDir: "test-results",
   webServer: process.env.E2E_BASE_URL
     ? undefined
     : {
