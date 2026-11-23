@@ -5,6 +5,7 @@ import { useActionState } from "react";
 import { requestShipment } from "@/app/actions/logistics";
 import { Field, FormMessage, SubmitButton } from "@/components/form";
 import { VEHICLES } from "@/lib/logistics";
+import { useIdempotencyForm } from "@/lib/use-idempotency";
 
 export function ShipmentRequestForm({
   transactionId,
@@ -14,9 +15,15 @@ export function ShipmentRequestForm({
   pickupCity: string;
 }) {
   const [state, action, pending] = useActionState(requestShipment, undefined);
+  const { idempotencyRef, ensureIdempotencyKey } = useIdempotencyForm();
   const errors = state?.fieldErrors ?? {};
   return (
-    <form action={action} className="flex flex-col gap-4">
+    <form
+      action={action}
+      className="flex flex-col gap-4"
+      onSubmit={ensureIdempotencyKey}
+    >
+      <input ref={idempotencyRef} type="hidden" name="idempotency_key" />
       <input type="hidden" name="transaction_id" value={transactionId} />
       <div className="grid gap-4 sm:grid-cols-2">
         <Field

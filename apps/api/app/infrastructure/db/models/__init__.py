@@ -2,6 +2,7 @@
 
 from app.infrastructure.db.models.audit import AuditLog
 from app.infrastructure.db.models.deals import Message, Offer, Thread, Transaction
+from app.infrastructure.db.models.idempotency import IdempotencyRecord
 from app.infrastructure.db.models.identity import User
 from app.infrastructure.db.models.listings import Listing, ListingImage
 from app.infrastructure.db.models.logistics import Shipment, ShipmentEvent, TransportQuote
@@ -19,6 +20,7 @@ __all__ = [
     "CompanyInvitation",
     "CompanyMember",
     "Dispute",
+    "IdempotencyRecord",
     "Listing",
     "ListingImage",
     "Message",

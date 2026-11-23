@@ -1,3 +1,4 @@
+from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
@@ -87,6 +88,21 @@ def test_starting_again_reuses_thread(client: TestClient, deal: dict[str, Any]) 
     assert len(again.json()["messages"]) == 2
 
 
+def test_message_replay_is_stable_and_changed_payload_conflicts(
+    client: TestClient, deal: dict[str, Any]
+) -> None:
+    path = f"/threads/{deal['thread_id']}/messages"
+    headers = {**deal["seller"], "Idempotency-Key": "message-replay-0001"}
+    first = client.post(path, json={"body": "Una sola vez"}, headers=headers)
+    replay = client.post(path, json={"body": "Una sola vez"}, headers=headers)
+    conflict = client.post(path, json={"body": "Contenido diferente"}, headers=headers)
+
+    assert first.status_code == replay.status_code == 201
+    assert first.json() == replay.json()
+    assert [m["body"] for m in replay.json()["messages"]].count("Una sola vez") == 1
+    assert conflict.status_code == 409
+
+
 def test_only_buyer_companies_can_start(client: TestClient, deal: dict[str, Any]) -> None:
     own = client.post(
         "/threads",
@@ -131,6 +147,70 @@ def test_counter_then_accept_creates_order(client: TestClient, deal: dict[str, A
     )
     buyer_orders = client.get("/transactions", headers=deal["buyer"]).json()
     assert [(o["id"], o["my_role"]) for o in buyer_orders] == [(order["id"], "buyer")]
+
+
+def test_concurrent_accept_replays_one_transaction(committed_client: TestClient) -> None:
+    client = committed_client
+    seller = register(client, "concurrent-seller@example.com")
+    seller_company = company(client, seller, ["generator"], "900100299")
+    listing = client.post(
+        "/listings",
+        json={**PET, "company_id": seller_company, "is_recurring": False},
+        headers=seller,
+    ).json()
+    client.post(f"/listings/{listing['id']}/publish", headers=seller)
+    buyer = register(client, "concurrent-buyer@example.com")
+    buyer_company = company(client, buyer, ["buyer"], "800200399")
+    thread = client.post(
+        "/threads",
+        json={"listing_id": listing["id"], "company_id": buyer_company, "body": "Interés"},
+        headers=buyer,
+    ).json()
+    quote = offer(client, seller, thread["id"])
+    headers = {**buyer, "Idempotency-Key": "accept-concurrent-0001"}
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        responses = list(
+            pool.map(
+                lambda _: client.post(f"/offers/{quote['id']}/accept", headers=headers),
+                range(2),
+            )
+        )
+
+    assert [response.status_code for response in responses] == [200, 200]
+    assert responses[0].json()["id"] == responses[1].json()["id"]
+    assert len(client.get("/transactions", headers=buyer).json()) == 1
+    remaining = client.get(f"/listings/{listing['id']}", headers=seller).json()
+    assert remaining["quantity"] == 0
+    assert remaining["status"] == "archived"
+
+
+def test_concurrent_thread_creation_reuses_one_thread(committed_client: TestClient) -> None:
+    client = committed_client
+    seller = register(client, "thread-seller@example.com")
+    seller_company = company(client, seller, ["generator"], "900100298")
+    listing = client.post(
+        "/listings", json={**PET, "company_id": seller_company}, headers=seller
+    ).json()
+    client.post(f"/listings/{listing['id']}/publish", headers=seller)
+    buyer = register(client, "thread-buyer@example.com")
+    buyer_company = company(client, buyer, ["buyer"], "800200398")
+    body = {"listing_id": listing["id"], "company_id": buyer_company, "body": "Interés"}
+
+    def create_thread(number: int):
+        headers = {**buyer, "Idempotency-Key": f"thread-concurrent-000{number}"}
+        return client.post("/threads", json=body, headers=headers)
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        responses = list(pool.map(create_thread, (1, 2)))
+
+    assert [response.status_code for response in responses] == [201, 201]
+    assert responses[0].json()["id"] == responses[1].json()["id"]
+    assert len(client.get("/threads", headers=buyer).json()) == 1
+    assert (
+        len(client.get(f"/threads/{responses[0].json()['id']}", headers=buyer).json()["messages"])
+        == 2
+    )
 
 
 def test_decline_and_quantity_limit(client: TestClient, deal: dict[str, Any]) -> None:

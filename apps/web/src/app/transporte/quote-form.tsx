@@ -4,6 +4,7 @@ import { useActionState } from "react";
 
 import { submitTransportQuote } from "@/app/actions/logistics";
 import { Field, FormMessage, SubmitButton } from "@/components/form";
+import { useIdempotencyForm } from "@/lib/use-idempotency";
 
 export function TransportQuoteForm({
   shipmentId,
@@ -18,6 +19,7 @@ export function TransportQuoteForm({
     submitTransportQuote,
     undefined,
   );
+  const { idempotencyRef, ensureIdempotencyKey } = useIdempotencyForm();
   return (
     <details
       className="rounded-lg border border-border"
@@ -29,7 +31,9 @@ export function TransportQuoteForm({
       <form
         action={action}
         className="flex flex-col gap-3 border-t border-border p-4"
+        onSubmit={ensureIdempotencyKey}
       >
+        <input ref={idempotencyRef} type="hidden" name="idempotency_key" />
         <input type="hidden" name="shipment_id" value={shipmentId} />
         {companies.length > 1 ? (
           <select

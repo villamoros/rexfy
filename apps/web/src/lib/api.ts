@@ -35,11 +35,13 @@ export async function apiFetch<T>(
     method = "GET",
     body,
     timeoutMs,
+    idempotencyKey,
   }: {
     token?: string;
     method?: string;
     body?: unknown;
     timeoutMs?: number;
+    idempotencyKey?: string;
   } = {},
 ): Promise<ApiResult<T>> {
   // Request IDs must be unique per real request, never frozen into a prerendered shell.
@@ -58,6 +60,7 @@ export async function apiFetch<T>(
       headers: {
         ...(multipart ? {} : { "Content-Type": "application/json" }),
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(idempotencyKey ? { "Idempotency-Key": idempotencyKey } : {}),
         "X-Request-ID": requestId,
       },
       body:

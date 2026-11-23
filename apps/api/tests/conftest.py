@@ -1,5 +1,6 @@
 import os
 import tempfile
+import uuid
 from collections.abc import Iterator
 
 import pytest
@@ -32,10 +33,26 @@ from fastapi.testclient import TestClient  # noqa: E402
 from sqlalchemy.orm import Session  # noqa: E402
 
 from app.infrastructure.auth.clerk import Profile, get_clerk  # noqa: E402
-from app.infrastructure.db.session import engine, get_db  # noqa: E402
+from app.infrastructure.db.base import Base  # noqa: E402
+from app.infrastructure.db.session import (  # noqa: E402
+    SessionLocal,  # noqa: E402
+    engine,
+    get_db,
+)
 from app.main import app  # noqa: E402
 
 command.upgrade(Config(os.path.join(os.path.dirname(__file__), "..", "alembic.ini")), "head")
+
+
+class IdempotentTestClient(TestClient):
+    """Give legacy tests a fresh command key; focused tests may provide a stable one."""
+
+    def request(self, method: str, url, **kwargs):
+        if method.upper() in {"POST", "PUT", "PATCH", "DELETE"}:
+            headers = dict(kwargs.pop("headers", {}) or {})
+            headers.setdefault("Idempotency-Key", str(uuid.uuid4()))
+            kwargs["headers"] = headers
+        return super().request(method, url, **kwargs)
 
 
 @pytest.fixture
@@ -81,9 +98,25 @@ def clerk() -> FakeClerk:
 def client(db: Session, clerk: FakeClerk) -> Iterator[TestClient]:
     app.dependency_overrides[get_db] = lambda: db
     app.dependency_overrides[get_clerk] = lambda: clerk
-    with TestClient(app) as c:
+    with IdempotentTestClient(app) as c:
         yield c
     app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def committed_client(clerk: FakeClerk) -> Iterator[TestClient]:
+    """A client with one real DB session per request, suitable for concurrency tests."""
+    table_names = ", ".join(f'"{name}"' for name in Base.metadata.tables)
+    with engine.begin() as connection:
+        connection.execute(text(f"TRUNCATE TABLE {table_names} RESTART IDENTITY CASCADE"))
+    app.dependency_overrides[get_clerk] = lambda: clerk
+    try:
+        with IdempotentTestClient(app) as c:
+            yield c
+    finally:
+        app.dependency_overrides.clear()
+        with SessionLocal.begin() as session:
+            session.execute(text(f"TRUNCATE TABLE {table_names} RESTART IDENTITY CASCADE"))
 
 
 def register(client: TestClient, email: str = "ana@example.com") -> dict[str, str]:

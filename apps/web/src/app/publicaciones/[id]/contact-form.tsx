@@ -4,6 +4,7 @@ import { useActionState } from "react";
 
 import { startThread } from "@/app/actions/deals";
 import { FormMessage, SubmitButton } from "@/components/form";
+import { useIdempotencyForm } from "@/lib/use-idempotency";
 
 export function ContactForm({
   listingId,
@@ -13,8 +14,14 @@ export function ContactForm({
   companies: { id: string; name: string }[];
 }) {
   const [state, action, pending] = useActionState(startThread, undefined);
+  const { idempotencyRef, ensureIdempotencyKey } = useIdempotencyForm();
   return (
-    <form action={action} className="mt-4 flex flex-col gap-3">
+    <form
+      action={action}
+      className="mt-4 flex flex-col gap-3"
+      onSubmit={ensureIdempotencyKey}
+    >
+      <input ref={idempotencyRef} type="hidden" name="idempotency_key" />
       <input type="hidden" name="listing_id" value={listingId} />
       {companies.length > 1 ? (
         <select

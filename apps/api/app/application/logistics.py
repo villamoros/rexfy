@@ -5,7 +5,7 @@ from decimal import Decimal
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.application import audit
+from app.application import audit, idempotency
 from app.application.deals import InvalidState, NotAllowed, lock
 from app.application.notifications import notify
 from app.application.organizations import membership
@@ -70,7 +70,9 @@ def relation(user: User, shipment: Shipment) -> str | None:
 
 
 def _event(db: Session, user: User, shipment: Shipment, status: ShipmentStatus, note: str | None):
-    db.add(ShipmentEvent(shipment=shipment, status=status, note=note, created_by_user_id=user.id))
+    event = ShipmentEvent(shipment=shipment, status=status, note=note, created_by_user_id=user.id)
+    db.add(event)
+    return event
 
 
 def request_shipment(
@@ -85,13 +87,24 @@ def request_shipment(
     vehicle_type: VehicleType,
     pickup_date: date,
     requirements: str | None,
+    idempotency_key: str,
+    request_hash: str,
 ) -> Shipment:
     mine = _company_ids(user) & {transaction.buyer_company_id, transaction.seller_company_id}
     if not mine:
         raise NotAllowed
+    previous = idempotency.find(
+        db,
+        user,
+        scope="shipments.request",
+        key=idempotency_key,
+        request_hash=request_hash,
+    )
+    if previous:
+        return idempotency.replay(db, previous, Shipment)
+    lock(db, transaction)
     if transaction.status is not TransactionStatus.AGREED:
         raise InvalidState("La orden ya no está esperando transporte")
-    lock(db, transaction)
     if db.scalar(select(Shipment.id).where(Shipment.transaction_id == transaction.id)):
         raise InvalidState("Esta orden ya tiene una solicitud de transporte")
     shipment = Shipment(
@@ -109,6 +122,14 @@ def request_shipment(
     _event(db, user, shipment, ShipmentStatus.REQUESTED, None)
     audit.record(
         db, user, "shipment.requested", shipment, company_id=shipment.requested_by_company_id
+    )
+    idempotency.remember(
+        db,
+        user,
+        scope="shipments.request",
+        key=idempotency_key,
+        request_hash=request_hash,
+        resource=shipment,
     )
     db.commit()
     return shipment
@@ -163,9 +184,22 @@ def submit_quote(
     delivery_date: date,
     includes_insurance: bool,
     notes: str | None,
+    idempotency_key: str,
+    request_hash: str,
 ) -> TransportQuote:
     if company_id not in _transporter_ids(user, verified=True) or company_id in _parties(shipment):
         raise NotAllowed
+    previous = idempotency.find(
+        db,
+        user,
+        scope="transport_quotes.submit",
+        key=idempotency_key,
+        request_hash=request_hash,
+    )
+    if previous:
+        return idempotency.replay(db, previous, TransportQuote)
+    lock(db, shipment)
+    db.refresh(shipment, attribute_names=["quotes", "transaction"])
     if shipment.status is not ShipmentStatus.REQUESTED:
         raise InvalidState("Esta solicitud ya tiene transportador asignado")
     if any(q.transporter_company_id == company_id for q in shipment.quotes):
@@ -190,6 +224,14 @@ def submit_quote(
         title="Nueva cotización de transporte",
         body=f"Orden {t.code}: {shipment.pickup_city} → {shipment.delivery_city}, ${price:,.0f}",
         link=f"/ordenes/{t.id}",
+    )
+    idempotency.remember(
+        db,
+        user,
+        scope="transport_quotes.submit",
+        key=idempotency_key,
+        request_hash=request_hash,
+        resource=quote,
     )
     db.commit()
     return quote
@@ -244,7 +286,14 @@ def accept_quote(db: Session, user: User, quote: TransportQuote) -> Shipment:
 
 
 def advance(
-    db: Session, user: User, shipment: Shipment, status: ShipmentStatus, note: str | None
+    db: Session,
+    user: User,
+    shipment: Shipment,
+    status: ShipmentStatus,
+    note: str | None,
+    *,
+    idempotency_key: str,
+    request_hash: str,
 ) -> Shipment:
     """The assigned transporter moves the shipment forward, never backwards.
 
@@ -252,6 +301,16 @@ def advance(
     """
     if shipment.transporter_company_id not in _company_ids(user):
         raise NotAllowed
+    previous = idempotency.find(
+        db,
+        user,
+        scope="shipments.advance",
+        key=idempotency_key,
+        request_hash=request_hash,
+    )
+    if previous:
+        event = idempotency.replay(db, previous, ShipmentEvent)
+        return event.shipment
     lock(db, shipment)
     if shipment.status not in SHIPMENT_FLOW or status not in SHIPMENT_FLOW:
         raise InvalidState("Estado de envío no válido")
@@ -261,7 +320,7 @@ def advance(
     if shipment.status is ShipmentStatus.ASSIGNED and status is not ShipmentStatus.PICKED_UP:
         raise InvalidState("Primero marca la recogida del material")
     shipment.status = status
-    _event(db, user, shipment, status, note)
+    event = _event(db, user, shipment, status, note)
     order = shipment.transaction
     if order.status is not TransactionStatus.COMPLETED:
         order.status = _ORDER_STATUS.get(status, order.status)
@@ -283,5 +342,13 @@ def advance(
             link=f"/ordenes/{order.id}",
             email=status is ShipmentStatus.DELIVERED,
         )
+    idempotency.remember(
+        db,
+        user,
+        scope="shipments.advance",
+        key=idempotency_key,
+        request_hash=request_hash,
+        resource=event,
+    )
     db.commit()
     return shipment

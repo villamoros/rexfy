@@ -26,6 +26,7 @@ export async function startThread(
   const result = await apiFetch<ThreadDetail>("/threads", {
     method: "POST",
     token: await token(),
+    idempotencyKey: text(formData, "idempotency_key"),
     body: {
       listing_id: text(formData, "listing_id"),
       company_id: text(formData, "company_id"),
@@ -44,6 +45,7 @@ export async function sendMessage(
   const result = await apiFetch(`/threads/${id}/messages`, {
     method: "POST",
     token: await token(),
+    idempotencyKey: text(formData, "idempotency_key"),
     body: { body: text(formData, "body") },
   });
   if (!result.ok) return { message: result.message };
@@ -59,6 +61,7 @@ export async function sendOffer(
   const result = await apiFetch(`/threads/${id}/offers`, {
     method: "POST",
     token: await token(),
+    idempotencyKey: text(formData, "idempotency_key"),
     body: {
       quantity: Number(text(formData, "quantity").replace(",", ".")),
       price: Number(text(formData, "price").replace(",", ".")),
@@ -82,6 +85,7 @@ export async function respondToOffer(
   const result = await apiFetch<Transaction>(`/offers/${offer}/${decision}`, {
     method: "POST",
     token: await token(),
+    idempotencyKey: text(formData, "idempotency_key"),
   });
   if (!result.ok) return mutationFailure(result);
   if (result.ok && decision === "accept")

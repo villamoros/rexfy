@@ -3,9 +3,10 @@ import uuid
 from fastapi import APIRouter, HTTPException, status
 
 from app.application import deals as deals_service
+from app.application import idempotency
 from app.application import logistics as service
 from app.infrastructure.db.models import Shipment, User
-from app.presentation.deps import CurrentUser, DbSession
+from app.presentation.deps import CurrentUser, DbSession, IdempotencyKey
 from app.presentation.schemas.deals import CompanyRef
 from app.presentation.schemas.logistics import (
     EventCreate,
@@ -22,7 +23,7 @@ router = APIRouter(tags=["logistics"])
 _FORBIDDEN = HTTPException(status.HTTP_403_FORBIDDEN, "No puedes hacer esto en este envío")
 
 
-def _conflict(exc: deals_service.InvalidState) -> HTTPException:
+def _conflict(exc: deals_service.InvalidState | idempotency.Conflict) -> HTTPException:
     return HTTPException(status.HTTP_409_CONFLICT, exc.message)
 
 
@@ -74,14 +75,27 @@ def _load(db: DbSession, user: User, shipment_id: uuid.UUID) -> Shipment:
 
 @router.post("/transactions/{transaction_id}/shipment", status_code=status.HTTP_201_CREATED)
 def request(
-    transaction_id: uuid.UUID, body: ShipmentRequest, db: DbSession, user: CurrentUser
+    transaction_id: uuid.UUID,
+    body: ShipmentRequest,
+    db: DbSession,
+    user: CurrentUser,
+    idempotency_key: IdempotencyKey,
 ) -> ShipmentOut:
     transaction = deals_service.get_transaction(db, user, transaction_id)
     if transaction is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Orden no encontrada")
     try:
-        shipment = service.request_shipment(db, user, transaction, **body.model_dump())
-    except deals_service.InvalidState as exc:
+        shipment = service.request_shipment(
+            db,
+            user,
+            transaction,
+            **body.model_dump(),
+            idempotency_key=idempotency_key,
+            request_hash=idempotency.fingerprint(
+                {"transaction_id": transaction_id, **body.model_dump(mode="json")}
+            ),
+        )
+    except (deals_service.InvalidState, idempotency.Conflict) as exc:
         raise _conflict(exc) from None
     return _out(user, shipment)
 
@@ -122,14 +136,27 @@ def read(shipment_id: uuid.UUID, db: DbSession, user: CurrentUser) -> ShipmentOu
 
 @router.post("/shipments/{shipment_id}/quotes", status_code=status.HTTP_201_CREATED)
 def quote(
-    shipment_id: uuid.UUID, body: QuoteCreate, db: DbSession, user: CurrentUser
+    shipment_id: uuid.UUID,
+    body: QuoteCreate,
+    db: DbSession,
+    user: CurrentUser,
+    idempotency_key: IdempotencyKey,
 ) -> ShipmentOut:
     shipment = _load(db, user, shipment_id)
     try:
-        service.submit_quote(db, user, shipment, **body.model_dump())
+        service.submit_quote(
+            db,
+            user,
+            shipment,
+            **body.model_dump(),
+            idempotency_key=idempotency_key,
+            request_hash=idempotency.fingerprint(
+                {"shipment_id": shipment_id, **body.model_dump(mode="json")}
+            ),
+        )
     except deals_service.NotAllowed:
         raise _FORBIDDEN from None
-    except deals_service.InvalidState as exc:
+    except (deals_service.InvalidState, idempotency.Conflict) as exc:
         raise _conflict(exc) from None
     db.refresh(shipment)
     return _out(user, shipment)
@@ -152,14 +179,32 @@ def accept(quote_id: uuid.UUID, db: DbSession, user: CurrentUser) -> ShipmentOut
 
 @router.post("/shipments/{shipment_id}/events", status_code=status.HTTP_201_CREATED)
 def add_event(
-    shipment_id: uuid.UUID, body: EventCreate, db: DbSession, user: CurrentUser
+    shipment_id: uuid.UUID,
+    body: EventCreate,
+    db: DbSession,
+    user: CurrentUser,
+    idempotency_key: IdempotencyKey,
 ) -> ShipmentOut:
     shipment = _load(db, user, shipment_id)
     try:
-        service.advance(db, user, shipment, body.status, body.note)
+        service.advance(
+            db,
+            user,
+            shipment,
+            body.status,
+            body.note,
+            idempotency_key=idempotency_key,
+            request_hash=idempotency.fingerprint(
+                {
+                    "shipment_id": shipment_id,
+                    "status": body.status,
+                    "note": body.note,
+                }
+            ),
+        )
     except deals_service.NotAllowed:
         raise _FORBIDDEN from None
-    except deals_service.InvalidState as exc:
+    except (deals_service.InvalidState, idempotency.Conflict) as exc:
         raise _conflict(exc) from None
     db.refresh(shipment)
     return _out(user, shipment)

@@ -4,10 +4,11 @@ from typing import Annotated
 from fastapi import APIRouter, HTTPException, Query, status
 
 from app.application import deals as deals_service
+from app.application import idempotency
 from app.application import trust as service
 from app.domain.trust.enums import DisputeStatus
 from app.infrastructure.db.models import Dispute, Transaction, User
-from app.presentation.deps import AdminUser, CurrentUser, DbSession
+from app.presentation.deps import AdminUser, CurrentUser, DbSession, IdempotencyKey
 from app.presentation.schemas.deals import CompanyRef
 from app.presentation.schemas.listings import ListingOut
 from app.presentation.schemas.trust import (
@@ -106,7 +107,11 @@ def admin_disputes(
 
 @router.patch("/admin/disputes/{dispute_id}", tags=["admin"])
 def resolve(
-    dispute_id: uuid.UUID, body: DisputeResolve, db: DbSession, admin: AdminUser
+    dispute_id: uuid.UUID,
+    body: DisputeResolve,
+    db: DbSession,
+    admin: AdminUser,
+    idempotency_key: IdempotencyKey,
 ) -> AdminDisputeOut:
     dispute = db.get(Dispute, dispute_id)
     if dispute is None:
@@ -118,7 +123,11 @@ def resolve(
             dispute,
             resolution=body.resolution,
             at_fault_company_id=body.at_fault_company_id,
+            idempotency_key=idempotency_key,
+            request_hash=idempotency.fingerprint(
+                {"dispute_id": dispute_id, **body.model_dump(mode="json")}
+            ),
         )
-    except deals_service.InvalidState as exc:
+    except (deals_service.InvalidState, idempotency.Conflict) as exc:
         raise HTTPException(status.HTTP_409_CONFLICT, exc.message) from None
     return _admin_dispute(dispute)

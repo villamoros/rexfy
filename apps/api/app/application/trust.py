@@ -9,8 +9,8 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.application import audit
-from app.application.deals import InvalidState, NotAllowed
+from app.application import audit, idempotency
+from app.application.deals import InvalidState, NotAllowed, lock
 from app.application.notifications import notify
 from app.domain.deals.enums import TransactionStatus
 from app.domain.listings.enums import ListingStatus
@@ -138,7 +138,19 @@ def resolve_dispute(
     *,
     resolution: str,
     at_fault_company_id: uuid.UUID | None,
+    idempotency_key: str,
+    request_hash: str,
 ) -> Dispute:
+    previous = idempotency.find(
+        db,
+        admin,
+        scope="disputes.resolve",
+        key=idempotency_key,
+        request_hash=request_hash,
+    )
+    if previous:
+        return idempotency.replay(db, previous, Dispute)
+    lock(db, dispute)
     if dispute.status is DisputeStatus.RESOLVED:
         raise InvalidState("La disputa ya está resuelta")
     t = dispute.transaction
@@ -166,6 +178,14 @@ def resolve_dispute(
             body=resolution.strip()[:300],
             link=f"/ordenes/{t.id}",
         )
+    idempotency.remember(
+        db,
+        admin,
+        scope="disputes.resolve",
+        key=idempotency_key,
+        request_hash=request_hash,
+        resource=dispute,
+    )
     db.commit()
     return dispute
 

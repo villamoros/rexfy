@@ -5,11 +5,18 @@ import { useActionState } from "react";
 import { resolveDispute } from "@/app/actions/trust";
 import { FormMessage, SubmitButton } from "@/components/form";
 import type { AdminDispute } from "@/lib/trust";
+import { useIdempotencyForm } from "@/lib/use-idempotency";
 
 export function ResolveForm({ dispute }: { dispute: AdminDispute }) {
   const [state, action, pending] = useActionState(resolveDispute, undefined);
+  const { idempotencyRef, ensureIdempotencyKey } = useIdempotencyForm();
   return (
-    <form action={action} className="flex flex-col gap-2">
+    <form
+      action={action}
+      className="flex flex-col gap-2"
+      onSubmit={ensureIdempotencyKey}
+    >
+      <input ref={idempotencyRef} type="hidden" name="idempotency_key" />
       <input type="hidden" name="dispute_id" value={dispute.id} />
       <textarea
         name="resolution"

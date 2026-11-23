@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import DateTime, ForeignKey, Numeric, String, Text, UniqueConstraint
+from sqlalchemy import DateTime, ForeignKey, Index, Numeric, String, Text, UniqueConstraint, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.domain.deals.enums import OfferStatus, TransactionStatus
@@ -57,6 +57,14 @@ class Offer(TimestampedModel):
     """A formal quote inside a thread. Only one offer per thread is pending at a time."""
 
     __tablename__ = "offers"
+    __table_args__ = (
+        Index(
+            "uq_offers_one_pending_per_thread",
+            "thread_id",
+            unique=True,
+            postgresql_where=text("status = 'pending'"),
+        ),
+    )
 
     thread_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("chat_threads.id", ondelete="CASCADE"), index=True

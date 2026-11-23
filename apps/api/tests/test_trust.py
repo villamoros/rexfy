@@ -78,16 +78,27 @@ def test_dispute_blocks_closing_until_resolved(
     assert client.patch(
         f"/admin/disputes/{did}", json={"resolution": "Corto"}, headers=order["buyer"]
     ).status_code in (403, 422)
+    resolve_headers = {**admin, "Idempotency-Key": "dispute-resolve-0001"}
     resolved = client.patch(
         f"/admin/disputes/{did}",
         json={
             "resolution": "El vendedor reconoce el faltante y descuenta 0,7 t",
             "at_fault_company_id": order["seller_company"],
         },
-        headers=admin,
+        headers=resolve_headers,
     )
     assert resolved.status_code == 200, resolved.text
     assert resolved.json()["status"] == "resolved"
+    replay = client.patch(
+        f"/admin/disputes/{did}",
+        json={
+            "resolution": "El vendedor reconoce el faltante y descuenta 0,7 t",
+            "at_fault_company_id": order["seller_company"],
+        },
+        headers=resolve_headers,
+    )
+    assert replay.status_code == 200
+    assert replay.json() == resolved.json()
 
     assert client.post(f"/transactions/{oid}/confirm-receipt", headers=order["buyer"]).json()[
         "status"

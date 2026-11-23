@@ -5,11 +5,18 @@ import { useActionState, useRef } from "react";
 import { sendMessage, sendOffer } from "@/app/actions/deals";
 import { FormMessage, SubmitButton } from "@/components/form";
 import { UNITS, type QuantityUnit } from "@/lib/listings";
+import { useIdempotencyForm } from "@/lib/use-idempotency";
 
 export function MessageComposer({ threadId }: { threadId: string }) {
   const [state, action, pending] = useActionState(sendMessage, undefined);
+  const { idempotencyRef, ensureIdempotencyKey } = useIdempotencyForm();
   return (
-    <form action={action} className="flex flex-col gap-2">
+    <form
+      action={action}
+      className="flex flex-col gap-2"
+      onSubmit={ensureIdempotencyKey}
+    >
+      <input ref={idempotencyRef} type="hidden" name="idempotency_key" />
       <input type="hidden" name="thread_id" value={threadId} />
       <FormMessage message={state?.message} />
       <div className="flex gap-2">
@@ -44,6 +51,7 @@ export function OfferComposer({
   label: string;
 }) {
   const [state, action, pending] = useActionState(sendOffer, undefined);
+  const { idempotencyRef, ensureIdempotencyKey } = useIdempotencyForm();
   const details = useRef<HTMLDetailsElement>(null);
   const input = "input text-sm";
   return (
@@ -58,7 +66,9 @@ export function OfferComposer({
       <form
         action={action}
         className="flex flex-col gap-3 border-t border-border p-4 text-sm"
+        onSubmit={ensureIdempotencyKey}
       >
+        <input ref={idempotencyRef} type="hidden" name="idempotency_key" />
         <input type="hidden" name="thread_id" value={threadId} />
         <div className="grid grid-cols-2 gap-3">
           <label className="flex flex-col gap-1">

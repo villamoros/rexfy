@@ -64,6 +64,7 @@ export async function resolveDispute(
   const result = await apiFetch(`/admin/disputes/${id}`, {
     method: "PATCH",
     token: await token(),
+    idempotencyKey: text(formData, "idempotency_key"),
     body: {
       resolution: text(formData, "resolution"),
       at_fault_company_id: text(formData, "at_fault_company_id") || null,

@@ -33,6 +33,7 @@ export async function requestShipment(
   const result = await apiFetch(`/transactions/${order}/shipment`, {
     method: "POST",
     token: await token(),
+    idempotencyKey: text(formData, "idempotency_key"),
     body: {
       pickup_city: text(formData, "pickup_city"),
       pickup_address: text(formData, "pickup_address"),
@@ -57,6 +58,7 @@ export async function submitTransportQuote(
     {
       method: "POST",
       token: await token(),
+      idempotencyKey: text(formData, "idempotency_key"),
       body: {
         company_id: text(formData, "company_id"),
         price: Number(text(formData, "price")),
@@ -91,6 +93,7 @@ export async function advanceShipment(
   const result = await apiFetch(`/shipments/${text(formData, "shipment_id")}/events`, {
     method: "POST",
     token: await token(),
+    idempotencyKey: text(formData, "idempotency_key"),
     body: {
       status: text(formData, "status"),
       note: text(formData, "note") || null,

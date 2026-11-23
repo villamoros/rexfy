@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, Header, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
@@ -11,6 +11,15 @@ from app.infrastructure.db.session import get_db
 
 DbSession = Annotated[Session, Depends(get_db)]
 ClerkDep = Annotated[Clerk, Depends(get_clerk)]
+IdempotencyKey = Annotated[
+    str,
+    Header(
+        alias="Idempotency-Key",
+        min_length=8,
+        max_length=255,
+        pattern=r"^[A-Za-z0-9._:-]+$",
+    ),
+]
 
 _bearer = HTTPBearer(auto_error=False)
 

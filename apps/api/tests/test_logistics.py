@@ -1,4 +1,5 @@
 import uuid
+from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
 import pytest
@@ -6,8 +7,10 @@ from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
 from app.infrastructure.db.models import Company
+from app.infrastructure.db.session import SessionLocal
 from tests.conftest import company, register
 from tests.test_deals import deal, offer  # noqa: F401  (fixture)
+from tests.test_listings import PET
 
 REQUEST = {
     "pickup_city": "Bogotá D.C.",
@@ -52,12 +55,20 @@ def bid(client: TestClient, headers: dict[str, str], shipment_id: str, company_i
 
 def test_full_logistics_flow(client: TestClient, db: Session, order: dict[str, Any]) -> None:
     oid = order["order_id"]
-    created = client.post(f"/transactions/{oid}/shipment", json=REQUEST, headers=order["buyer"])
+    shipment_headers = {
+        **order["buyer"],
+        "Idempotency-Key": "shipment-request-0001",
+    }
+    created = client.post(f"/transactions/{oid}/shipment", json=REQUEST, headers=shipment_headers)
     assert created.status_code == 201, created.text
     shipment = created.json()
     sid = shipment["id"]
     assert shipment["status"] == "requested"
     assert shipment["my_relation"] == "party"
+    replay = client.post(f"/transactions/{oid}/shipment", json=REQUEST, headers=shipment_headers)
+    assert replay.status_code == 201
+    assert replay.json()["id"] == sid
+    assert [event["status"] for event in replay.json()["events"]] == ["requested"]
     again = client.post(f"/transactions/{oid}/shipment", json=REQUEST, headers=order["seller"])
     assert again.status_code == 409
 
@@ -104,12 +115,20 @@ def test_full_logistics_flow(client: TestClient, db: Session, order: dict[str, A
     assert (
         client.post(events, json={"status": "picked_up"}, headers=order["buyer"]).status_code == 403
     )
-    assert (
-        client.post(
-            events, json={"status": "picked_up", "note": "Placa HJK 492"}, headers=andina
-        ).status_code
-        == 201
+    pickup_headers = {**andina, "Idempotency-Key": "shipment-event-0001"}
+    picked_up = client.post(
+        events,
+        json={"status": "picked_up", "note": "Placa HJK 492"},
+        headers=pickup_headers,
     )
+    assert picked_up.status_code == 201
+    pickup_replay = client.post(
+        events,
+        json={"status": "picked_up", "note": "Placa HJK 492"},
+        headers=pickup_headers,
+    )
+    assert pickup_replay.status_code == 201
+    assert [e["status"] for e in pickup_replay.json()["events"]].count("picked_up") == 1
     assert (
         client.get(f"/transactions/{oid}", headers=order["buyer"]).json()["status"] == "in_transit"
     )
@@ -194,3 +213,49 @@ def test_unverified_transporters_cannot_see_requests(
     assert "verificada" in listing.json()["detail"]
     assert client.get(f"/shipments/{sid}", headers=headers).status_code == 404
     assert bid(client, headers, sid, company_id, 1_000_000).status_code == 404
+
+
+def test_concurrent_transport_quotes_return_created_and_conflict(
+    committed_client: TestClient,
+) -> None:
+    client = committed_client
+    seller = register(client, "quote-seller@example.com")
+    seller_company = company(client, seller, ["generator"], "900100297")
+    listing = client.post(
+        "/listings", json={**PET, "company_id": seller_company}, headers=seller
+    ).json()
+    client.post(f"/listings/{listing['id']}/publish", headers=seller)
+    buyer = register(client, "quote-buyer@example.com")
+    buyer_company = company(client, buyer, ["buyer"], "800200397")
+    thread = client.post(
+        "/threads",
+        json={"listing_id": listing["id"], "company_id": buyer_company, "body": "Interés"},
+        headers=buyer,
+    ).json()
+    accepted = client.post(
+        f"/offers/{offer(client, seller, thread['id'])['id']}/accept", headers=buyer
+    ).json()
+    shipment = client.post(
+        f"/transactions/{accepted['id']}/shipment", json=REQUEST, headers=buyer
+    ).json()
+    carrier = register(client, "quote-carrier@example.com")
+    carrier_company = company(client, carrier, ["transporter"], "811000297")
+    with SessionLocal.begin() as session:
+        session.get(Company, uuid.UUID(carrier_company)).is_verified = True
+    quote_body = {
+        "company_id": carrier_company,
+        "price": 1_500_000,
+        "pickup_date": "2026-11-18",
+        "delivery_date": "2026-11-19",
+    }
+
+    def submit(number: int):
+        headers = {**carrier, "Idempotency-Key": f"quote-concurrent-000{number}"}
+        return client.post(f"/shipments/{shipment['id']}/quotes", json=quote_body, headers=headers)
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        responses = list(pool.map(submit, (1, 2)))
+
+    assert sorted(response.status_code for response in responses) == [201, 409]
+    current = client.get(f"/shipments/{shipment['id']}", headers=buyer).json()
+    assert len(current["quotes"]) == 1

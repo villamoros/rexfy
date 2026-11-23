@@ -3,11 +3,12 @@ import uuid
 from fastapi import APIRouter, HTTPException, status
 
 from app.application import deals as service
+from app.application import idempotency
 from app.application import trust as trust_service
 from app.domain.deals.enums import OfferStatus
 from app.domain.deals.pricing import offer_total
 from app.infrastructure.db.models import Offer, Thread, Transaction, User
-from app.presentation.deps import CurrentUser, DbSession
+from app.presentation.deps import CurrentUser, DbSession, IdempotencyKey
 from app.presentation.schemas.deals import (
     CompanyRef,
     ListingRef,
@@ -27,7 +28,7 @@ router = APIRouter(tags=["negotiation"])
 _FORBIDDEN = HTTPException(status.HTTP_403_FORBIDDEN, "No puedes hacer esto en esta negociación")
 
 
-def _conflict(exc: service.InvalidState) -> HTTPException:
+def _conflict(exc: service.InvalidState | idempotency.Conflict) -> HTTPException:
     return HTTPException(status.HTTP_409_CONFLICT, exc.message)
 
 
@@ -93,7 +94,12 @@ def _load_transaction(db: DbSession, user: User, transaction_id: uuid.UUID) -> T
 
 
 @router.post("/threads", status_code=status.HTTP_201_CREATED)
-def start(body: ThreadStart, db: DbSession, user: CurrentUser) -> ThreadDetail:
+def start(
+    body: ThreadStart, db: DbSession, user: CurrentUser, idempotency_key: IdempotencyKey
+) -> ThreadDetail:
+    request_hash = idempotency.fingerprint(
+        {"listing_id": body.listing_id, "company_id": body.company_id, "body": body.body}
+    )
     try:
         thread = service.start_thread(
             db,
@@ -101,12 +107,14 @@ def start(body: ThreadStart, db: DbSession, user: CurrentUser) -> ThreadDetail:
             listing_id=body.listing_id,
             buyer_company_id=body.company_id,
             body=body.body,
+            idempotency_key=idempotency_key,
+            request_hash=request_hash,
         )
     except service.NotAllowed:
         raise HTTPException(
             status.HTTP_403_FORBIDDEN, "Solo empresas compradoras de las que eres miembro"
         ) from None
-    except service.InvalidState as exc:
+    except (service.InvalidState, idempotency.Conflict) as exc:
         raise _conflict(exc) from None
     db.refresh(thread)
     return _detail(db, user, thread)
@@ -144,35 +152,70 @@ def read_thread(thread_id: uuid.UUID, db: DbSession, user: CurrentUser) -> Threa
 
 @router.post("/threads/{thread_id}/messages", status_code=status.HTTP_201_CREATED)
 def post_message(
-    thread_id: uuid.UUID, body: MessageCreate, db: DbSession, user: CurrentUser
+    thread_id: uuid.UUID,
+    body: MessageCreate,
+    db: DbSession,
+    user: CurrentUser,
+    idempotency_key: IdempotencyKey,
 ) -> ThreadDetail:
     thread = _load_thread(db, user, thread_id)
-    service.send_message(db, user, thread, body.body)
+    try:
+        service.send_message(
+            db,
+            user,
+            thread,
+            body.body,
+            idempotency_key=idempotency_key,
+            request_hash=idempotency.fingerprint({"thread_id": thread_id, "body": body.body}),
+        )
+    except idempotency.Conflict as exc:
+        raise _conflict(exc) from None
     db.refresh(thread)
     return _detail(db, user, thread)
 
 
 @router.post("/threads/{thread_id}/offers", status_code=status.HTTP_201_CREATED)
 def post_offer(
-    thread_id: uuid.UUID, body: OfferCreate, db: DbSession, user: CurrentUser
+    thread_id: uuid.UUID,
+    body: OfferCreate,
+    db: DbSession,
+    user: CurrentUser,
+    idempotency_key: IdempotencyKey,
 ) -> ThreadDetail:
     thread = _load_thread(db, user, thread_id)
     try:
-        service.send_offer(db, user, thread, **body.model_dump())
-    except service.InvalidState as exc:
+        service.send_offer(
+            db,
+            user,
+            thread,
+            **body.model_dump(),
+            idempotency_key=idempotency_key,
+            request_hash=idempotency.fingerprint(
+                {"thread_id": thread_id, **body.model_dump(mode="json")}
+            ),
+        )
+    except (service.InvalidState, idempotency.Conflict) as exc:
         raise _conflict(exc) from None
     db.refresh(thread)
     return _detail(db, user, thread)
 
 
 @router.post("/offers/{offer_id}/accept")
-def accept(offer_id: uuid.UUID, db: DbSession, user: CurrentUser) -> TransactionOut:
+def accept(
+    offer_id: uuid.UUID, db: DbSession, user: CurrentUser, idempotency_key: IdempotencyKey
+) -> TransactionOut:
     offer = _load_offer(db, user, offer_id)
     try:
-        transaction = service.accept_offer(db, user, offer)
+        transaction = service.accept_offer(
+            db,
+            user,
+            offer,
+            idempotency_key=idempotency_key,
+            request_hash=idempotency.fingerprint({"offer_id": offer_id}),
+        )
     except service.NotAllowed:
         raise _FORBIDDEN from None
-    except service.InvalidState as exc:
+    except (service.InvalidState, idempotency.Conflict) as exc:
         raise _conflict(exc) from None
     return _transaction_out(user, transaction)
 

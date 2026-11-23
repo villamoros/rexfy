@@ -6,7 +6,7 @@ from decimal import Decimal
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
-from app.application import audit
+from app.application import audit, idempotency
 from app.application.notifications import notify
 from app.application.organizations import NotAllowed as TeamNotAllowed
 from app.application.organizations import require_committer
@@ -68,16 +68,35 @@ def acting_company(user: User, thread: Thread) -> uuid.UUID:
 
 
 def start_thread(
-    db: Session, user: User, *, listing_id: uuid.UUID, buyer_company_id: uuid.UUID, body: str
+    db: Session,
+    user: User,
+    *,
+    listing_id: uuid.UUID,
+    buyer_company_id: uuid.UUID,
+    body: str,
+    idempotency_key: str,
+    request_hash: str,
 ) -> Thread:
     membership = next((m for m in user.memberships if m.company_id == buyer_company_id), None)
     if membership is None or MarketRole.BUYER not in membership.company.market_roles:
         raise NotAllowed
+    previous = idempotency.find(
+        db,
+        user,
+        scope="threads.start",
+        key=idempotency_key,
+        request_hash=request_hash,
+    )
+    if previous:
+        return idempotency.replay(db, previous, Thread)
     listing = db.get(Listing, listing_id)
     if listing is None or listing.status is not ListingStatus.PUBLISHED:
         raise InvalidState("La publicación no está disponible")
     if listing.company_id == buyer_company_id:
         raise InvalidState("No puedes negociar tu propia publicación")
+    lock(db, listing)
+    if listing.status is not ListingStatus.PUBLISHED:
+        raise InvalidState("La publicación no está disponible")
 
     thread = db.scalar(
         select(Thread).where(
@@ -94,19 +113,26 @@ def start_thread(
         db.add(thread)
         db.flush()
     _add_message(db, user, thread, buyer_company_id, body)
+    idempotency.remember(
+        db,
+        user,
+        scope="threads.start",
+        key=idempotency_key,
+        request_hash=request_hash,
+        resource=thread,
+    )
     db.commit()
     return thread
 
 
 def _add_message(db: Session, user: User, thread: Thread, company_id: uuid.UUID, body: str):
-    db.add(
-        Message(
-            thread_id=thread.id,
-            sender_user_id=user.id,
-            sender_company_id=company_id,
-            body=body.strip(),
-        )
+    message = Message(
+        thread_id=thread.id,
+        sender_user_id=user.id,
+        sender_company_id=company_id,
+        body=body.strip(),
     )
+    db.add(message)
     thread.last_activity_at = _now()
     db.flush()
     notify(
@@ -117,6 +143,7 @@ def _add_message(db: Session, user: User, thread: Thread, company_id: uuid.UUID,
         body=f"{thread.listing.title}: {body.strip()[:200]}",
         link=f"/mensajes/{thread.id}",
     )
+    return message
 
 
 def _other_side(thread: Thread, company_id: uuid.UUID) -> uuid.UUID:
@@ -163,11 +190,36 @@ def expire_offers(db: Session, thread: Thread) -> None:
         db.commit()
 
 
-def send_message(db: Session, user: User, thread: Thread, body: str) -> Message:
+def send_message(
+    db: Session,
+    user: User,
+    thread: Thread,
+    body: str,
+    *,
+    idempotency_key: str,
+    request_hash: str,
+) -> Message:
     company_id = acting_company(user, thread)
-    _add_message(db, user, thread, company_id, body)
+    previous = idempotency.find(
+        db,
+        user,
+        scope="messages.send",
+        key=idempotency_key,
+        request_hash=request_hash,
+    )
+    if previous:
+        return idempotency.replay(db, previous, Message)
+    message = _add_message(db, user, thread, company_id, body)
+    idempotency.remember(
+        db,
+        user,
+        scope="messages.send",
+        key=idempotency_key,
+        request_hash=request_hash,
+        resource=message,
+    )
     db.commit()
-    return thread.messages[-1]
+    return message
 
 
 def send_offer(
@@ -180,9 +232,23 @@ def send_offer(
     price_unit: QuantityUnit,
     valid_hours: int,
     notes: str | None,
+    idempotency_key: str,
+    request_hash: str,
 ) -> Offer:
     """Send a formal quote. A pending quote from the other side becomes countered."""
     company_id = acting_company(user, thread)
+    previous = idempotency.find(
+        db,
+        user,
+        scope="offers.send",
+        key=idempotency_key,
+        request_hash=request_hash,
+    )
+    if previous:
+        return idempotency.replay(db, previous, Offer)
+    lock(db, thread.listing)
+    lock(db, thread)
+    db.refresh(thread, attribute_names=["listing", "offers"])
     if thread.listing.status is not ListingStatus.PUBLISHED:
         raise InvalidState("La publicación ya no está disponible")
     if quantity > thread.listing.quantity:
@@ -193,6 +259,7 @@ def send_offer(
                 raise InvalidState("Ya tienes una cotización pendiente en esta conversación")
             offer.status = OfferStatus.COUNTERED
             offer.responded_at = _now()
+    db.flush()
     offer = Offer(
         thread=thread,
         from_company_id=company_id,
@@ -218,6 +285,14 @@ def send_offer(
         f"a ${price:,.0f} / {price_unit}",
         link=f"/mensajes/{thread.id}",
     )
+    idempotency.remember(
+        db,
+        user,
+        scope="offers.send",
+        key=idempotency_key,
+        request_hash=request_hash,
+        resource=offer,
+    )
     db.commit()
     return offer
 
@@ -231,7 +306,14 @@ def _pending_offer_for_receiver(user: User, offer: Offer) -> Offer:
     return offer
 
 
-def accept_offer(db: Session, user: User, offer: Offer) -> Transaction:
+def accept_offer(
+    db: Session,
+    user: User,
+    offer: Offer,
+    *,
+    idempotency_key: str,
+    request_hash: str,
+) -> Transaction:
     """Close the deal. One-off listings lose the sold quantity and close when sold out.
 
     The listing and the offer are locked first, so two buyers accepting at the same time
@@ -239,13 +321,25 @@ def accept_offer(db: Session, user: User, offer: Offer) -> Transaction:
     """
     thread = offer.thread
     listing = thread.listing
+    company_id = acting_company(user, thread)
+    if offer.from_company_id == company_id:
+        raise NotAllowed
+    try:
+        require_committer(user, company_id)
+    except TeamNotAllowed:
+        raise NotAllowed from None
+    previous = idempotency.find(
+        db,
+        user,
+        scope="offers.accept",
+        key=idempotency_key,
+        request_hash=request_hash,
+    )
+    if previous:
+        return idempotency.replay(db, previous, Transaction)
     lock(db, listing)
     lock(db, offer)
     _pending_offer_for_receiver(user, offer)
-    try:
-        require_committer(user, acting_company(user, thread))
-    except TeamNotAllowed:
-        raise NotAllowed from None
     if listing.status is not ListingStatus.PUBLISHED:
         raise InvalidState("La publicación ya no está disponible")
     if offer.quantity > listing.quantity:
@@ -286,6 +380,14 @@ def accept_offer(db: Session, user: User, offer: Offer) -> Transaction:
         title=f"Aceptaron tu cotización · orden {transaction.code}",
         body=thread.listing.title,
         link=f"/ordenes/{transaction.id}",
+    )
+    idempotency.remember(
+        db,
+        user,
+        scope="offers.accept",
+        key=idempotency_key,
+        request_hash=request_hash,
+        resource=transaction,
     )
     db.commit()
     return transaction
