@@ -10,7 +10,7 @@ from app.application.dashboard import platform_kpis
 from app.domain.listings.enums import ListingStatus, MaterialCategory
 from app.domain.organizations.roles import MarketRole
 from app.infrastructure.db.models import Company, OutboxEvent
-from app.presentation.deps import AdminUser, DbSession
+from app.presentation.deps import AdminUser, DbSession, PageParams
 from app.presentation.schemas.admin import (
     AdminCompany,
     AuditEntry,
@@ -21,6 +21,7 @@ from app.presentation.schemas.admin import (
 from app.presentation.schemas.dashboard import FunnelSnapshotOut, PlatformKpisOut
 from app.presentation.schemas.listings import ListingOut
 from app.presentation.schemas.organizations import CompanyOut
+from app.presentation.schemas.pagination import CursorPage
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -37,8 +38,14 @@ def _load_company(db: DbSession, company_id: uuid.UUID) -> Company:
 
 
 @router.get("/companies")
-def companies(db: DbSession, _: AdminUser, verified: bool | None = None) -> list[AdminCompany]:
-    return [_company_out(c, n) for c, n in service.companies(db, verified=verified)]
+def companies(
+    db: DbSession, _: AdminUser, page: PageParams, verified: bool | None = None
+) -> CursorPage[AdminCompany]:
+    companies_page = service.companies(db, page, verified=verified)
+    return CursorPage(
+        items=[_company_out(company, members) for company, members in companies_page.items],
+        next_cursor=companies_page.next_cursor,
+    )
 
 
 @router.post("/companies/{company_id}/verify")
@@ -57,9 +64,14 @@ def unverify(company_id: uuid.UUID, db: DbSession, admin: AdminUser) -> CompanyO
 def listings(
     db: DbSession,
     _: AdminUser,
+    page: PageParams,
     listing_status: Annotated[ListingStatus | None, Query(alias="status")] = None,
-) -> list[ListingOut]:
-    return [ListingOut.model_validate(i) for i in service.listings(db, status=listing_status)]
+) -> CursorPage[ListingOut]:
+    listings_page = service.listings(db, page, status=listing_status)
+    return CursorPage(
+        items=[ListingOut.model_validate(listing) for listing in listings_page.items],
+        next_cursor=listings_page.next_cursor,
+    )
 
 
 @router.post("/listings/{listing_id}/take-down")
@@ -74,22 +86,26 @@ def take_down(listing_id: uuid.UUID, body: TakeDown, db: DbSession, admin: Admin
 def audit_log(
     db: DbSession,
     _: AdminUser,
+    page: PageParams,
     entity_id: uuid.UUID | None = None,
-    limit: Annotated[int, Query(ge=1, le=200)] = 50,
-) -> list[AuditEntry]:
-    return [
-        AuditEntry(
-            id=e.id,
-            created_at=e.created_at,
-            actor_name=e.actor.full_name if e.actor else None,
-            company_id=e.company_id,
-            action=e.action,
-            entity_type=e.entity_type,
-            entity_id=e.entity_id,
-            data=e.data,
-        )
-        for e in audit.recent(db, limit=limit, entity_id=entity_id)
-    ]
+) -> CursorPage[AuditEntry]:
+    entries = audit.recent(db, page, entity_id=entity_id)
+    return CursorPage(
+        items=[
+            AuditEntry(
+                id=e.id,
+                created_at=e.created_at,
+                actor_name=e.actor.full_name if e.actor else None,
+                company_id=e.company_id,
+                action=e.action,
+                entity_type=e.entity_type,
+                entity_id=e.entity_id,
+                data=e.data,
+            )
+            for e in entries.items
+        ],
+        next_cursor=entries.next_cursor,
+    )
 
 
 @router.get("/metrics")
@@ -125,9 +141,13 @@ def outbox_health(db: DbSession, _: AdminUser) -> OutboxHealthOut:
 def outbox_events(
     db: DbSession,
     _: AdminUser,
-    limit: Annotated[int, Query(ge=1, le=100)] = 30,
-) -> list[OutboxEventOut]:
-    return [OutboxEventOut.model_validate(event) for event in outbox.recent(db, limit=limit)]
+    page: PageParams,
+) -> CursorPage[OutboxEventOut]:
+    events = outbox.recent(db, page)
+    return CursorPage(
+        items=[OutboxEventOut.model_validate(event) for event in events.items],
+        next_cursor=events.next_cursor,
+    )
 
 
 @router.post("/outbox/{event_id}/replay")

@@ -1,16 +1,28 @@
 import uuid
-from datetime import date
-from decimal import Decimal
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.application import analytics, audit, idempotency
+from app.application.commands import AdvanceShipment, RequestShipment, SubmitTransportQuote
 from app.application.deals import InvalidState, NotAllowed, lock
 from app.application.notifications import notify
 from app.application.organizations import membership
+from app.application.pagination import Page, PageRequest, paginate
 from app.domain.deals.enums import TransactionStatus
-from app.domain.logistics.enums import SHIPMENT_FLOW, QuoteStatus, ShipmentStatus, VehicleType
+from app.domain.deals.state_machine import (
+    InvalidTransition as InvalidTransactionTransition,
+)
+from app.domain.deals.state_machine import (
+    require_transaction_transition,
+)
+from app.domain.logistics.enums import QuoteStatus, ShipmentStatus
+from app.domain.logistics.state_machine import (
+    InvalidTransition as InvalidShipmentTransition,
+)
+from app.domain.logistics.state_machine import (
+    require_shipment_transition,
+)
 from app.domain.organizations.roles import MarketRole
 from app.domain.product.events import ProductEventName
 from app.infrastructure.db.models import (
@@ -81,14 +93,8 @@ def request_shipment(
     db: Session,
     user: User,
     transaction: Transaction,
+    command: RequestShipment,
     *,
-    pickup_city: str,
-    pickup_address: str,
-    delivery_city: str,
-    delivery_address: str,
-    vehicle_type: VehicleType,
-    pickup_date: date,
-    requirements: str | None,
     idempotency_key: str,
     request_hash: str,
 ) -> Shipment:
@@ -112,13 +118,13 @@ def request_shipment(
     shipment = Shipment(
         transaction=transaction,
         requested_by_company_id=next(iter(mine)),
-        pickup_city=pickup_city.strip(),
-        pickup_address=pickup_address.strip(),
-        delivery_city=delivery_city.strip(),
-        delivery_address=delivery_address.strip(),
-        vehicle_type=vehicle_type,
-        pickup_date=pickup_date,
-        requirements=requirements,
+        pickup_city=command.pickup_city.strip(),
+        pickup_address=command.pickup_address.strip(),
+        delivery_city=command.delivery_city.strip(),
+        delivery_address=command.delivery_address.strip(),
+        vehicle_type=command.vehicle_type,
+        pickup_date=command.pickup_date,
+        requirements=command.requirements,
     )
     db.add(shipment)
     _event(db, user, shipment, ShipmentStatus.REQUESTED, None)
@@ -133,7 +139,6 @@ def request_shipment(
         request_hash=request_hash,
         resource=shipment,
     )
-    db.commit()
     return shipment
 
 
@@ -148,7 +153,7 @@ def get_shipment(db: Session, user: User, shipment_id: uuid.UUID) -> Shipment | 
     return shipment
 
 
-def open_requests(db: Session, user: User) -> list[Shipment]:
+def open_requests(db: Session, user: User, page: PageRequest) -> Page[Shipment]:
     """Requests a transporter can quote: still open and not for their own orders.
 
     Only verified transporters see them, since they reveal who trades what and where.
@@ -158,38 +163,31 @@ def open_requests(db: Session, user: User) -> list[Shipment]:
     if not _transporter_ids(user, verified=True):
         raise NotVerified
     mine = _company_ids(user)
-    stmt = (
-        select(Shipment)
-        .where(Shipment.status == ShipmentStatus.REQUESTED)
-        .order_by(Shipment.pickup_date)
+    stmt = select(Shipment).where(Shipment.status == ShipmentStatus.REQUESTED)
+    result = paginate(db, stmt, page, model=Shipment)
+    return Page(
+        items=[shipment for shipment in result.items if not _parties(shipment) & mine],
+        next_cursor=result.next_cursor,
     )
-    return [s for s in db.scalars(stmt).unique() if not _parties(s) & mine]
 
 
-def assigned_to(db: Session, user: User) -> list[Shipment]:
-    stmt = (
-        select(Shipment)
-        .where(Shipment.transporter_company_id.in_(_transporter_ids(user)))
-        .order_by(Shipment.pickup_date.desc())
-    )
-    return list(db.scalars(stmt).unique())
+def assigned_to(db: Session, user: User, page: PageRequest) -> Page[Shipment]:
+    stmt = select(Shipment).where(Shipment.transporter_company_id.in_(_transporter_ids(user)))
+    return paginate(db, stmt, page, model=Shipment)
 
 
 def submit_quote(
     db: Session,
     user: User,
     shipment: Shipment,
+    command: SubmitTransportQuote,
     *,
-    company_id: uuid.UUID,
-    price: Decimal,
-    pickup_date: date,
-    delivery_date: date,
-    includes_insurance: bool,
-    notes: str | None,
     idempotency_key: str,
     request_hash: str,
 ) -> TransportQuote:
-    if company_id not in _transporter_ids(user, verified=True) or company_id in _parties(shipment):
+    if command.company_id not in _transporter_ids(
+        user, verified=True
+    ) or command.company_id in _parties(shipment):
         raise NotAllowed
     previous = idempotency.find(
         db,
@@ -204,18 +202,18 @@ def submit_quote(
     db.refresh(shipment, attribute_names=["quotes", "transaction"])
     if shipment.status is not ShipmentStatus.REQUESTED:
         raise InvalidState("Esta solicitud ya tiene transportador asignado")
-    if any(q.transporter_company_id == company_id for q in shipment.quotes):
+    if any(q.transporter_company_id == command.company_id for q in shipment.quotes):
         raise InvalidState("Tu empresa ya cotizó esta solicitud")
-    if delivery_date < pickup_date:
+    if command.delivery_date < command.pickup_date:
         raise InvalidState("La entrega no puede ser antes de la recogida")
     quote = TransportQuote(
         shipment=shipment,
-        transporter_company_id=company_id,
-        price=price,
-        pickup_date=pickup_date,
-        delivery_date=delivery_date,
-        includes_insurance=includes_insurance,
-        notes=notes,
+        transporter_company_id=command.company_id,
+        price=command.price,
+        pickup_date=command.pickup_date,
+        delivery_date=command.delivery_date,
+        includes_insurance=command.includes_insurance,
+        notes=command.notes,
     )
     db.add(quote)
     t = shipment.transaction
@@ -224,7 +222,10 @@ def submit_quote(
         shipment.requested_by_company_id,
         kind="transport_quote",
         title="Nueva cotización de transporte",
-        body=f"Orden {t.code}: {shipment.pickup_city} → {shipment.delivery_city}, ${price:,.0f}",
+        body=(
+            f"Orden {t.code}: {shipment.pickup_city} → {shipment.delivery_city}, "
+            f"${command.price:,.0f}"
+        ),
         link=f"/ordenes/{t.id}",
     )
     idempotency.remember(
@@ -235,7 +236,6 @@ def submit_quote(
         request_hash=request_hash,
         resource=quote,
     )
-    db.commit()
     return quote
 
 
@@ -259,6 +259,10 @@ def accept_quote(db: Session, user: User, quote: TransportQuote) -> Shipment:
     for other in shipment.quotes:
         other.status = QuoteStatus.ACCEPTED if other.id == quote.id else QuoteStatus.REJECTED
     shipment.transporter_company_id = quote.transporter_company_id
+    try:
+        require_shipment_transition(shipment.status, ShipmentStatus.ASSIGNED)
+    except InvalidShipmentTransition as exc:
+        raise InvalidState(str(exc)) from exc
     shipment.status = ShipmentStatus.ASSIGNED
     _event(
         db,
@@ -283,7 +287,6 @@ def accept_quote(db: Session, user: User, quote: TransportQuote) -> Shipment:
         body=f"{shipment.pickup_city} → {shipment.delivery_city}, recogida {shipment.pickup_date}",
         link="/transporte",
     )
-    db.commit()
     return shipment
 
 
@@ -291,8 +294,7 @@ def advance(
     db: Session,
     user: User,
     shipment: Shipment,
-    status: ShipmentStatus,
-    note: str | None,
+    command: AdvanceShipment,
     *,
     idempotency_key: str,
     request_hash: str,
@@ -314,27 +316,30 @@ def advance(
         event = idempotency.replay(db, previous, ShipmentEvent)
         return event.shipment
     lock(db, shipment)
-    if shipment.status not in SHIPMENT_FLOW or status not in SHIPMENT_FLOW:
-        raise InvalidState("Estado de envío no válido")
-    current, target = SHIPMENT_FLOW.index(shipment.status), SHIPMENT_FLOW.index(status)
-    if target <= current:
-        raise InvalidState("El envío ya pasó por ese estado")
-    if shipment.status is ShipmentStatus.ASSIGNED and status is not ShipmentStatus.PICKED_UP:
-        raise InvalidState("Primero marca la recogida del material")
-    shipment.status = status
-    event = _event(db, user, shipment, status, note)
+    try:
+        require_shipment_transition(shipment.status, command.status)
+    except InvalidShipmentTransition as exc:
+        raise InvalidState(str(exc)) from exc
+    shipment.status = command.status
+    event = _event(db, user, shipment, command.status, command.note)
     order = shipment.transaction
     if order.status is not TransactionStatus.COMPLETED:
-        order.status = _ORDER_STATUS.get(status, order.status)
+        next_order_status = _ORDER_STATUS.get(command.status, order.status)
+        if next_order_status is not order.status:
+            try:
+                require_transaction_transition(order.status, next_order_status)
+            except InvalidTransactionTransition as exc:
+                raise InvalidState(str(exc)) from exc
+            order.status = next_order_status
     audit.record(
         db,
         user,
         "shipment.advanced",
         shipment,
         company_id=shipment.transporter_company_id,
-        status=status,
+        status=command.status,
     )
-    if status is ShipmentStatus.DELIVERED:
+    if command.status is ShipmentStatus.DELIVERED:
         assert shipment.transporter_company_id is not None
         analytics.track(
             db,
@@ -351,10 +356,10 @@ def advance(
             db,
             party,
             kind="shipment",
-            title=f"Envío de la orden {order.code}: {_STATUS_LABEL[status]}",
-            body=note or "",
+            title=f"Envío de la orden {order.code}: {_STATUS_LABEL[command.status]}",
+            body=command.note or "",
             link=f"/ordenes/{order.id}",
-            email=status is ShipmentStatus.DELIVERED,
+            email=command.status is ShipmentStatus.DELIVERED,
         )
     idempotency.remember(
         db,
@@ -364,5 +369,4 @@ def advance(
         request_hash=request_hash,
         resource=event,
     )
-    db.commit()
     return shipment

@@ -1,15 +1,37 @@
 from typing import Annotated
 
-from fastapi import Depends, Header, HTTPException, status
+from fastapi import Depends, Header, HTTPException, Query, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
 from app.application.identity import EmailNotVerified, resolve_user
+from app.application.pagination import InvalidCursor, PageRequest, decode_cursor
+from app.application.unit_of_work import SqlAlchemyUnitOfWork, unit_of_work
 from app.infrastructure.auth.clerk import Clerk, ClerkUnavailable, get_clerk
 from app.infrastructure.db.models import User
 from app.infrastructure.db.session import get_db
 
 DbSession = Annotated[Session, Depends(get_db)]
+
+
+def get_unit_of_work(db: DbSession):
+    yield from unit_of_work(db)
+
+
+UnitOfWork = Annotated[SqlAlchemyUnitOfWork, Depends(get_unit_of_work)]
+
+
+def get_page_request(
+    limit: Annotated[int, Query(ge=1, le=100)] = 25,
+    cursor: Annotated[str | None, Query(max_length=500)] = None,
+) -> PageRequest:
+    try:
+        return PageRequest(limit=limit, after=decode_cursor(cursor) if cursor else None)
+    except InvalidCursor as exc:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(exc)) from exc
+
+
+PageParams = Annotated[PageRequest, Depends(get_page_request)]
 ClerkDep = Annotated[Clerk, Depends(get_clerk)]
 IdempotencyKey = Annotated[
     str,

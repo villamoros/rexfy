@@ -6,6 +6,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.application.pagination import Page, PageRequest, paginate
 from app.infrastructure.db.models import AuditLog, User
 
 
@@ -47,8 +48,8 @@ def record(
     )
 
 
-def recent(db: Session, *, limit: int = 50, entity_id: uuid.UUID | None = None) -> list[AuditLog]:
-    stmt = select(AuditLog).order_by(AuditLog.created_at.desc()).limit(limit)
+def recent(db: Session, page: PageRequest, *, entity_id: uuid.UUID | None = None) -> Page[AuditLog]:
+    stmt = select(AuditLog)
     if entity_id is not None:
         stmt = stmt.where(AuditLog.entity_id == entity_id)
-    return list(db.scalars(stmt))
+    return paginate(db, stmt, page, model=AuditLog)

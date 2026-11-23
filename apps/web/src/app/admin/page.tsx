@@ -16,6 +16,7 @@ import { formatPrice, formatQuantity, type Listing } from "@/lib/listings";
 import { roleLabel } from "@/lib/roles";
 import { getToken, requireUser } from "@/lib/session";
 import { DISPUTE_REASONS, type AdminDispute } from "@/lib/trust";
+import type { CursorPage } from "@/lib/pagination";
 
 import { ResolveForm } from "./resolve-form";
 import { TakeDownForm } from "./take-down-form";
@@ -125,12 +126,12 @@ async function Console() {
       apiFetch<PlatformKpis>("/admin/metrics", { token }),
       apiFetch<ProductFunnel>("/admin/funnel", { token }),
       apiFetch<AdminDispute[]>("/admin/disputes?status=open", { token }),
-      apiFetch<AdminCompany[]>("/admin/companies?verified=false", { token }),
-      apiFetch<AdminCompany[]>("/admin/companies?verified=true", { token }),
-      apiFetch<Listing[]>("/admin/listings?status=published", { token }),
-      apiFetch<AuditEntry[]>("/admin/audit?limit=30", { token }),
+      apiFetch<CursorPage<AdminCompany>>("/admin/companies?verified=false&limit=100", { token }),
+      apiFetch<CursorPage<AdminCompany>>("/admin/companies?verified=true&limit=100", { token }),
+      apiFetch<CursorPage<Listing>>("/admin/listings?status=published&limit=100", { token }),
+      apiFetch<CursorPage<AuditEntry>>("/admin/audit?limit=30", { token }),
       apiFetch<OutboxHealth>("/admin/outbox/health", { token }),
-      apiFetch<OutboxEvent[]>("/admin/outbox?limit=30", { token }),
+      apiFetch<CursorPage<OutboxEvent>>("/admin/outbox?limit=30", { token }),
     ]);
 
   const m = metrics.ok ? metrics.data : null;
@@ -277,13 +278,13 @@ async function Console() {
             message={outboxEvents.message}
             requestId={outboxEvents.requestId}
           />
-        ) : outboxEvents.data.filter(
+        ) : outboxEvents.data.items.filter(
             (event) => event.status !== "processed",
           ).length === 0 ? (
           <EmptyState>No hay entregas que requieran atención.</EmptyState>
         ) : (
           <ul className="divide-y divide-border card text-sm">
-            {outboxEvents.data
+            {outboxEvents.data.items
               .filter((event) => event.status !== "processed")
               .map((event) => (
                 <li
@@ -350,11 +351,11 @@ async function Console() {
             message={listings.message}
             requestId={listings.requestId}
           />
-        ) : listings.data.length === 0 ? (
+        ) : listings.data.items.length === 0 ? (
           <EmptyState>No hay publicaciones activas.</EmptyState>
         ) : (
           <ul className="divide-y divide-border card">
-            {listings.data.map((l) => (
+            {listings.data.items.map((l) => (
               <li key={l.id} className="flex flex-col gap-2 px-4 py-3 text-sm">
                 <div className="flex flex-wrap justify-between gap-2">
                   <Link
@@ -387,11 +388,11 @@ async function Console() {
             message={activity.message}
             requestId={activity.requestId}
           />
-        ) : activity.data.length === 0 ? (
+        ) : activity.data.items.length === 0 ? (
           <EmptyState>Sin actividad todavía.</EmptyState>
         ) : (
           <ul className="divide-y divide-border card text-sm">
-            {activity.data.map((e) => (
+            {activity.data.items.map((e) => (
               <li key={e.id} className="flex justify-between gap-4 px-4 py-2">
                 <span>
                   <span className="font-medium">
@@ -433,14 +434,14 @@ function Companies({
   result,
   verify = false,
 }: {
-  result: Awaited<ReturnType<typeof apiFetch<AdminCompany[]>>>;
+  result: Awaited<ReturnType<typeof apiFetch<CursorPage<AdminCompany>>>>;
   verify?: boolean;
 }) {
   if (!result.ok)
     return (
       <RequestError message={result.message} requestId={result.requestId} />
     );
-  if (result.data.length === 0)
+  if (result.data.items.length === 0)
     return (
       <EmptyState>
         {verify ? "No hay empresas esperando revisión." : "Ninguna todavía."}
@@ -448,7 +449,7 @@ function Companies({
     );
   return (
     <ul className="divide-y divide-border card">
-      {result.data.map((c) => (
+      {result.data.items.map((c) => (
         <li
           key={c.id}
           className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 text-sm"

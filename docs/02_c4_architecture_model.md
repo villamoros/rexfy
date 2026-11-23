@@ -1,5 +1,8 @@
 # Rexfy — C4 Architecture Model
 
+> **Estado:** actualizado al 23 de noviembre de 2026. La vista as-is implementada y sus
+> decisiones operativas se detallan en [10_arquitectura_mantenible.md](10_arquitectura_mantenible.md).
+
 ## 1) Context
 
 ### System
@@ -48,12 +51,12 @@ flowchart LR
 
 ## 2) Containers
 
-### Recommended containers
+### Contenedores implementados
 - Web App: Next.js + React + TypeScript
 - API: FastAPI + Python
 - Database: PostgreSQL
-- Cache / queue: Redis
-- Background worker: Celery or RQ
+- Cache: Redis, limitado al rate limiting
+- Background worker: proceso Python que reclama el outbox durable desde PostgreSQL
 - File storage: S3-compatible object storage
 - Observability: logs, metrics, traces
 - Auth: session/JWT + company-based authorization
@@ -66,8 +69,8 @@ flowchart LR
   FE[Next.js Web App]
   API[FastAPI API]
   DB[(PostgreSQL)]
-  CACHE[(Redis)]
-  WK[Background Workers]
+  CACHE[(Redis / rate limiting)]
+  WK[Outbox Worker]
   OBJ[(Object Storage)]
   EXT[External Services]
 
@@ -76,10 +79,9 @@ flowchart LR
   API --> DB
   API --> CACHE
   API --> OBJ
-  API --> WK
   WK --> DB
   WK --> OBJ
-  API --> EXT
+  WK --> EXT
 ```
 
 ## 3) Components

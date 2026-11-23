@@ -89,6 +89,7 @@ class ThreadDetail(BaseModel):
     seller: CompanyRef
     my_company_id: uuid.UUID
     messages: list[MessageOut]
+    messages_next_cursor: str | None
     offers: list[OfferOut]
     transaction_id: uuid.UUID | None
 

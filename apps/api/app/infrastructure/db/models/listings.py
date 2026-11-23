@@ -46,7 +46,12 @@ def _trigram(column: str) -> Index:
 
 class Listing(TimestampedModel):
     __tablename__ = "listings"
-    __table_args__ = (_trigram("title"), _trigram("description"), _trigram("city"))
+    __table_args__ = (
+        _trigram("title"),
+        _trigram("description"),
+        _trigram("city"),
+        Index("ix_listings_created_cursor", "created_at", "id"),
+    )
 
     company_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("companies.id", ondelete="CASCADE"), index=True

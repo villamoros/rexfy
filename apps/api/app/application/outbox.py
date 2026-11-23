@@ -12,6 +12,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.application import audit
+from app.application.pagination import Page, PageRequest, paginate
 from app.core.config import get_settings
 from app.domain.notifications.enums import OutboxStatus
 from app.infrastructure.db.models import (
@@ -337,10 +338,8 @@ def health(db: Session) -> Health:
     )
 
 
-def recent(db: Session, *, limit: int = 30) -> list[OutboxEvent]:
-    return list(
-        db.scalars(select(OutboxEvent).order_by(OutboxEvent.created_at.desc()).limit(limit))
-    )
+def recent(db: Session, page: PageRequest) -> Page[OutboxEvent]:
+    return paginate(db, select(OutboxEvent), page, model=OutboxEvent)
 
 
 def replay(db: Session, admin: User, event: OutboxEvent) -> OutboxEvent:

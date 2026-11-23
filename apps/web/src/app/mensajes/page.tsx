@@ -3,15 +3,21 @@ import Link from "next/link";
 import { Suspense } from "react";
 
 import { SiteHeader } from "@/components/site-header";
+import { CursorNextLink } from "@/components/cursor-next-link";
 import { RequestError } from "@/components/request-error";
 import { EmptyState, PageHeader } from "@/components/ui";
 import { apiFetch } from "@/lib/api";
 import { formatDateTime, type ThreadSummary } from "@/lib/deals";
 import { getToken, requireUser } from "@/lib/session";
+import type { CursorPage } from "@/lib/pagination";
 
 export const metadata: Metadata = { title: "Mensajes · RexFy" };
 
-export default function MensajesPage() {
+export default function MensajesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ cursor?: string }>;
+}) {
   return (
     <>
       <SiteHeader />
@@ -20,16 +26,22 @@ export default function MensajesPage() {
         <Suspense
           fallback={<p className="mt-6 text-muted">Cargando conversaciones…</p>}
         >
-          <Inbox />
+          <Inbox searchParams={searchParams} />
         </Suspense>
       </main>
     </>
   );
 }
 
-async function Inbox() {
+async function Inbox({
+  searchParams,
+}: {
+  searchParams: Promise<{ cursor?: string }>;
+}) {
+  const { cursor } = await searchParams;
   await requireUser();
-  const result = await apiFetch<ThreadSummary[]>("/threads", {
+  const query = cursor ? `?cursor=${encodeURIComponent(cursor)}` : "";
+  const result = await apiFetch<CursorPage<ThreadSummary>>(`/threads${query}`, {
     token: await getToken(),
   });
   if (!result.ok)
@@ -40,7 +52,7 @@ async function Inbox() {
         className="mt-6"
       />
     );
-  if (result.data.length === 0) {
+  if (result.data.items.length === 0) {
     return (
       <EmptyState className="mt-6">
         Aún no tienes conversaciones. Busca material en el{" "}
@@ -52,8 +64,9 @@ async function Inbox() {
     );
   }
   return (
+    <>
     <ul className="mt-6 divide-y divide-border card">
-      {result.data.map((thread) => (
+      {result.data.items.map((thread) => (
         <li key={thread.id}>
           <Link
             href={`/mensajes/${thread.id}`}
@@ -81,5 +94,7 @@ async function Inbox() {
         </li>
       ))}
     </ul>
+    <CursorNextLink pathname="/mensajes" cursor={result.data.next_cursor} />
+    </>
   );
 }

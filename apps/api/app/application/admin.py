@@ -7,25 +7,30 @@ from sqlalchemy.orm import Session
 
 from app.application import audit
 from app.application.notifications import notify
+from app.application.pagination import Page, PageRequest, paginate
 from app.domain.listings.enums import ListingStatus
 from app.infrastructure.db.models import Company, CompanyMember, Listing, User
 
 
-def companies(db: Session, *, verified: bool | None = None) -> list[tuple[Company, int]]:
+def companies(
+    db: Session, page: PageRequest, *, verified: bool | None = None
+) -> Page[tuple[Company, int]]:
     """Companies with their member count, newest first; unverified ones are the review queue."""
-    members = (
-        select(CompanyMember.company_id, func.count().label("n"))
-        .group_by(CompanyMember.company_id)
-        .subquery()
-    )
-    stmt = (
-        select(Company, func.coalesce(members.c.n, 0))
-        .outerjoin(members, members.c.company_id == Company.id)
-        .order_by(Company.created_at.desc())
-    )
+    stmt = select(Company)
     if verified is not None:
         stmt = stmt.where(Company.is_verified.is_(verified))
-    return [(c, n) for c, n in db.execute(stmt)]
+    companies_page = paginate(db, stmt, page, model=Company)
+    counts = dict(
+        db.execute(
+            select(CompanyMember.company_id, func.count())
+            .where(CompanyMember.company_id.in_([company.id for company in companies_page.items]))
+            .group_by(CompanyMember.company_id)
+        )
+    )
+    return Page(
+        items=[(company, counts.get(company.id, 0)) for company in companies_page.items],
+        next_cursor=companies_page.next_cursor,
+    )
 
 
 def set_verified(db: Session, admin: User, company: Company, verified: bool) -> Company:
@@ -45,11 +50,13 @@ def set_verified(db: Session, admin: User, company: Company, verified: bool) -> 
     return company
 
 
-def listings(db: Session, *, status: ListingStatus | None = None) -> list[Listing]:
-    stmt = select(Listing).order_by(Listing.created_at.desc()).limit(100)
+def listings(
+    db: Session, page: PageRequest, *, status: ListingStatus | None = None
+) -> Page[Listing]:
+    stmt = select(Listing)
     if status is not None:
         stmt = stmt.where(Listing.status == status)
-    return list(db.scalars(stmt))
+    return paginate(db, stmt, page, model=Listing)
 
 
 def take_down(db: Session, admin: User, listing: Listing, reason: str) -> Listing:

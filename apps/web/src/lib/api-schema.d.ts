@@ -1122,6 +1122,55 @@ export interface components {
             /** Legal Name */
             legal_name: string;
         };
+        /** CursorPage[AdminCompany] */
+        CursorPage_AdminCompany_: {
+            /** Items */
+            items: components["schemas"]["AdminCompany"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
+        /** CursorPage[AuditEntry] */
+        CursorPage_AuditEntry_: {
+            /** Items */
+            items: components["schemas"]["AuditEntry"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
+        /** CursorPage[ListingOut] */
+        CursorPage_ListingOut_: {
+            /** Items */
+            items: components["schemas"]["ListingOut"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
+        /** CursorPage[OutboxEventOut] */
+        CursorPage_OutboxEventOut_: {
+            /** Items */
+            items: components["schemas"]["OutboxEventOut"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
+        /** CursorPage[ShipmentOut] */
+        CursorPage_ShipmentOut_: {
+            /** Items */
+            items: components["schemas"]["ShipmentOut"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
+        /** CursorPage[ThreadSummary] */
+        CursorPage_ThreadSummary_: {
+            /** Items */
+            items: components["schemas"]["ThreadSummary"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
+        /** CursorPage[TransactionOut] */
+        CursorPage_TransactionOut_: {
+            /** Items */
+            items: components["schemas"]["TransactionOut"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
         /** DisputeCreate */
         DisputeCreate: {
             /** Description */
@@ -1943,6 +1992,8 @@ export interface components {
             listing: components["schemas"]["ListingRef"];
             /** Messages */
             messages: components["schemas"]["MessageOut"][];
+            /** Messages Next Cursor */
+            messages_next_cursor: string | null;
             /**
              * My Company Id
              * Format: uuid
@@ -2097,6 +2148,7 @@ export interface operations {
             query?: {
                 entity_id?: string | null;
                 limit?: number;
+                cursor?: string | null;
             };
             header?: never;
             path?: never;
@@ -2110,7 +2162,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AuditEntry"][];
+                    "application/json": components["schemas"]["CursorPage_AuditEntry_"];
                 };
             };
             /** @description Validation Error */
@@ -2128,6 +2180,8 @@ export interface operations {
         parameters: {
             query?: {
                 verified?: boolean | null;
+                limit?: number;
+                cursor?: string | null;
             };
             header?: never;
             path?: never;
@@ -2141,7 +2195,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AdminCompany"][];
+                    "application/json": components["schemas"]["CursorPage_AdminCompany_"];
                 };
             };
             /** @description Validation Error */
@@ -2323,6 +2377,8 @@ export interface operations {
         parameters: {
             query?: {
                 status?: components["schemas"]["ListingStatus"] | null;
+                limit?: number;
+                cursor?: string | null;
             };
             header?: never;
             path?: never;
@@ -2336,7 +2392,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ListingOut"][];
+                    "application/json": components["schemas"]["CursorPage_ListingOut_"];
                 };
             };
             /** @description Validation Error */
@@ -2409,6 +2465,7 @@ export interface operations {
         parameters: {
             query?: {
                 limit?: number;
+                cursor?: string | null;
             };
             header?: never;
             path?: never;
@@ -2422,7 +2479,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["OutboxEventOut"][];
+                    "application/json": components["schemas"]["CursorPage_OutboxEventOut_"];
                 };
             };
             /** @description Validation Error */
@@ -3059,7 +3116,10 @@ export interface operations {
     };
     open_requests_logistics_requests_get: {
         parameters: {
-            query?: never;
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -3072,14 +3132,26 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ShipmentOut"][];
+                    "application/json": components["schemas"]["CursorPage_ShipmentOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
     };
     my_shipments_logistics_shipments_get: {
         parameters: {
-            query?: never;
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -3092,7 +3164,16 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ShipmentOut"][];
+                    "application/json": components["schemas"]["CursorPage_ShipmentOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -3435,7 +3516,10 @@ export interface operations {
     };
     list_threads_threads_get: {
         parameters: {
-            query?: never;
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -3448,7 +3532,16 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ThreadSummary"][];
+                    "application/json": components["schemas"]["CursorPage_ThreadSummary_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -3490,7 +3583,10 @@ export interface operations {
     };
     read_thread_threads__thread_id__get: {
         parameters: {
-            query?: never;
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+            };
             header?: never;
             path: {
                 thread_id: string;
@@ -3595,7 +3691,10 @@ export interface operations {
     };
     list_transactions_transactions_get: {
         parameters: {
-            query?: never;
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -3608,7 +3707,16 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["TransactionOut"][];
+                    "application/json": components["schemas"]["CursorPage_TransactionOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

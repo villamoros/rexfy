@@ -2,7 +2,7 @@ import uuid
 from datetime import date
 from decimal import Decimal
 
-from sqlalchemy import Boolean, Date, ForeignKey, Numeric, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, Date, ForeignKey, Index, Numeric, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.domain.logistics.enums import QuoteStatus, ShipmentStatus, VehicleType
@@ -16,6 +16,7 @@ class Shipment(TimestampedModel):
     """A transport request for an order. MVP: at most one per order."""
 
     __tablename__ = "shipments"
+    __table_args__ = (Index("ix_shipments_created_cursor", "created_at", "id"),)
 
     transaction_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("transactions.id", ondelete="CASCADE"), unique=True

@@ -5,8 +5,9 @@ from fastapi import APIRouter, HTTPException, status
 from app.application import deals as deals_service
 from app.application import idempotency
 from app.application import logistics as service
+from app.application.commands import AdvanceShipment, RequestShipment, SubmitTransportQuote
 from app.infrastructure.db.models import Shipment, User
-from app.presentation.deps import CurrentUser, DbSession, IdempotencyKey
+from app.presentation.deps import CurrentUser, DbSession, IdempotencyKey, PageParams, UnitOfWork
 from app.presentation.schemas.deals import CompanyRef
 from app.presentation.schemas.logistics import (
     EventCreate,
@@ -17,6 +18,7 @@ from app.presentation.schemas.logistics import (
     ShipmentOut,
     ShipmentRequest,
 )
+from app.presentation.schemas.pagination import CursorPage
 
 router = APIRouter(tags=["logistics"])
 
@@ -77,10 +79,11 @@ def _load(db: DbSession, user: User, shipment_id: uuid.UUID) -> Shipment:
 def request(
     transaction_id: uuid.UUID,
     body: ShipmentRequest,
-    db: DbSession,
+    uow: UnitOfWork,
     user: CurrentUser,
     idempotency_key: IdempotencyKey,
 ) -> ShipmentOut:
+    db = uow.session
     transaction = deals_service.get_transaction(db, user, transaction_id)
     if transaction is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Orden no encontrada")
@@ -89,7 +92,7 @@ def request(
             db,
             user,
             transaction,
-            **body.model_dump(),
+            RequestShipment(**body.model_dump()),
             idempotency_key=idempotency_key,
             request_hash=idempotency.fingerprint(
                 {"transaction_id": transaction_id, **body.model_dump(mode="json")}
@@ -110,9 +113,13 @@ def for_transaction(transaction_id: uuid.UUID, db: DbSession, user: CurrentUser)
 
 
 @router.get("/logistics/requests")
-def open_requests(db: DbSession, user: CurrentUser) -> list[ShipmentOut]:
+def open_requests(db: DbSession, user: CurrentUser, page: PageParams) -> CursorPage[ShipmentOut]:
     try:
-        return [_out(user, s) for s in service.open_requests(db, user)]
+        shipments = service.open_requests(db, user, page)
+        return CursorPage(
+            items=[_out(user, shipment) for shipment in shipments.items],
+            next_cursor=shipments.next_cursor,
+        )
     except deals_service.NotAllowed:
         raise HTTPException(
             status.HTTP_403_FORBIDDEN, "Solo para empresas transportadoras"
@@ -125,8 +132,12 @@ def open_requests(db: DbSession, user: CurrentUser) -> list[ShipmentOut]:
 
 
 @router.get("/logistics/shipments")
-def my_shipments(db: DbSession, user: CurrentUser) -> list[ShipmentOut]:
-    return [_out(user, s) for s in service.assigned_to(db, user)]
+def my_shipments(db: DbSession, user: CurrentUser, page: PageParams) -> CursorPage[ShipmentOut]:
+    shipments = service.assigned_to(db, user, page)
+    return CursorPage(
+        items=[_out(user, shipment) for shipment in shipments.items],
+        next_cursor=shipments.next_cursor,
+    )
 
 
 @router.get("/shipments/{shipment_id}")
@@ -138,17 +149,18 @@ def read(shipment_id: uuid.UUID, db: DbSession, user: CurrentUser) -> ShipmentOu
 def quote(
     shipment_id: uuid.UUID,
     body: QuoteCreate,
-    db: DbSession,
+    uow: UnitOfWork,
     user: CurrentUser,
     idempotency_key: IdempotencyKey,
 ) -> ShipmentOut:
+    db = uow.session
     shipment = _load(db, user, shipment_id)
     try:
         service.submit_quote(
             db,
             user,
             shipment,
-            **body.model_dump(),
+            SubmitTransportQuote(**body.model_dump()),
             idempotency_key=idempotency_key,
             request_hash=idempotency.fingerprint(
                 {"shipment_id": shipment_id, **body.model_dump(mode="json")}
@@ -163,7 +175,8 @@ def quote(
 
 
 @router.post("/transport-quotes/{quote_id}/accept")
-def accept(quote_id: uuid.UUID, db: DbSession, user: CurrentUser) -> ShipmentOut:
+def accept(quote_id: uuid.UUID, uow: UnitOfWork, user: CurrentUser) -> ShipmentOut:
+    db = uow.session
     found = service.get_quote(db, user, quote_id)
     if found is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Cotización no encontrada")
@@ -181,18 +194,18 @@ def accept(quote_id: uuid.UUID, db: DbSession, user: CurrentUser) -> ShipmentOut
 def add_event(
     shipment_id: uuid.UUID,
     body: EventCreate,
-    db: DbSession,
+    uow: UnitOfWork,
     user: CurrentUser,
     idempotency_key: IdempotencyKey,
 ) -> ShipmentOut:
+    db = uow.session
     shipment = _load(db, user, shipment_id)
     try:
         service.advance(
             db,
             user,
             shipment,
-            body.status,
-            body.note,
+            AdvanceShipment(status=body.status, note=body.note),
             idempotency_key=idempotency_key,
             request_hash=idempotency.fingerprint(
                 {

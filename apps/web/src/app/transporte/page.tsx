@@ -4,6 +4,7 @@ import { Suspense } from "react";
 
 import { advanceShipment } from "@/app/actions/logistics";
 import { MutationForm } from "@/components/mutation-form";
+import { CursorNextLink } from "@/components/cursor-next-link";
 import { RequestError } from "@/components/request-error";
 import { ShipmentTimeline } from "@/components/shipment-timeline";
 import { SiteHeader } from "@/components/site-header";
@@ -20,12 +21,17 @@ import {
   type Shipment,
 } from "@/lib/logistics";
 import { getToken, requireUser } from "@/lib/session";
+import type { CursorPage } from "@/lib/pagination";
 
 import { TransportQuoteForm } from "./quote-form";
 
 export const metadata: Metadata = { title: "Transporte · RexFy" };
 
-export default function TransportePage() {
+export default function TransportePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ open_cursor?: string; mine_cursor?: string }>;
+}) {
   return (
     <>
       <SiteHeader />
@@ -35,14 +41,19 @@ export default function TransportePage() {
           description="Cotiza viajes de material reciclable y actualiza tus envíos."
         />
         <Suspense fallback={<p className="mt-6 text-muted">Cargando…</p>}>
-          <Board />
+          <Board searchParams={searchParams} />
         </Suspense>
       </main>
     </>
   );
 }
 
-async function Board() {
+async function Board({
+  searchParams,
+}: {
+  searchParams: Promise<{ open_cursor?: string; mine_cursor?: string }>;
+}) {
+  const cursors = await searchParams;
   const me = await requireUser();
   const companies = me.companies
     .filter((c) => c.market_roles.includes("transporter"))
@@ -64,8 +75,14 @@ async function Board() {
   }
   const token = await getToken();
   const [open, mine] = await Promise.all([
-    apiFetch<Shipment[]>("/logistics/requests", { token }),
-    apiFetch<Shipment[]>("/logistics/shipments", { token }),
+    apiFetch<CursorPage<Shipment>>(
+      `/logistics/requests${cursors.open_cursor ? `?cursor=${encodeURIComponent(cursors.open_cursor)}` : ""}`,
+      { token },
+    ),
+    apiFetch<CursorPage<Shipment>>(
+      `/logistics/shipments${cursors.mine_cursor ? `?cursor=${encodeURIComponent(cursors.mine_cursor)}` : ""}`,
+      { token },
+    ),
   ]);
 
   return (
@@ -74,13 +91,13 @@ async function Board() {
         <h2 className="text-xl font-bold">Mis envíos</h2>
         {!mine.ok ? (
           <RequestError message={mine.message} requestId={mine.requestId} />
-        ) : mine.data.length === 0 ? (
+        ) : mine.data.items.length === 0 ? (
           <p className="text-sm text-muted">
             Cuando un cliente acepte tu cotización, el envío aparecerá aquí.
           </p>
         ) : (
           <ul className="flex flex-col gap-3">
-            {mine.data.map((s) => {
+            {mine.data.items.map((s) => {
               const next = NEXT_STATUS[s.status];
               return (
                 <li key={s.id} className="flex flex-col gap-3 card p-4 text-sm">
@@ -118,6 +135,13 @@ async function Board() {
             })}
           </ul>
         )}
+        {mine.ok ? (
+          <CursorNextLink
+            pathname="/transporte"
+            cursor={mine.data.next_cursor}
+            cursorKey="mine_cursor"
+          />
+        ) : null}
       </section>
 
       <section className="flex flex-col gap-3">
@@ -130,13 +154,13 @@ async function Board() {
           ) : (
             <RequestError message={open.message} requestId={open.requestId} />
           )
-        ) : open.data.length === 0 ? (
+        ) : open.data.items.length === 0 ? (
           <p className="text-sm text-muted">
             No hay solicitudes de transporte abiertas en este momento.
           </p>
         ) : (
           <ul className="flex flex-col gap-3">
-            {open.data.map((s) => {
+            {open.data.items.map((s) => {
               const myQuote = s.quotes[0];
               return (
                 <li key={s.id} className="flex flex-col gap-3 card p-4 text-sm">
@@ -161,6 +185,13 @@ async function Board() {
             })}
           </ul>
         )}
+        {open.ok ? (
+          <CursorNextLink
+            pathname="/transporte"
+            cursor={open.data.next_cursor}
+            cursorKey="open_cursor"
+          />
+        ) : null}
       </section>
     </div>
   );

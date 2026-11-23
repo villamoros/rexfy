@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import ARRAY, Boolean, DateTime, Enum, ForeignKey, String, UniqueConstraint
+from sqlalchemy import ARRAY, Boolean, DateTime, Enum, ForeignKey, Index, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.domain.organizations.roles import MarketRole, MemberRole
@@ -11,6 +11,7 @@ from app.infrastructure.db.models.identity import User
 
 class Company(TimestampedModel):
     __tablename__ = "companies"
+    __table_args__ = (Index("ix_companies_created_cursor", "created_at", "id"),)
 
     legal_name: Mapped[str] = mapped_column(String(200))
     nit: Mapped[str] = mapped_column(String(20), unique=True, index=True)

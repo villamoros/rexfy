@@ -5,6 +5,7 @@ import { Suspense } from "react";
 
 import { respondToOffer } from "@/app/actions/deals";
 import { AutoRefresh } from "@/components/auto-refresh";
+import { CursorNextLink } from "@/components/cursor-next-link";
 import { MutationForm } from "@/components/mutation-form";
 import { RequestError } from "@/components/request-error";
 import { SiteHeader } from "@/components/site-header";
@@ -24,7 +25,10 @@ import { MessageComposer, OfferComposer } from "./composer";
 
 export const metadata: Metadata = { title: "Negociación · RexFy" };
 
-export default function ThreadPage({ params }: PageProps<"/mensajes/[id]">) {
+export default function ThreadPage({
+  params,
+  searchParams,
+}: PageProps<"/mensajes/[id]">) {
   return (
     <>
       <SiteHeader />
@@ -32,7 +36,7 @@ export default function ThreadPage({ params }: PageProps<"/mensajes/[id]">) {
         <Suspense
           fallback={<p className="text-muted">Cargando conversación…</p>}
         >
-          <Conversation params={params} />
+          <Conversation params={params} searchParams={searchParams} />
         </Suspense>
       </main>
     </>
@@ -44,11 +48,19 @@ type Entry = { at: string } & (
   | { kind: "offer"; offer: Offer }
 );
 
-async function Conversation({ params }: { params: Promise<{ id: string }> }) {
+async function Conversation({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ cursor?: string }>;
+}) {
   const me = await requireUser();
   const { id } = await params;
+  const { cursor } = await searchParams;
+  const query = cursor ? `?cursor=${encodeURIComponent(cursor)}` : "";
   const result = await apiFetch<ThreadDetail>(
-    `/threads/${encodeURIComponent(id)}`,
+    `/threads/${encodeURIComponent(id)}${query}`,
     {
       token: await getToken(),
     },
@@ -126,6 +138,11 @@ async function Conversation({ params }: { params: Promise<{ id: string }> }) {
         </Link>
       )}
 
+      <CursorNextLink
+        pathname={`/mensajes/${thread.id}`}
+        cursor={thread.messages_next_cursor}
+        label="Ver mensajes anteriores"
+      />
       <ol className="flex flex-col gap-3">
         {timeline.map((entry) =>
           entry.kind === "message" ? (

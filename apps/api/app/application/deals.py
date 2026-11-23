@@ -10,8 +10,14 @@ from app.application import analytics, audit, idempotency
 from app.application.notifications import notify
 from app.application.organizations import NotAllowed as TeamNotAllowed
 from app.application.organizations import require_committer
+from app.application.pagination import Page, PageRequest, paginate
 from app.domain.deals.enums import OfferStatus, TransactionStatus
 from app.domain.deals.pricing import offer_total
+from app.domain.deals.state_machine import (
+    InvalidTransition,
+    require_offer_transition,
+    require_transaction_transition,
+)
 from app.domain.listings.enums import ListingStatus, QuantityUnit
 from app.domain.logistics.enums import ShipmentStatus
 from app.domain.organizations.roles import MarketRole
@@ -133,7 +139,6 @@ def start_thread(
         request_hash=request_hash,
         resource=thread,
     )
-    db.commit()
     return thread
 
 
@@ -168,14 +173,39 @@ def _company_name(db: Session, company_id: uuid.UUID) -> str:
     return db.get(Company, company_id).legal_name
 
 
-def threads_of(db: Session, user: User) -> list[Thread]:
+def threads_of(db: Session, user: User, page: PageRequest) -> Page[Thread]:
     mine = _company_ids(user)
     stmt = (
         select(Thread)
         .where(or_(Thread.buyer_company_id.in_(mine), Thread.seller_company_id.in_(mine)))
         .order_by(Thread.last_activity_at.desc())
     )
-    return list(db.scalars(stmt).unique())
+    return paginate(
+        db,
+        stmt,
+        page,
+        model=Thread,
+        created_at=Thread.last_activity_at,
+        created_at_attribute="last_activity_at",
+    )
+
+
+def messages_of(db: Session, thread: Thread, page: PageRequest) -> Page[Message]:
+    return paginate(
+        db,
+        select(Message).where(Message.thread_id == thread.id),
+        page,
+        model=Message,
+    )
+
+
+def last_message(db: Session, thread_id: uuid.UUID) -> str | None:
+    return db.scalar(
+        select(Message.body)
+        .where(Message.thread_id == thread_id)
+        .order_by(Message.created_at.desc(), Message.id.desc())
+        .limit(1)
+    )
 
 
 def get_thread(db: Session, user: User, thread_id: uuid.UUID) -> Thread | None:
@@ -192,14 +222,11 @@ def get_thread(db: Session, user: User, thread_id: uuid.UUID) -> Thread | None:
 
 def expire_offers(db: Session, thread: Thread) -> None:
     """Pending offers past their validity are declined lazily, whenever the thread is read."""
-    changed = False
     for offer in thread.offers:
         if offer.status is OfferStatus.PENDING and offer.valid_until <= _now():
+            require_offer_transition(offer.status, OfferStatus.DECLINED)
             offer.status = OfferStatus.DECLINED
             offer.responded_at = offer.valid_until
-            changed = True
-    if changed:
-        db.commit()
 
 
 def send_message(
@@ -230,7 +257,6 @@ def send_message(
         request_hash=request_hash,
         resource=message,
     )
-    db.commit()
     return message
 
 
@@ -269,6 +295,7 @@ def send_offer(
         if offer.status is OfferStatus.PENDING:
             if offer.from_company_id == company_id:
                 raise InvalidState("Ya tienes una cotización pendiente en esta conversación")
+            require_offer_transition(offer.status, OfferStatus.COUNTERED)
             offer.status = OfferStatus.COUNTERED
             offer.responded_at = _now()
     db.flush()
@@ -325,7 +352,6 @@ def send_offer(
         request_hash=request_hash,
         resource=offer,
     )
-    db.commit()
     return offer
 
 
@@ -380,6 +406,7 @@ def accept_offer(
         listing.quantity -= offer.quantity
         if listing.quantity <= 0:
             listing.status = ListingStatus.ARCHIVED
+    require_offer_transition(offer.status, OfferStatus.ACCEPTED)
     offer.status = OfferStatus.ACCEPTED
     offer.responded_at = _now()
     transaction = Transaction(
@@ -436,13 +463,13 @@ def accept_offer(
         request_hash=request_hash,
         resource=transaction,
     )
-    db.commit()
     return transaction
 
 
 def decline_offer(db: Session, user: User, offer: Offer) -> Offer:
     lock(db, offer)
     _pending_offer_for_receiver(user, offer)
+    require_offer_transition(offer.status, OfferStatus.DECLINED)
     offer.status = OfferStatus.DECLINED
     offer.responded_at = _now()
     audit.record(db, user, "offer.declined", offer, company_id=acting_company(user, offer.thread))
@@ -454,7 +481,6 @@ def decline_offer(db: Session, user: User, offer: Offer) -> Offer:
         body=offer.thread.listing.title,
         link=f"/mensajes/{offer.thread_id}",
     )
-    db.commit()
     return offer
 
 
@@ -465,14 +491,14 @@ def get_offer(db: Session, user: User, offer_id: uuid.UUID) -> Offer | None:
     return offer
 
 
-def transactions_of(db: Session, user: User) -> list[Transaction]:
+def transactions_of(db: Session, user: User, page: PageRequest) -> Page[Transaction]:
     mine = _company_ids(user)
     stmt = (
         select(Transaction)
         .where(or_(Transaction.buyer_company_id.in_(mine), Transaction.seller_company_id.in_(mine)))
         .order_by(Transaction.created_at.desc())
     )
-    return list(db.scalars(stmt).unique())
+    return paginate(db, stmt, page, model=Transaction)
 
 
 def get_transaction(db: Session, user: User, transaction_id: uuid.UUID) -> Transaction | None:
@@ -513,6 +539,10 @@ def confirm_receipt(db: Session, user: User, transaction: Transaction) -> Transa
         )
     ):
         raise InvalidState("La orden tiene una disputa abierta; RexFy la está revisando")
+    try:
+        require_transaction_transition(transaction.status, TransactionStatus.COMPLETED)
+    except InvalidTransition as exc:
+        raise InvalidState(str(exc)) from exc
     transaction.status = TransactionStatus.COMPLETED
     transaction.completed_at = _now()
     audit.record(db, user, "order.completed", transaction, company_id=transaction.buyer_company_id)
@@ -524,5 +554,4 @@ def confirm_receipt(db: Session, user: User, transaction: Transaction) -> Transa
         body="El comprador confirmó la recepción. Ya puedes calificarlo.",
         link=f"/ordenes/{transaction.id}",
     )
-    db.commit()
     return transaction

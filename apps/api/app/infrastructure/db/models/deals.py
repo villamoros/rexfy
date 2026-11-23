@@ -17,7 +17,10 @@ class Thread(TimestampedModel):
     """One negotiation between a buyer company and the company that published a listing."""
 
     __tablename__ = "chat_threads"
-    __table_args__ = (UniqueConstraint("listing_id", "buyer_company_id"),)
+    __table_args__ = (
+        UniqueConstraint("listing_id", "buyer_company_id"),
+        Index("ix_chat_threads_activity_cursor", "last_activity_at", "id"),
+    )
 
     listing_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("listings.id", ondelete="CASCADE"))
     buyer_company_id: Mapped[uuid.UUID] = mapped_column(
@@ -41,6 +44,7 @@ class Thread(TimestampedModel):
 
 class Message(TimestampedModel):
     __tablename__ = "chat_messages"
+    __table_args__ = (Index("ix_chat_messages_thread_cursor", "thread_id", "created_at", "id"),)
 
     thread_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("chat_threads.id", ondelete="CASCADE"), index=True
@@ -89,6 +93,7 @@ class Transaction(TimestampedModel):
     """The order created when an offer is accepted. Its terms are copied from the offer."""
 
     __tablename__ = "transactions"
+    __table_args__ = (Index("ix_transactions_created_cursor", "created_at", "id"),)
 
     code: Mapped[str] = mapped_column(String(16), unique=True)
     offer_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("offers.id"), unique=True)

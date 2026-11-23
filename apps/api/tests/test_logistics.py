@@ -78,7 +78,7 @@ def test_full_logistics_flow(client: TestClient, db: Session, order: dict[str, A
     logicol, logicol_co = transporter(client, db, "logicol@example.com", "811000222")
 
     # Transporters see open requests by city, without the exact addresses.
-    open_view = client.get("/logistics/requests", headers=andina).json()
+    open_view = client.get("/logistics/requests", headers=andina).json()["items"]
     assert [s["id"] for s in open_view] == [sid]
     assert open_view[0]["pickup_address"] is None
     assert open_view[0]["order"]["buyer"] is None
@@ -110,8 +110,10 @@ def test_full_logistics_flow(client: TestClient, db: Session, order: dict[str, A
     assert client.get(f"/shipments/{sid}", headers=logicol).status_code == 404
     winner_view = client.get(f"/shipments/{sid}", headers=andina).json()
     assert winner_view["pickup_address"] == REQUEST["pickup_address"]
-    assert [s["id"] for s in client.get("/logistics/shipments", headers=andina).json()] == [sid]
-    assert client.get("/logistics/requests", headers=andina).json() == []
+    assert [
+        s["id"] for s in client.get("/logistics/shipments", headers=andina).json()["items"]
+    ] == [sid]
+    assert client.get("/logistics/requests", headers=andina).json()["items"] == []
 
     events = f"/shipments/{sid}/events"
     assert (

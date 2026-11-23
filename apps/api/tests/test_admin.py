@@ -33,16 +33,23 @@ def test_only_admins_reach_admin_endpoints(client: TestClient) -> None:
 def test_verify_company(client: TestClient, admin: Headers) -> None:
     owner = register(client, "ana@example.com")
     company_id = company(client, owner, ["buyer"], "900100200")
-    queue = client.get("/admin/companies", params={"verified": False}, headers=admin).json()
+    queue = client.get("/admin/companies", params={"verified": False}, headers=admin).json()[
+        "items"
+    ]
     assert [(c["id"], c["members"]) for c in queue] == [(company_id, 1)]
     assert client.get("/me", headers=owner).json()["companies"][0]["is_verified"] is False
 
     done = client.post(f"/admin/companies/{company_id}/verify", headers=admin)
     assert done.json()["is_verified"] is True
     assert client.get("/me", headers=owner).json()["companies"][0]["is_verified"] is True
-    assert client.get("/admin/companies", params={"verified": False}, headers=admin).json() == []
+    assert (
+        client.get("/admin/companies", params={"verified": False}, headers=admin).json()["items"]
+        == []
+    )
 
-    log = client.get("/admin/audit", params={"entity_id": company_id}, headers=admin).json()
+    log = client.get("/admin/audit", params={"entity_id": company_id}, headers=admin).json()[
+        "items"
+    ]
     assert [e["action"] for e in log] == ["company.verified", "company.created"]
     assert log[0]["actor_name"] == "Ana Gómez"
 
@@ -68,14 +75,16 @@ def test_critical_actions_are_audited(
 ) -> None:
     quote = offer(client, deal["seller"], deal["thread_id"])
     client.post(f"/offers/{quote['id']}/accept", headers=deal["buyer"])
-    log = client.get("/admin/audit", params={"entity_id": quote["id"]}, headers=admin).json()
+    log = client.get("/admin/audit", params={"entity_id": quote["id"]}, headers=admin).json()[
+        "items"
+    ]
     assert [e["action"] for e in log] == ["offer.accepted", "offer.sent"]
     assert log[0]["company_id"] == deal["buyer_company"]
     assert log[0]["data"]["total"] == "3690000.00"
 
     listing_log = client.get(
         "/admin/audit", params={"entity_id": deal["listing_id"]}, headers=admin
-    ).json()
+    ).json()["items"]
     assert [e["action"] for e in listing_log] == ["listing.published", "listing.created"]
 
 
@@ -102,5 +111,5 @@ def test_outbox_health_and_audited_replay(
     assert replayed.json()["status"] == "retry"
     again = client.post(f"/admin/outbox/{event.id}/replay", headers=admin)
     assert again.status_code == 409
-    log = client.get("/admin/audit", params={"entity_id": event.id}, headers=admin).json()
+    log = client.get("/admin/audit", params={"entity_id": event.id}, headers=admin).json()["items"]
     assert log[0]["action"] == "outbox.replayed"

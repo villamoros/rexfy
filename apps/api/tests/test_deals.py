@@ -65,13 +65,13 @@ def test_thread_visible_to_both_sides_only(client: TestClient, deal: dict[str, A
     assert reply.status_code == 201
     assert len(reply.json()["messages"]) == 2
 
-    inbox = client.get("/threads", headers=deal["buyer"]).json()
+    inbox = client.get("/threads", headers=deal["buyer"]).json()["items"]
     assert inbox[0]["counterpart"]["id"] == deal["seller_company"]
     assert inbox[0]["last_message"] == "No, pero lo coordinamos"
 
     stranger = register(client, "stranger@example.com")
     assert client.get(f"/threads/{tid}", headers=stranger).status_code == 404
-    assert client.get("/threads", headers=stranger).json() == []
+    assert client.get("/threads", headers=stranger).json()["items"] == []
 
 
 def test_starting_again_reuses_thread(client: TestClient, deal: dict[str, Any]) -> None:
@@ -101,6 +101,24 @@ def test_message_replay_is_stable_and_changed_payload_conflicts(
     assert first.json() == replay.json()
     assert [m["body"] for m in replay.json()["messages"]].count("Una sola vez") == 1
     assert conflict.status_code == 409
+
+
+def test_messages_use_a_stable_cursor(client: TestClient, deal: dict[str, Any]) -> None:
+    path = f"/threads/{deal['thread_id']}"
+    client.post(f"{path}/messages", json={"body": "Segundo"}, headers=deal["seller"])
+    client.post(f"{path}/messages", json={"body": "Tercero"}, headers=deal["buyer"])
+
+    first = client.get(path, params={"limit": 2}, headers=deal["buyer"]).json()
+    assert [message["body"] for message in first["messages"]] == ["Segundo", "Tercero"]
+    assert first["messages_next_cursor"]
+
+    second = client.get(
+        path,
+        params={"limit": 2, "cursor": first["messages_next_cursor"]},
+        headers=deal["buyer"],
+    ).json()
+    assert [message["body"] for message in second["messages"]] == ["¿Incluye cargue?"]
+    assert second["messages_next_cursor"] is None
 
 
 def test_only_buyer_companies_can_start(client: TestClient, deal: dict[str, Any]) -> None:
@@ -145,7 +163,7 @@ def test_counter_then_accept_creates_order(client: TestClient, deal: dict[str, A
     assert (
         client.get(f"/threads/{tid}", headers=deal["buyer"]).json()["transaction_id"] == order["id"]
     )
-    buyer_orders = client.get("/transactions", headers=deal["buyer"]).json()
+    buyer_orders = client.get("/transactions", headers=deal["buyer"]).json()["items"]
     assert [(o["id"], o["my_role"]) for o in buyer_orders] == [(order["id"], "buyer")]
 
 
@@ -179,7 +197,7 @@ def test_concurrent_accept_replays_one_transaction(committed_client: TestClient)
 
     assert [response.status_code for response in responses] == [200, 200]
     assert responses[0].json()["id"] == responses[1].json()["id"]
-    assert len(client.get("/transactions", headers=buyer).json()) == 1
+    assert len(client.get("/transactions", headers=buyer).json()["items"]) == 1
     remaining = client.get(f"/listings/{listing['id']}", headers=seller).json()
     assert remaining["quantity"] == 0
     assert remaining["status"] == "archived"
@@ -206,7 +224,7 @@ def test_concurrent_thread_creation_reuses_one_thread(committed_client: TestClie
 
     assert [response.status_code for response in responses] == [201, 201]
     assert responses[0].json()["id"] == responses[1].json()["id"]
-    assert len(client.get("/threads", headers=buyer).json()) == 1
+    assert len(client.get("/threads", headers=buyer).json()["items"]) == 1
     assert (
         len(client.get(f"/threads/{responses[0].json()['id']}", headers=buyer).json()["messages"])
         == 2
