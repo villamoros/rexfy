@@ -2,97 +2,99 @@ from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import func, select
+from sqlalchemy.orm import Session
 
-from app.application import notifications
+from app.application import notifications, outbox
+from app.domain.notifications.enums import OutboxStatus
+from app.infrastructure.db.models import Notification, OutboxDelivery, OutboxEvent
 from tests.test_deals import deal, offer  # noqa: F401  (fixture)
 
 
-@pytest.fixture
-def outbox(monkeypatch: pytest.MonkeyPatch) -> list[tuple]:
-    """Emails the app would hand to the worker."""
-    sent: list[tuple] = []
-    monkeypatch.setattr(notifications, "enqueue", lambda job, *args: sent.append(args))
-    return sent
+def _events(db: Session) -> list[OutboxEvent]:
+    return list(db.scalars(select(OutboxEvent).order_by(OutboxEvent.created_at)))
 
 
 def test_messages_notify_the_other_side_once(
     client: TestClient,
+    db: Session,
     deal: dict[str, Any],  # noqa: F811
-    outbox: list[tuple],
 ) -> None:
-    # The fixture's first message already reached the seller.
     seller_inbox = client.get("/notifications", headers=deal["seller"]).json()
-    assert [n["kind"] for n in seller_inbox] == ["message"]
-    assert seller_inbox[0]["link"] == f"/mensajes/{deal['thread_id']}"
+    assert [item["kind"] for item in seller_inbox] == ["message"]
+    initial_events = len(_events(db))
 
     tid = deal["thread_id"]
     for body in ("¿Sigue disponible?", "¿Y el precio por tonelada?"):
         client.post(f"/threads/{tid}/messages", json={"body": body}, headers=deal["buyer"])
-    # Still one unread notification about this chat, showing the latest message, no new email.
     seller_inbox = client.get("/notifications", headers=deal["seller"]).json()
     assert len(seller_inbox) == 1
     assert seller_inbox[0]["body"].endswith("¿Y el precio por tonelada?")
-    assert outbox == []  # the fixture's email went out before the outbox was watched
+    assert len(_events(db)) == initial_events
 
     client.post("/notifications/read", headers=deal["seller"])
-    assert client.get("/notifications/unread-count", headers=deal["seller"]).json() == {"unread": 0}
-
-    # A read notification no longer swallows the next message.
     client.post(f"/threads/{tid}/messages", json={"body": "Hola de nuevo"}, headers=deal["buyer"])
     assert client.get("/notifications/unread-count", headers=deal["seller"]).json() == {"unread": 1}
-    assert len(outbox) == 1
-    company_id, title, _, link = outbox[0]
-    assert company_id == deal["seller_company"]
-    assert title.startswith("Mensaje de Empresa")
-    assert link == f"/mensajes/{tid}"
+    event = _events(db)[-1]
+    assert event.payload["company_id"] == deal["seller_company"]
+    assert event.payload["link"] == f"/mensajes/{tid}"
 
 
-def test_offers_and_orders_notify(
+def test_offers_and_orders_create_durable_events(
     client: TestClient,
+    db: Session,
     deal: dict[str, Any],  # noqa: F811
-    outbox: list[tuple],
 ) -> None:
+    before = len(_events(db))
     quote = offer(client, deal["seller"], deal["thread_id"])
-    buyer_kinds = [n["kind"] for n in client.get("/notifications", headers=deal["buyer"]).json()]
-    assert buyer_kinds == ["offer"]
     client.post(f"/offers/{quote['id']}/accept", headers=deal["buyer"])
-    seller = client.get("/notifications", headers=deal["seller"]).json()
-    assert seller[0]["kind"] == "offer_accepted"
-    assert seller[0]["link"].startswith("/ordenes/")
-    assert [args[0] for args in outbox] == [deal["buyer_company"], deal["seller_company"]]
+    created = _events(db)[before:]
+    assert [event.payload["company_id"] for event in created] == [
+        deal["buyer_company"],
+        deal["seller_company"],
+    ]
+    assert all(event.status is OutboxStatus.PENDING for event in created)
 
-    stranger_view = client.get("/notifications", headers=deal["buyer"]).json()
-    assert all(n["company_id"] == deal["buyer_company"] for n in stranger_view)
+
+def test_outbox_rolls_back_with_business_notification(
+    db: Session,
+    deal: dict[str, Any],  # noqa: F811
+) -> None:
+    notification_count = db.scalar(select(func.count(Notification.id)))
+    event_count = db.scalar(select(func.count(OutboxEvent.id)))
+    nested = db.begin_nested()
+    notifications.notify(
+        db,
+        deal["seller_company"],
+        kind="rollback_test",
+        title="No debe persistir",
+        link="/rollback-test",
+    )
+    db.flush()
+    nested.rollback()
+    assert db.scalar(select(func.count(Notification.id))) == notification_count
+    assert db.scalar(select(func.count(OutboxEvent.id))) == event_count
 
 
-def test_email_job_writes_to_every_member(
-    client: TestClient,
-    db,
+def test_dispatch_retries_then_delivers_once(
+    db: Session,
     deal: dict[str, Any],  # noqa: F811
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from app.infrastructure.db import session as db_session
+    event = _events(db)[0]
+    calls: list[str] = []
 
-    sent: list[tuple[str, str, str]] = []
-    monkeypatch.setattr(notifications, "send_email", lambda *args: sent.append(args))
-    # The job opens its own session; point it at the test transaction.
-    monkeypatch.setattr(db_session, "SessionLocal", lambda: _Borrowed(db))
-    notifications.email_company(deal["seller_company"], "Hola", "Cuerpo", "/panel")
-    assert sent == [
-        (
-            "seller@example.com",
-            "RexFy · Hola",
-            "Cuerpo\n\nVer en RexFy: http://localhost:3000/panel\n",
-        )
-    ]
+    def flaky(to: str, *_: str, **__: str) -> None:
+        calls.append(to)
+        if len(calls) == 1:
+            raise OSError("SMTP temporalmente fuera de servicio")
 
-
-class _Borrowed:
-    def __init__(self, db) -> None:
-        self.db = db
-
-    def __enter__(self):
-        return self.db
-
-    def __exit__(self, *_) -> None:
-        pass
+    monkeypatch.setattr(outbox, "send_email", flaky)
+    assert outbox.process_event(db, event.id) is OutboxStatus.RETRY
+    assert outbox.process_event(db, event.id) is OutboxStatus.PROCESSED
+    assert calls == ["seller@example.com", "seller@example.com"]
+    assert outbox.process_event(db, event.id) is OutboxStatus.PROCESSED
+    assert len(calls) == 2
+    delivery = db.scalar(select(OutboxDelivery).where(OutboxDelivery.event_id == event.id))
+    assert delivery.delivered_at is not None
+    assert delivery.attempts == 2

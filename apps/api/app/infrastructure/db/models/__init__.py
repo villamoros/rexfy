@@ -12,6 +12,7 @@ from app.infrastructure.db.models.organizations import (
     CompanyInvitation,
     CompanyMember,
 )
+from app.infrastructure.db.models.outbox import OutboxDelivery, OutboxEvent
 from app.infrastructure.db.models.trust import Dispute, Review
 
 __all__ = [
@@ -26,6 +27,8 @@ __all__ = [
     "Message",
     "Notification",
     "Offer",
+    "OutboxDelivery",
+    "OutboxEvent",
     "Review",
     "Shipment",
     "ShipmentEvent",

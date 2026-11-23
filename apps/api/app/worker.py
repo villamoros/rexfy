@@ -1,19 +1,16 @@
-"""Processes background jobs (emails for now).
+"""Polls and dispatches the durable transactional outbox.
 
 Run from apps/api:  uv run python -m app.worker
 """
 
-import logging
-
-from rq import Worker
-
-from app.infrastructure.tasks import get_queue
+from app.application.outbox import run_forever
+from app.core.config import get_settings
+from app.core.observability import configure_logging
 
 
 def main() -> None:
-    logging.basicConfig(level=logging.INFO)
-    queue = get_queue()
-    Worker([queue], connection=queue.connection).work()
+    configure_logging(get_settings())
+    run_forever()
 
 
 if __name__ == "__main__":

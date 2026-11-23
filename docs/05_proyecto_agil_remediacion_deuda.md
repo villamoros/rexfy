@@ -11,6 +11,7 @@
 |---|---|---|
 | EP-01 Operaciones visibles y resilientes | En validación | Mutaciones antes silenciosas devuelven estado visible; llamadas API tienen timeout y request ID; lecturas degradadas permiten reintentar; falta validar el journey autenticado con PostgreSQL activo |
 | EP-02 Integridad transaccional | En validación | ADR y contrato implementados; operaciones críticas protegidas; migración verificada; 80 pruebas API pasan con PostgreSQL real, incluidas carreras de aceptación, creación de thread y cotización con sesiones independientes |
+| EP-03 Mensajería durable | Implementada | Outbox PostgreSQL transaccional, dispatcher con lease y backoff, ledger por destinatario, replay auditado, salud operativa y consola admin; migración desde cero verificada y 82 pruebas API pasan en PostgreSQL 17 real, incluidas caída SMTP, recuperación, rollback y no duplicación |
 
 La implementación de EP-01 corrigió además una condición insegura: una consulta fallida del envío ya no se interpreta como ausencia de envío ni habilita la confirmación de recepción.
 

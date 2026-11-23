@@ -9,7 +9,7 @@ from app.core.config import get_settings
 log = logging.getLogger("rexfy.email")
 
 
-def send_email(to: str, subject: str, text: str) -> None:
+def send_email(to: str, subject: str, text: str, *, message_id: str | None = None) -> None:
     settings = get_settings()
     if not settings.smtp_host:
         log.info("Email (sin SMTP configurado) a %s: %s\n%s", to, subject, text)
@@ -18,6 +18,8 @@ def send_email(to: str, subject: str, text: str) -> None:
     message["From"] = settings.email_from
     message["To"] = to
     message["Subject"] = subject
+    if message_id:
+        message["Message-ID"] = message_id
     message.set_content(text)
     with smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=20) as smtp:
         smtp.starttls()

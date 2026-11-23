@@ -31,9 +31,11 @@ class Settings(BaseSettings):
     # Origins allowed in the token's `azp` claim; defaults to cors_origins.
     clerk_authorized_parties: list[str] | None = None
 
-    # Background jobs: "rq" on Redis (run `python -m app.worker`), "inline" runs them in the
-    # request, "off" drops them (tests).
-    task_queue: Literal["rq", "inline", "off"] = "rq"
+    # Durable email outbox (the worker polls PostgreSQL; Redis is not on the delivery path).
+    outbox_poll_seconds: float = 5.0
+    outbox_batch_size: int = 25
+    outbox_max_attempts: int = 8
+    outbox_processing_timeout_seconds: int = 300
     # The web app, for links in emails.
     public_web_url: str = "http://localhost:3000"
     # Without smtp_host, emails are written to the worker's log instead of sent.

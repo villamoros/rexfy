@@ -4,12 +4,10 @@ from datetime import UTC, datetime
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.application import audit
+from app.application import audit, outbox
 from app.core.config import get_settings
 from app.domain.organizations.roles import MarketRole, MemberRole
 from app.infrastructure.db.models import Company, CompanyInvitation, CompanyMember, User
-from app.infrastructure.email import send_email
-from app.infrastructure.tasks import enqueue
 
 
 class NitAlreadyRegistered(Exception):
@@ -107,15 +105,17 @@ def invite(
             raise InvalidTeamChange("Esa persona ya es parte del equipo")
         added = CompanyMember(company_id=company_id, user_id=existing.id, role=role)
         db.add(added)
+        db.flush()
         audit.record(db, user, "member.added", company, company_id=company_id, email=email)
-        db.commit()
-        enqueue(
-            send_email,
-            email,
-            f"RexFy · Ahora eres parte de {company.legal_name}",
-            f"{user.full_name} te agregó al equipo de {company.legal_name} en RexFy.\n\n"
+        outbox.queue_email(
+            db,
+            to=email,
+            subject=f"RexFy · Ahora eres parte de {company.legal_name}",
+            text=f"{user.full_name} te agregó al equipo de {company.legal_name} en RexFy.\n\n"
             f"Entra en {get_settings().public_web_url}/panel\n",
+            dedupe_key=f"member.added:{added.id}",
         )
+        db.commit()
         return added
     if db.scalar(
         select(CompanyInvitation.id).where(
@@ -127,16 +127,18 @@ def invite(
         company_id=company_id, email=email, role=role, invited_by_user_id=user.id
     )
     db.add(invitation)
+    db.flush()
     audit.record(db, user, "member.invited", company, company_id=company_id, email=email)
-    db.commit()
-    enqueue(
-        send_email,
-        email,
-        f"RexFy · {user.full_name} te invita a {company.legal_name}",
-        f"{user.full_name} te invitó al equipo de {company.legal_name} en RexFy, el "
+    outbox.queue_email(
+        db,
+        to=email,
+        subject=f"RexFy · {user.full_name} te invita a {company.legal_name}",
+        text=f"{user.full_name} te invitó al equipo de {company.legal_name} en RexFy, el "
         f"marketplace de materiales recuperados.\n\nCrea tu cuenta con este email en "
         f"{get_settings().public_web_url}/registro\n",
+        dedupe_key=f"member.invited:{invitation.id}",
     )
+    db.commit()
     return invitation
 
 

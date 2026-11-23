@@ -1,20 +1,14 @@
 from typing import Any
 
-import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
-from app.application import organizations
+from app.infrastructure.db.models import OutboxEvent
 from tests.conftest import FakeClerk, register
 from tests.test_deals import deal, offer  # noqa: F401  (fixture)
 
 Headers = dict[str, str]
-
-
-@pytest.fixture
-def emails(monkeypatch: pytest.MonkeyPatch) -> list[tuple]:
-    sent: list[tuple] = []
-    monkeypatch.setattr(organizations, "enqueue", lambda job, *args: sent.append(args))
-    return sent
 
 
 def _team(client: TestClient, headers: Headers, company_id: str) -> dict:
@@ -23,8 +17,8 @@ def _team(client: TestClient, headers: Headers, company_id: str) -> dict:
 
 def test_invite_before_signup_then_join(
     client: TestClient,
+    db: Session,
     deal: dict[str, Any],  # noqa: F811
-    emails: list[tuple],
 ) -> None:
     cid = deal["buyer_company"]
     invited = client.post(
@@ -32,7 +26,8 @@ def test_invite_before_signup_then_join(
     )
     assert invited.status_code == 201, invited.text
     assert [i["email"] for i in invited.json()["invitations"]] == ["luis@example.com"]
-    assert emails[0][0] == "luis@example.com"
+    event = db.scalar(select(OutboxEvent).where(OutboxEvent.kind == "direct.email"))
+    assert event.payload["to"] == "luis@example.com"
     again = client.post(
         f"/companies/{cid}/team", json={"email": "luis@example.com"}, headers=deal["buyer"]
     )
@@ -51,7 +46,6 @@ def test_unverified_email_does_not_join(
     client: TestClient,
     clerk: FakeClerk,
     deal: dict[str, Any],  # noqa: F811
-    emails: list[tuple],
 ) -> None:
     cid = deal["buyer_company"]
     client.post(f"/companies/{cid}/team", json={"email": "luis@example.com"}, headers=deal["buyer"])
@@ -62,8 +56,8 @@ def test_unverified_email_does_not_join(
 
 def test_members_work_but_only_managers_commit(
     client: TestClient,
+    db: Session,
     deal: dict[str, Any],  # noqa: F811
-    emails: list[tuple],
 ) -> None:
     cid = deal["buyer_company"]
     luis = register(client, "luis@example.com")
@@ -74,7 +68,12 @@ def test_members_work_but_only_managers_commit(
         "buyer@example.com",
         "luis@example.com",
     ]
-    assert emails[0][1].startswith("RexFy · Ahora eres parte")
+    event = db.scalar(
+        select(OutboxEvent)
+        .where(OutboxEvent.kind == "direct.email")
+        .order_by(OutboxEvent.created_at.desc())
+    )
+    assert event.payload["subject"].startswith("RexFy · Ahora eres parte")
 
     # A member chats and counters, but cannot accept the seller's quote or manage the team.
     quote = offer(client, deal["seller"], deal["thread_id"])
@@ -95,7 +94,7 @@ def test_members_work_but_only_managers_commit(
     assert client.post(f"/offers/{quote['id']}/accept", headers=luis).status_code == 200
 
 
-def test_owner_stays(client: TestClient, deal: dict[str, Any], emails: list[tuple]) -> None:  # noqa: F811
+def test_owner_stays(client: TestClient, deal: dict[str, Any]) -> None:  # noqa: F811
     cid = deal["buyer_company"]
     owner_id = _team(client, deal["buyer"], cid)["members"][0]["user_id"]
     assert (

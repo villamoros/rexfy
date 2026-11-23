@@ -34,6 +34,20 @@ export async function setCompanyVerified(
   );
 }
 
+export async function replayOutboxEvent(
+  _: MutationState,
+  formData: FormData,
+): Promise<MutationState> {
+  const id = encodeURIComponent(String(formData.get("event_id")));
+  const result = await apiFetch(`/admin/outbox/${id}/replay`, {
+    method: "POST",
+    token: await token(),
+  });
+  if (!result.ok) return mutationFailure(result);
+  revalidatePath("/admin");
+  return mutationSuccess("Evento programado para reintento.");
+}
+
 export type TakeDownState = { message?: string; done?: boolean } | undefined;
 
 export async function takeDownListing(

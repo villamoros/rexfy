@@ -5,7 +5,10 @@ from fastapi.testclient import TestClient
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.infrastructure.db.models import User
+from app.application import outbox
+from app.core.config import get_settings
+from app.domain.notifications.enums import OutboxStatus
+from app.infrastructure.db.models import OutboxEvent, User
 from tests.conftest import company, register
 from tests.test_deals import deal, offer  # noqa: F401  (fixture)
 
@@ -73,3 +76,30 @@ def test_critical_actions_are_audited(
         "/admin/audit", params={"entity_id": deal["listing_id"]}, headers=admin
     ).json()
     assert [e["action"] for e in listing_log] == ["listing.published", "listing.created"]
+
+
+def test_outbox_health_and_audited_replay(
+    client: TestClient,
+    db: Session,
+    admin: Headers,
+    deal: dict[str, Any],  # noqa: F811
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    event = db.scalar(select(OutboxEvent).order_by(OutboxEvent.created_at))
+    monkeypatch.setattr(
+        outbox, "send_email", lambda *args, **kwargs: (_ for _ in ()).throw(OSError("SMTP caído"))
+    )
+    monkeypatch.setattr(get_settings(), "outbox_max_attempts", 1)
+    assert outbox.process_event(db, event.id) is OutboxStatus.FAILED
+
+    health = client.get("/admin/outbox/health", headers=admin)
+    assert health.status_code == 200
+    assert health.json()["failed"] == 1
+
+    replayed = client.post(f"/admin/outbox/{event.id}/replay", headers=admin)
+    assert replayed.status_code == 200
+    assert replayed.json()["status"] == "retry"
+    again = client.post(f"/admin/outbox/{event.id}/replay", headers=admin)
+    assert again.status_code == 409
+    log = client.get("/admin/audit", params={"entity_id": event.id}, headers=admin).json()
+    assert log[0]["action"] == "outbox.replayed"

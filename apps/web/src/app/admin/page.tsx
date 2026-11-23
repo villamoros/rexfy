@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
-import { setCompanyVerified } from "@/app/actions/admin";
+import { replayOutboxEvent, setCompanyVerified } from "@/app/actions/admin";
 import { Stat, StatGrid, formatNumber, formatPercent } from "@/components/kpi";
 import { MutationForm } from "@/components/mutation-form";
 import { RequestError } from "@/components/request-error";
@@ -43,6 +43,25 @@ type AuditEntry = {
   data: Record<string, unknown>;
 };
 
+type OutboxHealth = {
+  pending: number;
+  processing: number;
+  retry: number;
+  failed: number;
+  processed_24h: number;
+  due: number;
+  oldest_unprocessed_at: string | null;
+};
+
+type OutboxEvent = {
+  id: string;
+  kind: string;
+  status: "pending" | "processing" | "retry" | "processed" | "failed";
+  attempts: number;
+  created_at: string;
+  last_error: string | null;
+};
+
 const ACTIONS: Record<string, string> = {
   "company.created": "registró una empresa",
   "company.verified": "verificó una empresa",
@@ -67,6 +86,7 @@ const ACTIONS: Record<string, string> = {
   "dispute.opened": "abrió una disputa",
   "dispute.resolved": "resolvió una disputa",
   "review.created": "calificó a una empresa",
+  "outbox.replayed": "reprogramó una notificación",
 };
 
 export default function AdminPage() {
@@ -91,14 +111,24 @@ async function Console() {
   const me = await requireUser();
   if (!me.is_platform_admin) notFound();
   const token = await getToken();
-  const [metrics, disputes, pending, verified, listings, activity] =
-    await Promise.all([
+  const [
+    metrics,
+    disputes,
+    pending,
+    verified,
+    listings,
+    activity,
+    outboxHealth,
+    outboxEvents,
+  ] = await Promise.all([
       apiFetch<PlatformKpis>("/admin/metrics", { token }),
       apiFetch<AdminDispute[]>("/admin/disputes?status=open", { token }),
       apiFetch<AdminCompany[]>("/admin/companies?verified=false", { token }),
       apiFetch<AdminCompany[]>("/admin/companies?verified=true", { token }),
       apiFetch<Listing[]>("/admin/listings?status=published", { token }),
       apiFetch<AuditEntry[]>("/admin/audit?limit=30", { token }),
+      apiFetch<OutboxHealth>("/admin/outbox/health", { token }),
+      apiFetch<OutboxEvent[]>("/admin/outbox?limit=30", { token }),
     ]);
 
   const m = metrics.ok ? metrics.data : null;
@@ -161,6 +191,72 @@ async function Console() {
           </StatGrid>
         </Section>
       )}
+      <Section title="Entrega de notificaciones">
+        {!outboxHealth.ok ? (
+          <RequestError
+            message={outboxHealth.message}
+            requestId={outboxHealth.requestId}
+          />
+        ) : (
+          <StatGrid>
+            <Stat
+              label="Pendientes"
+              value={outboxHealth.data.pending}
+              hint={
+                outboxHealth.data.oldest_unprocessed_at
+                  ? `Más antigua: ${formatDateTime(outboxHealth.data.oldest_unprocessed_at)}`
+                  : "Sin cola acumulada"
+              }
+            />
+            <Stat label="En proceso" value={outboxHealth.data.processing} />
+            <Stat label="Reintentos" value={outboxHealth.data.retry} />
+            <Stat label="Agotados" value={outboxHealth.data.failed} />
+            <Stat label="Listos para enviar" value={outboxHealth.data.due} />
+            <Stat
+              label="Entregados"
+              value={outboxHealth.data.processed_24h}
+              hint="Últimas 24 horas"
+            />
+          </StatGrid>
+        )}
+        {!outboxEvents.ok ? (
+          <RequestError
+            message={outboxEvents.message}
+            requestId={outboxEvents.requestId}
+          />
+        ) : outboxEvents.data.filter(
+            (event) => event.status !== "processed",
+          ).length === 0 ? (
+          <EmptyState>No hay entregas que requieran atención.</EmptyState>
+        ) : (
+          <ul className="divide-y divide-border card text-sm">
+            {outboxEvents.data
+              .filter((event) => event.status !== "processed")
+              .map((event) => (
+                <li
+                  key={event.id}
+                  className="flex flex-wrap items-center justify-between gap-3 px-4 py-3"
+                >
+                  <div className="min-w-0">
+                    <p className="font-medium">
+                      {event.kind} · {event.status} · intento {event.attempts}
+                    </p>
+                    <p className="truncate text-muted">
+                      {event.last_error ??
+                        `Creado ${formatDateTime(event.created_at)}`}
+                    </p>
+                  </div>
+                  {event.status === "failed" && (
+                    <MutationForm action={replayOutboxEvent}>
+                      <input type="hidden" name="event_id" value={event.id} />
+                      <button className="btn btn-secondary text-sm">Reintentar</button>
+                    </MutationForm>
+                  )}
+                </li>
+              ))}
+          </ul>
+        )}
+      </Section>
       <Section title="Disputas abiertas">
         {!disputes.ok ? (
           <RequestError

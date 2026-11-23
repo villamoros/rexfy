@@ -4,12 +4,18 @@ from typing import Annotated
 from fastapi import APIRouter, HTTPException, Query, status
 
 from app.application import admin as service
-from app.application import audit
+from app.application import audit, outbox
 from app.application.dashboard import platform_kpis
 from app.domain.listings.enums import ListingStatus
-from app.infrastructure.db.models import Company
+from app.infrastructure.db.models import Company, OutboxEvent
 from app.presentation.deps import AdminUser, DbSession
-from app.presentation.schemas.admin import AdminCompany, AuditEntry, TakeDown
+from app.presentation.schemas.admin import (
+    AdminCompany,
+    AuditEntry,
+    OutboxEventOut,
+    OutboxHealthOut,
+    TakeDown,
+)
 from app.presentation.schemas.dashboard import PlatformKpisOut
 from app.presentation.schemas.listings import ListingOut
 from app.presentation.schemas.organizations import CompanyOut
@@ -87,3 +93,29 @@ def audit_log(
 @router.get("/metrics")
 def metrics(db: DbSession, _: AdminUser) -> PlatformKpisOut:
     return PlatformKpisOut.model_validate(platform_kpis(db))
+
+
+@router.get("/outbox/health")
+def outbox_health(db: DbSession, _: AdminUser) -> OutboxHealthOut:
+    return OutboxHealthOut.model_validate(outbox.health(db), from_attributes=True)
+
+
+@router.get("/outbox")
+def outbox_events(
+    db: DbSession,
+    _: AdminUser,
+    limit: Annotated[int, Query(ge=1, le=100)] = 30,
+) -> list[OutboxEventOut]:
+    return [OutboxEventOut.model_validate(event) for event in outbox.recent(db, limit=limit)]
+
+
+@router.post("/outbox/{event_id}/replay")
+def replay_outbox_event(event_id: uuid.UUID, db: DbSession, admin: AdminUser) -> OutboxEventOut:
+    event = db.get(OutboxEvent, event_id)
+    if event is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Evento de outbox no encontrado")
+    try:
+        event = outbox.replay(db, admin, event)
+    except outbox.InvalidState as exc:
+        raise HTTPException(status.HTTP_409_CONFLICT, exc.message) from exc
+    return OutboxEventOut.model_validate(event)
