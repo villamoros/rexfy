@@ -31,6 +31,8 @@ jobs:
       - run: uv run ruff check .
       - run: uv run ruff format --check .
       - run: uv run alembic upgrade head
+      - name: Migration graph and applied revision are safe
+        run: uv run python -m app.cli.migrate check
       - run: uv run pytest -q
       - name: OpenAPI schema is up to date
         run: uv run python -m app.cli.openapi openapi.json && git diff --exit-code openapi.json
@@ -54,6 +56,15 @@ jobs:
       - run: npm run typecheck
       - run: npm run test:coverage
       - run: npm run build
+
+  operations:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Validate SLO evaluator
+        run: python -m unittest discover -s scripts -p 'test_*.py'
 
   public-smoke:
     runs-on: ubuntu-latest

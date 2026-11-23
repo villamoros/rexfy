@@ -1,0 +1,82 @@
+name: Authorized staging restore drill
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: Type RESTORE-STAGING to replace the staging database
+        required: true
+        type: string
+      staging_url:
+        description: Web URL connected to the restored staging database
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  restore:
+    if: inputs.confirmation == 'RESTORE-STAGING'
+    runs-on: ubuntu-latest
+    environment: staging-restore
+    concurrency:
+      group: staging-restore
+      cancel-in-progress: false
+    env:
+      SOURCE_DATABASE_URL: ${{ secrets.BACKUP_SOURCE_DATABASE_URL }}
+      TARGET_DATABASE_URL: ${{ secrets.RESTORE_DATABASE_URL }}
+      REXFY_DATABASE_URL: ${{ secrets.RESTORE_DATABASE_URL }}
+      REXFY_DATABASE_URL_UNPOOLED: ${{ secrets.RESTORE_DATABASE_URL }}
+      E2E_BASE_URL: ${{ inputs.staging_url }}
+      CLERK_PUBLISHABLE_KEY: ${{ secrets.E2E_CLERK_PUBLISHABLE_KEY }}
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.E2E_CLERK_PUBLISHABLE_KEY }}
+      CLERK_SECRET_KEY: ${{ secrets.E2E_CLERK_SECRET_KEY }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@d0d8abe699bfb85fec6de9f7adb5ae17292296ff
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - name: Validate target and start evidence
+        run: |
+          test -n "$SOURCE_DATABASE_URL" && test -n "$TARGET_DATABASE_URL"
+          test "$SOURCE_DATABASE_URL" != "$TARGET_DATABASE_URL"
+          printf '{"commit":"%s","started_at":"%s"}\n' "$GITHUB_SHA" "$(date -u +%FT%TZ)" > restore-evidence.json
+      - name: Create and validate authorized backup
+        run: |
+          pg_dump "${SOURCE_DATABASE_URL/postgresql+psycopg:/postgresql:}" --format=custom --no-owner --file=backup.dump
+          pg_restore --list backup.dump > backup.contents
+          test -s backup.contents
+      - name: Restore into staging
+        run: pg_restore --clean --if-exists --no-owner --exit-on-error --dbname="${TARGET_DATABASE_URL/postgresql+psycopg:/postgresql:}" backup.dump
+      - name: Verify migration and relational integrity
+        working-directory: apps/api
+        run: |
+          uv sync --frozen --no-dev
+          uv run --no-dev python -m app.cli.migrate upgrade
+          psql "${TARGET_DATABASE_URL/postgresql+psycopg:/postgresql:}" -v ON_ERROR_STOP=1 -c "BEGIN; SET CONSTRAINTS ALL IMMEDIATE; CREATE TEMP TABLE restore_canary(value text); INSERT INTO restore_canary VALUES ('ok'); SELECT * FROM restore_canary; ROLLBACK;"
+      - name: Verify authenticated read/write journey
+        working-directory: apps/web
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+          npx playwright test --project=commercial-desktop
+      - name: Complete evidence
+        if: always()
+        run: printf '{"commit":"%s","completed_at":"%s","result":"%s"}\n' "$GITHUB_SHA" "$(date -u +%FT%TZ)" "${{ job.status }}" > restore-result.json
+      - if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: restore-drill-${{ github.run_id }}
+          path: |
+            restore-evidence.json
+            restore-result.json
+            backup.contents
+            apps/web/playwright-report
+            apps/web/test-results
+          retention-days: 90

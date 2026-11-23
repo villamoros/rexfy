@@ -36,6 +36,7 @@ class Settings(BaseSettings):
     outbox_batch_size: int = 25
     outbox_max_attempts: int = 8
     outbox_processing_timeout_seconds: int = 300
+    outbox_alert_age_seconds: int = 300
     # The web app, for links in emails.
     public_web_url: str = "http://localhost:3000"
     # Without smtp_host, emails are written to the worker's log instead of sent.

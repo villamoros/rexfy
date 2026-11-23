@@ -1,0 +1,44 @@
+name: Controlled database migration
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Protected GitHub environment containing the direct database URL
+        required: true
+        type: choice
+        options: [staging, production]
+
+permissions:
+  contents: read
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    concurrency:
+      group: migration-${{ inputs.environment }}
+      cancel-in-progress: false
+    defaults:
+      run:
+        working-directory: apps/api
+    env:
+      REXFY_DATABASE_URL_UNPOOLED: ${{ secrets.DATABASE_URL_UNPOOLED }}
+      REXFY_DATABASE_URL: ${{ secrets.DATABASE_URL_UNPOOLED }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@d0d8abe699bfb85fec6de9f7adb5ae17292296ff
+      - run: uv sync --frozen --no-dev
+      - name: Require a direct database URL
+        run: test -n "$REXFY_DATABASE_URL_UNPOOLED"
+      - name: Precheck heads, connectivity and current revision
+        run: uv run --no-dev python -m app.cli.migrate status
+      - name: Apply under advisory lock and verify head
+        run: uv run --no-dev python -m app.cli.migrate upgrade | tee migration-evidence.json
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: migration-${{ inputs.environment }}-${{ github.sha }}
+          path: apps/api/migration-evidence.json
+          retention-days: 90

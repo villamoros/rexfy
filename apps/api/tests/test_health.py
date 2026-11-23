@@ -10,4 +10,4 @@ def test_health(client: TestClient) -> None:
 def test_readiness(client: TestClient) -> None:
     response = client.get("/health/ready")
     assert response.status_code == 200
-    assert set(response.json()) == {"database", "redis", "status"}
+    assert set(response.json()) == {"database", "outbox", "redis", "status"}

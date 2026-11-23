@@ -40,7 +40,9 @@ services:
   worker:
     build: ./apps/api
     profiles: ["full"]
-    command: ["uv", "run", "--no-dev", "python", "-m", "app.worker"]
+    command: ["python", "-m", "app.worker"]
+    healthcheck:
+      disable: true
     environment:
       REXFY_DATABASE_URL: postgresql+psycopg://rexfy:rexfy@postgres:5432/rexfy
     depends_on:

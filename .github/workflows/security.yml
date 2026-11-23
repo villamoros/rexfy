@@ -1,0 +1,94 @@
+name: Security and supply chain
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "17 8 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  dependencies-and-sbom:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - uses: astral-sh/setup-uv@d0d8abe699bfb85fec6de9f7adb5ae17292296ff
+      - name: Install web dependencies without lifecycle scripts
+        working-directory: apps/web
+        run: npm ci --ignore-scripts
+      - name: Audit Python lockfile
+        working-directory: apps/api
+        run: |
+          uv export --frozen --no-dev --no-emit-project --format requirements-txt --output-file requirements-audit.txt
+          uvx --from pip-audit==2.9.0 pip-audit --requirement requirements-audit.txt
+      - name: Audit production npm dependencies
+        working-directory: apps/web
+        run: npm audit --omit=dev --audit-level=high
+      - name: Generate CycloneDX SBOM
+        working-directory: apps/web
+        run: npx --yes @cyclonedx/cyclonedx-npm@7.0.1 --output-file sbom.cdx.json
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: web-sbom
+          path: apps/web/sbom.cdx.json
+          retention-days: 30
+
+  secrets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: gitleaks/gitleaks-action@dcedce43c6f43de0b836d1fe38946645c9c638dc
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  sast:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [javascript-typescript, python]
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: github/codeql-action/init@aaf92c3279600a7c7217a1cd605774c6c791c6c3
+        with:
+          languages: ${{ matrix.language }}
+      - uses: github/codeql-action/analyze@aaf92c3279600a7c7217a1cd605774c6c791c6c3
+
+  container:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Build hardened API image
+        run: docker build --tag rexfy-api:${{ github.sha }} apps/api
+      - uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610
+        with:
+          image: rexfy-api:${{ github.sha }}
+          format: spdx-json
+          artifact-name: api-sbom.spdx.json
+      - uses: aquasecurity/trivy-action@b6643a29fecd7f34b3597bc6acb0a98b03d33ff8
+        with:
+          image-ref: rexfy-api:${{ github.sha }}
+          format: table
+          exit-code: "1"
+          ignore-unfixed: true
+          severity: CRITICAL,HIGH

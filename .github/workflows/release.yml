@@ -1,0 +1,95 @@
+name: Controlled Vercel production release
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
+  VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
+  VERCEL_CLI_VERSION: 66.6.0
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    environment: production
+    defaults:
+      run:
+        working-directory: apps/api
+    env:
+      REXFY_DATABASE_URL: ${{ secrets.DATABASE_URL_UNPOOLED }}
+      REXFY_DATABASE_URL_UNPOOLED: ${{ secrets.DATABASE_URL_UNPOOLED }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@d0d8abe699bfb85fec6de9f7adb5ae17292296ff
+      - run: uv sync --frozen --no-dev
+      - run: uv run --no-dev python -m app.cli.migrate status
+      - run: uv run --no-dev python -m app.cli.migrate upgrade
+
+  stage:
+    needs: migrate
+    runs-on: ubuntu-latest
+    environment: production
+    outputs:
+      url: ${{ steps.deploy.outputs.url }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Install reviewed Vercel CLI
+        run: npm install --global "vercel@${VERCEL_CLI_VERSION}"
+      - name: Pull production configuration
+        run: vercel pull --yes --environment=production --cwd apps/web
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      - name: Build production artifact
+        run: vercel build --prod --cwd apps/web
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      - name: Stage without assigning domains
+        id: deploy
+        shell: bash
+        run: |
+          set -euo pipefail
+          deployment_url="$(vercel deploy --prebuilt --prod --skip-domain --cwd apps/web)"
+          DEPLOYMENT_URL="$deployment_url" node --input-type=module -e '
+            const url = new URL(process.env.DEPLOYMENT_URL);
+            if (url.protocol !== "https:" || url.origin !== process.env.DEPLOYMENT_URL || !url.hostname.endsWith(".vercel.app")) process.exit(1);
+          '
+          printf 'url=%s\n' "$deployment_url" >> "$GITHUB_OUTPUT"
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+
+  verify:
+    needs: stage
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Public smoke and security headers
+        shell: bash
+        env:
+          DEPLOYMENT_URL: ${{ needs.stage.outputs.url }}
+          BYPASS: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --retry 5 --retry-all-errors \
+            -H "x-vercel-protection-bypass: $BYPASS" "$DEPLOYMENT_URL" -o page.html -D headers.txt
+          grep -Eiq '^content-security-policy:' headers.txt
+          grep -Eiq '^x-content-type-options: *nosniff' headers.txt
+          grep -q 'RexFy' page.html
+
+  promote:
+    needs: [stage, verify]
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - run: npm install --global "vercel@${VERCEL_CLI_VERSION}"
+      - name: Promote the exact tested artifact
+        run: vercel promote "$DEPLOYMENT_URL"
+        env:
+          DEPLOYMENT_URL: ${{ needs.stage.outputs.url }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}

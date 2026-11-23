@@ -1,5 +1,7 @@
 import type { NextConfig } from "next";
 
+import { securityHeaders } from "./src/lib/security-headers";
+
 const nextConfig: NextConfig = {
   /* config options here */
   cacheComponents: true,
@@ -18,6 +20,9 @@ const nextConfig: NextConfig = {
         as: "*.css",
       },
     },
+  },
+  async headers() {
+    return [{ source: "/(.*)", headers: securityHeaders }];
   },
 };
 

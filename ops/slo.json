@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "window_days": 30,
+  "owner": "platform-on-call",
+  "services": {
+    "web": { "availability": 0.999, "latency_p95_ms": 2500 },
+    "api": { "availability": 0.999, "latency_p95_ms": 1000 },
+    "database": { "availability": 0.9995, "latency_p95_ms": 500 },
+    "outbox": { "availability": 0.99, "oldest_pending_max_seconds": 300 },
+    "commercial_journey": { "availability": 0.99, "latency_p95_ms": 180000 }
+  },
+  "alerts": {
+    "fast_burn": {
+      "window_minutes": 60,
+      "budget_burn": 0.1,
+      "severity": "page"
+    },
+    "slow_burn": {
+      "window_minutes": 360,
+      "budget_burn": 0.2,
+      "severity": "ticket"
+    },
+    "outbox_stale": { "window_minutes": 10, "severity": "page" },
+    "commercial_journey_failed": {
+      "consecutive_failures": 2,
+      "severity": "page"
+    }
+  }
+}
