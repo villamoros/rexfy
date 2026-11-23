@@ -14,6 +14,7 @@
 | EP-03 Mensajería durable | Implementada | Outbox PostgreSQL transaccional, dispatcher con lease y backoff, ledger por destinatario, replay auditado, salud operativa y consola admin; migración desde cero verificada y 82 pruebas API pasan en PostgreSQL 17 real, incluidas caída SMTP, recuperación, rollback y no duplicación |
 | EP-04 Calidad y entrega continua | Implementada | Fuentes locales y build sin red; 17 tests rápidos con 84,32% de cobertura del módulo de publicación; wizard separado en modelo, borrador, medios y pasos; smoke público obligatorio; journey comercial dividido por dominio; escritorio, móvil, teclado y Axe como gates con artefactos de fallo |
 | EP-05 Operación y seguridad | En validación | Migración serializada y verificable; release Vercel por artefacto probado; restore staging con aprobación y evidencia; CSP/headers; dependencias, secretos, SAST, SBOM y contenedor como gates; SLO y monitor de web, API, DB, Redis, outbox y journey; faltan ejecutar los drills autorizados de restore y alerta en staging |
+| EP-06 Producto medible y enfocado | En validación | Ledger transaccional sin PII; funnel de registro a entrega con segmentos por rol, ciudad, categoría y cohorte; KPIs con fórmula, ventana y timezone; landing enfocada en materiales recuperados; falta ejecutar SP-02 con participantes reales de los tres roles |
 
 La implementación de EP-01 corrigió además una condición insegura: una consulta fallida del envío ya no se interpreta como ausencia de envío ni habilita la confirmación de recepción.
 

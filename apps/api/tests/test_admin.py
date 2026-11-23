@@ -27,6 +27,7 @@ def test_only_admins_reach_admin_endpoints(client: TestClient) -> None:
     user = register(client, "ana@example.com")
     assert client.get("/admin/companies", headers=user).status_code == 403
     assert client.get("/admin/audit", headers=user).status_code == 403
+    assert client.get("/admin/funnel", headers=user).status_code == 403
 
 
 def test_verify_company(client: TestClient, admin: Headers) -> None:

@@ -10,7 +10,7 @@ import { RequestError } from "@/components/request-error";
 import { SiteHeader } from "@/components/site-header";
 import { EmptyState, PageHeader } from "@/components/ui";
 import { apiFetch, type MarketRole } from "@/lib/api";
-import type { PlatformKpis } from "@/lib/dashboard";
+import type { PlatformKpis, ProductFunnel } from "@/lib/dashboard";
 import { formatCop, formatDateTime } from "@/lib/deals";
 import { formatPrice, formatQuantity, type Listing } from "@/lib/listings";
 import { roleLabel } from "@/lib/roles";
@@ -113,6 +113,7 @@ async function Console() {
   const token = await getToken();
   const [
     metrics,
+    funnel,
     disputes,
     pending,
     verified,
@@ -122,6 +123,7 @@ async function Console() {
     outboxEvents,
   ] = await Promise.all([
       apiFetch<PlatformKpis>("/admin/metrics", { token }),
+      apiFetch<ProductFunnel>("/admin/funnel", { token }),
       apiFetch<AdminDispute[]>("/admin/disputes?status=open", { token }),
       apiFetch<AdminCompany[]>("/admin/companies?verified=false", { token }),
       apiFetch<AdminCompany[]>("/admin/companies?verified=true", { token }),
@@ -191,6 +193,57 @@ async function Console() {
           </StatGrid>
         </Section>
       )}
+      <Section title="Funnel de producto">
+        {!funnel.ok ? (
+          <RequestError
+            message={funnel.message}
+            requestId={funnel.requestId}
+          />
+        ) : (
+          <>
+            <p className="text-sm text-muted">
+              Ventana móvil de {funnel.data.window_days} días · zona horaria{" "}
+              {funnel.data.timezone}. Cada paso cuenta entidades únicas.
+            </p>
+            <StatGrid>
+              {funnel.data.steps.map((step) => (
+                <Stat
+                  key={step.key}
+                  label={step.label}
+                  value={step.entities}
+                  hint={
+                    step.conversion_from_previous === null
+                      ? "Inicio del funnel"
+                      : `${formatPercent(step.conversion_from_previous)} desde el paso anterior`
+                  }
+                />
+              ))}
+            </StatGrid>
+            {funnel.data.segments.length === 0 ? (
+              <EmptyState>
+                Aún no hay volumen suficiente para mostrar segmentos sin
+                exponer grupos pequeños.
+              </EmptyState>
+            ) : (
+              <ul className="card divide-y divide-border text-sm">
+                {funnel.data.segments.map((segment) => (
+                  <li
+                    key={`${segment.dimension}-${segment.value}`}
+                    className="flex flex-wrap justify-between gap-3 px-4 py-3"
+                  >
+                    <span className="font-medium">
+                      {segment.dimension} · {segment.value}
+                    </span>
+                    <span className="text-muted">
+                      {segment.events} eventos · {segment.companies} empresas
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </>
+        )}
+      </Section>
       <Section title="Entrega de notificaciones">
         {!outboxHealth.ok ? (
           <RequestError

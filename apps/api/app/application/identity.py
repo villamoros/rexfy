@@ -4,7 +4,9 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.application import analytics
 from app.application.organizations import accept_invitations
+from app.domain.product.events import ProductEventName
 from app.infrastructure.auth.clerk import Profile
 from app.infrastructure.db.models import User
 
@@ -28,12 +30,22 @@ def resolve_user(db: Session, clerk_user_id: str, fetch_profile: Callable[[str],
     if user is not None and not profile.email_verified:
         # Linking on an unconfirmed email would hand someone else's account over.
         raise EmailNotVerified
-    if user is None:
+    created = user is None
+    if created:
         user = User(email=profile.email, full_name=profile.full_name)
         db.add(user)
     user.clerk_user_id = clerk_user_id
+    db.flush()
+    if created:
+        analytics.track(
+            db,
+            ProductEventName.USER_REGISTERED,
+            actor=user,
+            entity=user,
+            role="unassigned",
+            properties={"identity_provider": "clerk"},
+        )
     if profile.email_verified:
-        db.flush()
         accept_invitations(db, user)
     try:
         db.commit()

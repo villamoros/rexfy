@@ -106,6 +106,23 @@ export interface paths {
         patch: operations["resolve_admin_disputes__dispute_id__patch"];
         trace?: never;
     };
+    "/admin/funnel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Product Funnel */
+        get: operations["product_funnel_admin_funnel_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/listings": {
         parameters: {
             query?: never;
@@ -151,6 +168,57 @@ export interface paths {
         get: operations["metrics_admin_metrics_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/outbox": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Outbox Events */
+        get: operations["outbox_events_admin_outbox_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/outbox/health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Outbox Health */
+        get: operations["outbox_health_admin_outbox_health_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/outbox/{event_id}/replay": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Replay Outbox Event */
+        post: operations["replay_outbox_event_admin_outbox__event_id__replay_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1128,6 +1196,52 @@ export interface components {
             note: string | null;
             status: components["schemas"]["ShipmentStatus"];
         };
+        /** FunnelSegmentOut */
+        FunnelSegmentOut: {
+            /** Companies */
+            companies: number;
+            /** Dimension */
+            dimension: string;
+            /** Events */
+            events: number;
+            /** Value */
+            value: string;
+        };
+        /** FunnelSnapshotOut */
+        FunnelSnapshotOut: {
+            /** Category */
+            category: string | null;
+            /** City */
+            city: string | null;
+            /** Cohort Month */
+            cohort_month: string | null;
+            /** Role */
+            role: string | null;
+            /** Segments */
+            segments: components["schemas"]["FunnelSegmentOut"][];
+            /**
+             * Since
+             * Format: date-time
+             */
+            since: string;
+            /** Steps */
+            steps: components["schemas"]["FunnelStepOut"][];
+            /** Timezone */
+            timezone: string;
+            /** Window Days */
+            window_days: number;
+        };
+        /** FunnelStepOut */
+        FunnelStepOut: {
+            /** Conversion From Previous */
+            conversion_from_previous: number | null;
+            /** Entities */
+            entities: number;
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -1554,6 +1668,59 @@ export interface components {
             quantity_unit: components["schemas"]["QuantityUnit"];
             seller: components["schemas"]["CompanyRef"] | null;
         };
+        /** OutboxEventOut */
+        OutboxEventOut: {
+            /** Attempts */
+            attempts: number;
+            /**
+             * Available At
+             * Format: date-time
+             */
+            available_at: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Failed At */
+            failed_at: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Kind */
+            kind: string;
+            /** Last Attempt At */
+            last_attempt_at: string | null;
+            /** Last Error */
+            last_error: string | null;
+            /** Processed At */
+            processed_at: string | null;
+            status: components["schemas"]["OutboxStatus"];
+        };
+        /** OutboxHealthOut */
+        OutboxHealthOut: {
+            /** Due */
+            due: number;
+            /** Failed */
+            failed: number;
+            /** Oldest Unprocessed At */
+            oldest_unprocessed_at: string | null;
+            /** Pending */
+            pending: number;
+            /** Processed 24H */
+            processed_24h: number;
+            /** Processing */
+            processing: number;
+            /** Retry */
+            retry: number;
+        };
+        /**
+         * OutboxStatus
+         * @enum {string}
+         */
+        OutboxStatus: "pending" | "processing" | "retry" | "processed" | "failed";
         /** PlatformKpisOut */
         PlatformKpisOut: {
             /** Active Companies 30D */
@@ -2084,7 +2251,9 @@ export interface operations {
     resolve_admin_disputes__dispute_id__patch: {
         parameters: {
             query?: never;
-            header?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
             path: {
                 dispute_id: string;
             };
@@ -2103,6 +2272,40 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AdminDisputeOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    product_funnel_admin_funnel_get: {
+        parameters: {
+            query?: {
+                role?: components["schemas"]["MarketRole"] | null;
+                city?: string | null;
+                category?: components["schemas"]["MaterialCategory"] | null;
+                cohort_month?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FunnelSnapshotOut"];
                 };
             };
             /** @description Validation Error */
@@ -2198,6 +2401,88 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PlatformKpisOut"];
+                };
+            };
+        };
+    };
+    outbox_events_admin_outbox_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OutboxEventOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    outbox_health_admin_outbox_health_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OutboxHealthOut"];
+                };
+            };
+        };
+    };
+    replay_outbox_event_admin_outbox__event_id__replay_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OutboxEventOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -2982,7 +3267,9 @@ export interface operations {
     accept_offers__offer_id__accept_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
             path: {
                 offer_id: string;
             };
@@ -3075,7 +3362,9 @@ export interface operations {
     add_event_shipments__shipment_id__events_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
             path: {
                 shipment_id: string;
             };
@@ -3110,7 +3399,9 @@ export interface operations {
     quote_shipments__shipment_id__quotes_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
             path: {
                 shipment_id: string;
             };
@@ -3165,7 +3456,9 @@ export interface operations {
     start_threads_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -3229,7 +3522,9 @@ export interface operations {
     post_message_threads__thread_id__messages_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
             path: {
                 thread_id: string;
             };
@@ -3264,7 +3559,9 @@ export interface operations {
     post_offer_threads__thread_id__offers_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
             path: {
                 thread_id: string;
             };
@@ -3513,7 +3810,9 @@ export interface operations {
     request_transactions__transaction_id__shipment_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
             path: {
                 transaction_id: string;
             };

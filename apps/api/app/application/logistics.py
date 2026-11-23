@@ -5,14 +5,16 @@ from decimal import Decimal
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.application import audit, idempotency
+from app.application import analytics, audit, idempotency
 from app.application.deals import InvalidState, NotAllowed, lock
 from app.application.notifications import notify
 from app.application.organizations import membership
 from app.domain.deals.enums import TransactionStatus
 from app.domain.logistics.enums import SHIPMENT_FLOW, QuoteStatus, ShipmentStatus, VehicleType
 from app.domain.organizations.roles import MarketRole
+from app.domain.product.events import ProductEventName
 from app.infrastructure.db.models import (
+    Company,
     Shipment,
     ShipmentEvent,
     Transaction,
@@ -332,6 +334,18 @@ def advance(
         company_id=shipment.transporter_company_id,
         status=status,
     )
+    if status is ShipmentStatus.DELIVERED:
+        assert shipment.transporter_company_id is not None
+        analytics.track(
+            db,
+            ProductEventName.SHIPMENT_DELIVERED,
+            actor=user,
+            entity=shipment,
+            company=db.get(Company, shipment.transporter_company_id),
+            role=MarketRole.TRANSPORTER.value,
+            category=order.listing.category.value,
+            properties={"order_id": str(order.id)},
+        )
     for party in _parties(shipment):
         notify(
             db,

@@ -1,4 +1,5 @@
 import uuid
+from datetime import date, datetime
 
 from pydantic import BaseModel, ConfigDict
 
@@ -51,3 +52,29 @@ class PlatformKpisOut(_Kpis):
     dispute_rate: float | None
     avg_dispute_resolution_hours: float | None
     logistics_attach_rate: float | None
+
+
+class FunnelStepOut(_Kpis):
+    key: str
+    label: str
+    entities: int
+    conversion_from_previous: float | None
+
+
+class FunnelSegmentOut(_Kpis):
+    dimension: str
+    value: str
+    events: int
+    companies: int
+
+
+class FunnelSnapshotOut(_Kpis):
+    window_days: int
+    timezone: str
+    since: datetime
+    role: str | None
+    city: str | None
+    category: str | None
+    cohort_month: date | None
+    steps: list[FunnelStepOut]
+    segments: list[FunnelSegmentOut]

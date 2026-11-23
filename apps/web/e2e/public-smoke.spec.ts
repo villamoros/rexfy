@@ -12,6 +12,14 @@ test("portada pública responde y no tiene violaciones Axe", async ({ page }) =>
       name: /lo que a tu empresa le sobra/i,
     }),
   ).toBeVisible();
+  await expect(
+    page.getByRole("heading", {
+      level: 2,
+      name: /vende material recuperado o encuéntralo como insumo/i,
+    }),
+  ).toBeVisible();
+  await expect(page.getByText("Manufactura distribuida")).toHaveCount(0);
+  await expect(page.getByText("Registrar mi taller")).toHaveCount(0);
   const accessibility = await new AxeBuilder({ page }).analyze();
   expect(accessibility.violations).toEqual([]);
 });

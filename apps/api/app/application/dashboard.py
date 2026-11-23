@@ -19,6 +19,7 @@ from app.infrastructure.db.models import (
     Listing,
     Message,
     Offer,
+    ProductEvent,
     Shipment,
     Thread,
     Transaction,
@@ -230,26 +231,36 @@ def platform_kpis(db: Session) -> PlatformKpis:
             func.coalesce(func.sum(_tons(Transaction.quantity, Transaction.quantity_unit)), 0)
         ).where(Transaction.status == TransactionStatus.COMPLETED)
     )
-    orders_total, completed, gmv, orders_30d = db.execute(
+    orders_30d, completed_30d, gmv = db.execute(
         select(
-            func.count(Transaction.id),
-            func.count(Transaction.id).filter(Transaction.status == TransactionStatus.COMPLETED),
-            func.coalesce(func.sum(Transaction.total).filter(Transaction.created_at >= since), 0),
             func.count(Transaction.id).filter(Transaction.created_at >= since),
+            func.count(Transaction.id).filter(
+                Transaction.created_at >= since,
+                Transaction.status == TransactionStatus.COMPLETED,
+            ),
+            func.coalesce(func.sum(Transaction.total).filter(Transaction.created_at >= since), 0),
         )
     ).one()
-    with_shipment = db.scalar(select(func.count(Shipment.id))) or 0
+    with_shipment = (
+        db.scalar(
+            select(func.count(Shipment.id))
+            .join(Transaction, Transaction.id == Shipment.transaction_id)
+            .where(Transaction.created_at >= since)
+        )
+        or 0
+    )
     listings_30d = db.scalar(select(func.count(Listing.id)).where(Listing.published_at >= since))
     active = db.scalar(
-        select(func.count(func.distinct(Message.sender_company_id))).where(
-            Message.created_at >= since
+        select(func.count(func.distinct(ProductEvent.company_id))).where(
+            ProductEvent.created_at >= since,
+            ProductEvent.company_id.is_not(None),
         )
     )
     pending = db.scalar(select(func.count(Company.id)).where(Company.is_verified.is_(False)))
-    open_disputes, disputed_orders = db.execute(
+    open_disputes, disputed_orders_30d = db.execute(
         select(
             func.count(Dispute.id).filter(Dispute.status == DisputeStatus.OPEN),
-            func.count(func.distinct(Dispute.transaction_id)),
+            func.count(func.distinct(Dispute.transaction_id)).filter(Dispute.created_at >= since),
         )
     ).one()
     resolution = db.scalar(
@@ -265,12 +276,12 @@ def platform_kpis(db: Session) -> PlatformKpis:
         tons_reused=float(tons or Decimal(0)),
         gmv_30d=float(gmv),
         orders_30d=orders_30d,
-        completed_rate=rate(completed, orders_total),
+        completed_rate=rate(completed_30d, orders_30d),
         listings_published_30d=listings_30d or 0,
         active_companies_30d=active or 0,
         companies_pending_verification=pending or 0,
         open_disputes=open_disputes,
-        dispute_rate=rate(disputed_orders, orders_total),
+        dispute_rate=rate(disputed_orders_30d, orders_30d),
         avg_dispute_resolution_hours=_hours(float(resolution)) if resolution is not None else None,
-        logistics_attach_rate=rate(with_shipment, orders_total),
+        logistics_attach_rate=rate(with_shipment, orders_30d),
     )

@@ -6,7 +6,7 @@ from decimal import Decimal
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
-from app.application import audit, idempotency
+from app.application import analytics, audit, idempotency
 from app.application.notifications import notify
 from app.application.organizations import NotAllowed as TeamNotAllowed
 from app.application.organizations import require_committer
@@ -15,6 +15,7 @@ from app.domain.deals.pricing import offer_total
 from app.domain.listings.enums import ListingStatus, QuantityUnit
 from app.domain.logistics.enums import ShipmentStatus
 from app.domain.organizations.roles import MarketRole
+from app.domain.product.events import ProductEventName
 from app.domain.trust.enums import DisputeStatus
 from app.infrastructure.db.models import (
     Company,
@@ -103,7 +104,8 @@ def start_thread(
             Thread.listing_id == listing_id, Thread.buyer_company_id == buyer_company_id
         )
     )
-    if thread is None:
+    created = thread is None
+    if created:
         thread = Thread(
             listing=listing,
             buyer_company_id=buyer_company_id,
@@ -112,6 +114,16 @@ def start_thread(
         )
         db.add(thread)
         db.flush()
+        analytics.track(
+            db,
+            ProductEventName.CONTACT_STARTED,
+            actor=user,
+            entity=thread,
+            company=membership.company,
+            role=MarketRole.BUYER.value,
+            category=listing.category.value,
+            properties={"seller_company_id": str(listing.company_id)},
+        )
     _add_message(db, user, thread, buyer_company_id, body)
     idempotency.remember(
         db,
@@ -272,9 +284,29 @@ def send_offer(
         valid_until=_now() + timedelta(hours=valid_hours),
     )
     db.add(offer)
+    db.flush()
     thread.last_activity_at = _now()
     audit.record(
         db, user, "offer.sent", offer, company_id=company_id, quantity=quantity, price=price
+    )
+    acting = db.get(Company, company_id)
+    analytics.track(
+        db,
+        ProductEventName.OFFER_SENT,
+        actor=user,
+        entity=offer,
+        company=acting,
+        role=(
+            MarketRole.BUYER.value
+            if company_id == thread.buyer_company_id
+            else MarketRole.GENERATOR.value
+        ),
+        category=thread.listing.category.value,
+        properties={
+            "direction": "buyer_to_seller"
+            if company_id == thread.buyer_company_id
+            else "seller_to_buyer",
+        },
     )
     notify(
         db,
@@ -363,6 +395,7 @@ def accept_offer(
         total=offer_total(offer.quantity, offer.quantity_unit, offer.price, offer.price_unit),
     )
     db.add(transaction)
+    db.flush()
     thread.last_activity_at = _now()
     audit.record(
         db,
@@ -372,6 +405,20 @@ def accept_offer(
         company_id=acting_company(user, thread),
         order=transaction.code,
         total=transaction.total,
+    )
+    analytics.track(
+        db,
+        ProductEventName.ORDER_CREATED,
+        actor=user,
+        entity=transaction,
+        company=db.get(Company, company_id),
+        role=(
+            MarketRole.BUYER.value
+            if company_id == thread.buyer_company_id
+            else MarketRole.GENERATOR.value
+        ),
+        category=listing.category.value,
+        properties={"offer_id": str(offer.id)},
     )
     notify(
         db,

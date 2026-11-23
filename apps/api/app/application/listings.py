@@ -6,11 +6,12 @@ from typing import Any, Literal
 from sqlalchemy import Select, func, or_, select
 from sqlalchemy.orm import Session
 
-from app.application import audit
+from app.application import analytics, audit
 from app.domain.listings.enums import Availability, ListingStatus, MaterialCategory, PricingType
 from app.domain.listings.rules import check_listing_terms
 from app.domain.organizations.roles import MarketRole
-from app.infrastructure.db.models import Listing, ListingImage, User
+from app.domain.product.events import ProductEventName
+from app.infrastructure.db.models import Company, Listing, ListingImage, User
 from app.infrastructure.storage import get_storage
 
 TERM_FIELDS = (
@@ -69,6 +70,7 @@ def create_listing(
         listing.status = ListingStatus.PUBLISHED
         listing.published_at = datetime.now(UTC)
     db.add(listing)
+    db.flush()
     audit.record(
         db,
         user,
@@ -77,6 +79,17 @@ def create_listing(
         company_id=listing.company_id,
         title=listing.title,
     )
+    if publish:
+        analytics.track(
+            db,
+            ProductEventName.LISTING_PUBLISHED,
+            actor=user,
+            entity=listing,
+            company=db.get(Company, listing.company_id),
+            role=MarketRole.GENERATOR.value,
+            category=listing.category.value,
+            properties={"pricing_type": listing.pricing_type.value},
+        )
     db.commit()
     return listing
 
@@ -124,6 +137,16 @@ def publish_listing(db: Session, user: User, listing: Listing) -> Listing:
     listing.status = ListingStatus.PUBLISHED
     listing.published_at = datetime.now(UTC)
     audit.record(db, user, "listing.published", listing, company_id=listing.company_id)
+    analytics.track(
+        db,
+        ProductEventName.LISTING_PUBLISHED,
+        actor=user,
+        entity=listing,
+        company=db.get(Company, listing.company_id),
+        role=MarketRole.GENERATOR.value,
+        category=listing.category.value,
+        properties={"pricing_type": listing.pricing_type.value},
+    )
     db.commit()
     return listing
 

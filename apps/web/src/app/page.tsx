@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 import { ApiStatus } from "@/components/api-status";
-import { Icon, MaterialIcon, type IconName } from "@/components/icons";
+import { MaterialIcon } from "@/components/icons";
 import { Logo } from "@/components/logo";
 import { Network } from "@/components/network";
 import { SectionHeading } from "@/components/ui";
@@ -35,22 +35,18 @@ const PREVIEW: {
   },
 ];
 
-const AVAILABLE_NOW = [
+const SELLER_VALUE = [
   "Publica material en un asistente de tres pasos",
-  "Busca por tipo, ciudad, precio y disponibilidad",
-  "Negocia por chat y envía cotizaciones formales",
-  "Cierra la orden y cotiza el transporte",
+  "Recibe contactos de compradores empresariales",
+  "Negocia por chat y envía ofertas formales",
+  "Cierra la orden y conserva la entrega trazable",
 ];
 
-const CAPABILITIES: { icon: IconName; label: string }[] = [
-  { icon: "manufactura-metalmecanica", label: "Metalmecánica" },
-  { icon: "manufactura-carpinteria", label: "Carpintería" },
-  { icon: "manufactura-impresion-3d", label: "Impresión 3D" },
-  { icon: "manufactura-confeccion", label: "Confección" },
-  { icon: "manufactura-cnc", label: "Corte CNC" },
-  { icon: "manufactura-bordado", label: "Bordado" },
-  { icon: "manufactura-empaques", label: "Empaques" },
-  { icon: "categoria-nueva", label: "Y más" },
+const BUYER_VALUE = [
+  "Encuentra material por tipo, ciudad y disponibilidad",
+  "Contacta al generador y acuerda precio y cantidad",
+  "Acepta una oferta y conserva la orden trazable",
+  "Solicita y compara cotizaciones de transporte",
 ];
 
 const CHAIN = [
@@ -129,8 +125,8 @@ function Hero() {
           </h1>
           <p className="mt-6 max-w-xl text-lg text-on-ink-muted">
             RexFy conecta a las empresas que generan material recuperado con las
-            que lo transforman, y con el transporte que lo mueve. Pronto,
-            también la capacidad de los talleres.
+            que lo usan como insumo, y con el transporte que lo mueve. Publica,
+            negocia y sigue la entrega en un solo lugar.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <Link href="/registro" className="btn btn-signal px-6 py-3">
@@ -180,26 +176,50 @@ function Hero() {
   );
 }
 
-/** The two fronts of the network: what works today and what is coming. */
+/** The two sides of the recovered-material marketplace available today. */
 function Fronts() {
   return (
     <section className="mx-auto w-full max-w-6xl px-4 py-20">
       <SectionHeading
-        eyebrow="Dos frentes, una red"
-        title="Materia prima y capacidad productiva en el mismo lugar."
+        eyebrow="Un mercado, dos necesidades"
+        title="Vende material recuperado o encuéntralo como insumo."
       />
       <div className="mt-10 grid gap-4 md:grid-cols-2">
         <article className="card flex flex-col gap-6 p-6 sm:p-8">
           <div className="flex items-center justify-between gap-3">
-            <h3 className="text-2xl font-bold">Materiales recuperados</h3>
+            <h3 className="text-2xl font-bold">Tengo material disponible</h3>
             <span className="chip">Disponible</span>
           </div>
           <p className="text-muted">
-            Empresas que venden el material que les sobra y empresas que lo
-            compran como insumo, con el transporte incluido en la negociación.
+            Convierte excedentes aprovechables en una publicación clara y
+            negocia directamente con compradores empresariales.
           </p>
           <ul className="flex flex-col gap-2.5">
-            {AVAILABLE_NOW.map((item) => (
+            {SELLER_VALUE.map((item) => (
+              <li key={item} className="flex items-start gap-3">
+                <span className="mt-2 size-1.5 shrink-0 rounded-full bg-signal" />
+                {item}
+              </li>
+            ))}
+          </ul>
+          <Link
+            href="/registro"
+            className="btn btn-primary mt-auto self-start"
+          >
+            Publicar material
+          </Link>
+        </article>
+        <article className="card flex flex-col gap-6 p-6 sm:p-8">
+          <div className="flex items-center justify-between gap-3">
+            <h3 className="text-2xl font-bold">Busco material recuperado</h3>
+            <span className="chip">Disponible</span>
+          </div>
+          <p className="text-muted">
+            Encuentra insumos recuperados, abre una negociación y coordina el
+            transporte de la orden sin perder trazabilidad.
+          </p>
+          <ul className="flex flex-col gap-2.5">
+            {BUYER_VALUE.map((item) => (
               <li key={item} className="flex items-start gap-3">
                 <span className="mt-2 size-1.5 shrink-0 rounded-full bg-signal" />
                 {item}
@@ -208,39 +228,9 @@ function Fronts() {
           </ul>
           <Link
             href="/marketplace"
-            className="btn btn-primary mt-auto self-start"
-          >
-            Ver marketplace
-          </Link>
-        </article>
-        <article className="card flex flex-col gap-6 border-dashed p-6 sm:p-8">
-          <div className="flex items-center justify-between gap-3">
-            <h3 className="text-2xl font-bold">Manufactura distribuida</h3>
-            <span className="rounded-full border border-border-strong px-2.5 py-0.5 text-xs font-semibold text-muted">
-              Próximamente
-            </span>
-          </div>
-          <p className="text-muted">
-            Talleres que publican lo que pueden fabricar, con su maquinaria y
-            sus medidas, para armar pedidos entre varios. Lo estamos
-            construyendo.
-          </p>
-          <ul className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-            {CAPABILITIES.map((capability) => (
-              <li
-                key={capability.label}
-                className="flex flex-col items-center gap-2 rounded-lg bg-surface-sunken px-2 py-3 text-center text-xs font-semibold"
-              >
-                <Icon name={capability.icon} className="size-6" />
-                {capability.label}
-              </li>
-            ))}
-          </ul>
-          <Link
-            href="/registro"
             className="btn btn-secondary mt-auto self-start"
           >
-            Registrar mi taller
+            Ver material disponible
           </Link>
         </article>
       </div>

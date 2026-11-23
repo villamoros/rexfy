@@ -1,5 +1,6 @@
 """Import every model so Base.metadata is complete for Alembic and the mappers resolve."""
 
+from app.infrastructure.db.models.analytics import ProductEvent
 from app.infrastructure.db.models.audit import AuditLog
 from app.infrastructure.db.models.deals import Message, Offer, Thread, Transaction
 from app.infrastructure.db.models.idempotency import IdempotencyRecord
@@ -29,6 +30,7 @@ __all__ = [
     "Offer",
     "OutboxDelivery",
     "OutboxEvent",
+    "ProductEvent",
     "Review",
     "Shipment",
     "ShipmentEvent",

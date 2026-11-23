@@ -4,9 +4,11 @@ from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.infrastructure.db.models import Company
+from app.domain.product.events import ProductEventName
+from app.infrastructure.db.models import Company, ProductEvent
 from app.infrastructure.db.session import SessionLocal
 from tests.conftest import company, register
 from tests.test_deals import deal, offer  # noqa: F401  (fixture)
@@ -143,6 +145,15 @@ def test_full_logistics_flow(client: TestClient, db: Session, order: dict[str, A
     assert (
         client.get(f"/transactions/{oid}", headers=order["buyer"]).json()["status"] == "delivered"
     )
+    delivered_event = db.scalar(
+        select(ProductEvent).where(
+            ProductEvent.name == ProductEventName.SHIPMENT_DELIVERED,
+            ProductEvent.role == "transporter",
+        )
+    )
+    assert delivered_event.entity_id == uuid.UUID(sid)
+    assert delivered_event.role == "transporter"
+    assert delivered_event.category == "plastic"
 
     closed = client.post(f"/transactions/{oid}/confirm-receipt", headers=order["buyer"])
     assert closed.json()["status"] == "completed"

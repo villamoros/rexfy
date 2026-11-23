@@ -1,12 +1,14 @@
 import uuid
+from datetime import date
 from typing import Annotated
 
 from fastapi import APIRouter, HTTPException, Query, status
 
 from app.application import admin as service
-from app.application import audit, outbox
+from app.application import analytics, audit, outbox
 from app.application.dashboard import platform_kpis
-from app.domain.listings.enums import ListingStatus
+from app.domain.listings.enums import ListingStatus, MaterialCategory
+from app.domain.organizations.roles import MarketRole
 from app.infrastructure.db.models import Company, OutboxEvent
 from app.presentation.deps import AdminUser, DbSession
 from app.presentation.schemas.admin import (
@@ -16,7 +18,7 @@ from app.presentation.schemas.admin import (
     OutboxHealthOut,
     TakeDown,
 )
-from app.presentation.schemas.dashboard import PlatformKpisOut
+from app.presentation.schemas.dashboard import FunnelSnapshotOut, PlatformKpisOut
 from app.presentation.schemas.listings import ListingOut
 from app.presentation.schemas.organizations import CompanyOut
 
@@ -93,6 +95,25 @@ def audit_log(
 @router.get("/metrics")
 def metrics(db: DbSession, _: AdminUser) -> PlatformKpisOut:
     return PlatformKpisOut.model_validate(platform_kpis(db))
+
+
+@router.get("/funnel")
+def product_funnel(
+    db: DbSession,
+    _: AdminUser,
+    role: MarketRole | None = None,
+    city: Annotated[str | None, Query(max_length=100)] = None,
+    category: MaterialCategory | None = None,
+    cohort_month: date | None = None,
+) -> FunnelSnapshotOut:
+    snapshot = analytics.funnel(
+        db,
+        role=role.value if role else None,
+        city=city,
+        category=category.value if category else None,
+        cohort_month=cohort_month,
+    )
+    return FunnelSnapshotOut.model_validate(snapshot)
 
 
 @router.get("/outbox/health")

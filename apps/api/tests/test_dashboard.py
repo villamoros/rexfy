@@ -41,6 +41,9 @@ def test_platform_kpis(
     assert metrics["gmv_30d"] == 3_690_000
     assert metrics["completed_rate"] == 1.0
     assert metrics["listings_published_30d"] == 1
+    assert metrics["active_companies_30d"] == 2
+    assert metrics["logistics_attach_rate"] == 0.0
     assert metrics["companies_pending_verification"] == 2
     assert metrics["open_disputes"] == 0
+    assert metrics["dispute_rate"] == 0.0
     assert client.get("/admin/metrics", headers=deal["buyer"]).status_code == 403

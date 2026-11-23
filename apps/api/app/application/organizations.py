@@ -4,9 +4,10 @@ from datetime import UTC, datetime
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.application import audit, outbox
+from app.application import analytics, audit, outbox
 from app.core.config import get_settings
 from app.domain.organizations.roles import MarketRole, MemberRole
+from app.domain.product.events import ProductEventName
 from app.infrastructure.db.models import Company, CompanyInvitation, CompanyMember, User
 
 
@@ -34,9 +35,20 @@ def create_company(
     )
     db.add(company)
     db.add(CompanyMember(company=company, user=owner, role=MemberRole.OWNER))
+    db.flush()
     audit.record(
         db, owner, "company.created", company, company_id=None, nit=nit, roles=company.market_roles
     )
+    for role in company.market_roles:
+        analytics.track(
+            db,
+            ProductEventName.COMPANY_CREATED,
+            actor=owner,
+            entity=company,
+            company=company,
+            role=role.value,
+            properties={"roles": [item.value for item in company.market_roles]},
+        )
     db.commit()
     db.refresh(owner)
     return company
