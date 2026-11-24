@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 
@@ -30,6 +31,15 @@ export function RequestError({
         >
           {pending ? "Reintentando…" : "Reintentar"}
         </button>
+        <Link href="/estado" className="text-sm text-brand underline">
+          Ver estado del servicio
+        </Link>
+        <a
+          href="mailto:soporte@rexfy.co"
+          className="text-sm text-brand underline"
+        >
+          Contactar soporte
+        </a>
         {requestId && (
           <span className="font-mono text-[10px] text-muted">
             Referencia: {requestId}

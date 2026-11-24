@@ -9,12 +9,13 @@
 
 | Épica | Estado | Avance al 23 de noviembre de 2026 |
 |---|---|---|
-| EP-01 Operaciones visibles y resilientes | En validación | Mutaciones antes silenciosas devuelven estado visible; llamadas API tienen timeout y request ID; lecturas degradadas permiten reintentar; falta validar el journey autenticado con PostgreSQL activo |
-| EP-02 Integridad transaccional | En validación | ADR y contrato implementados; operaciones críticas protegidas; migración verificada; 80 pruebas API pasan con PostgreSQL real, incluidas carreras de aceptación, creación de thread y cotización con sesiones independientes |
+| EP-01 Operaciones visibles y resilientes | Implementada | Mutaciones devuelven estado visible; API tiene timeout, request/trace ID y recuperación; marketplace conserva filtros y último resultado seguro; suite autenticada validada con PostgreSQL 17 |
+| EP-02 Integridad transaccional | Implementada | Idempotencia y concurrencia protegidas; mutaciones ordinarias usan un Unit of Work y commit único; suite validada con PostgreSQL 17 |
 | EP-03 Mensajería durable | Implementada | Outbox PostgreSQL transaccional, dispatcher con lease y backoff, ledger por destinatario, replay auditado, salud operativa y consola admin; migración desde cero verificada y 82 pruebas API pasan en PostgreSQL 17 real, incluidas caída SMTP, recuperación, rollback y no duplicación |
 | EP-04 Calidad y entrega continua | Implementada | Fuentes locales y build sin red; 17 tests rápidos con 84,32% de cobertura del módulo de publicación; wizard separado en modelo, borrador, medios y pasos; smoke público obligatorio; journey comercial dividido por dominio; escritorio, móvil, teclado y Axe como gates con artefactos de fallo |
 | EP-05 Operación y seguridad | En validación | Migración serializada y verificable; release Vercel por artefacto probado; restore staging con aprobación y evidencia; CSP/headers; dependencias, secretos, SAST, SBOM y contenedor como gates; SLO y monitor de web, API, DB, Redis, outbox y journey; faltan ejecutar los drills autorizados de restore y alerta en staging |
 | EP-06 Producto medible y enfocado | En validación | Ledger transaccional sin PII; funnel de registro a entrega con segmentos por rol, ciudad, categoría y cohorte; KPIs con fórmula, ventana y timezone; landing enfocada en materiales recuperados; falta ejecutar SP-02 con participantes reales de los tres roles |
+| EP-07 Arquitectura mantenible | Implementada | Paginación keyset, máquinas de estado, Unit of Work, comandos, políticas compartidas, ADRs y tests de dependencias; hotspots frontend divididos por responsabilidad |
 
 La implementación de EP-01 corrigió además una condición insegura: una consulta fallida del envío ya no se interpreta como ausencia de envío ni habilita la confirmación de recepción.
 
@@ -316,7 +317,9 @@ El plan expresa orden y objetivo. El equipo comprometerá únicamente el sprint 
 
 ### Backlog posterior al horizonte inicial
 
-EP-07 continúa con US-17, EN-10, EN-11 y EN-13. Puede adelantarse si la velocidad lo permite, pero no desplazará P1 ni controles de producción.
+El trabajo técnico de EP-07 está implementado. El backlog posterior conserva la validación externa
+de restore/alertas (EP-05), las tres sesiones de producto (EP-06) y mejoras que nazcan de evidencia
+operativa o de usuarios; no se abre una reescritura preventiva.
 
 ## 10. Priorización y política de flujo
 

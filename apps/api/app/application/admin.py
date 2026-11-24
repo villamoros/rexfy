@@ -25,7 +25,7 @@ def companies(
             select(CompanyMember.company_id, func.count())
             .where(CompanyMember.company_id.in_([company.id for company in companies_page.items]))
             .group_by(CompanyMember.company_id)
-        )
+        ).all()
     )
     return Page(
         items=[(company, counts.get(company.id, 0)) for company in companies_page.items],
@@ -46,7 +46,6 @@ def set_verified(db: Session, admin: User, company: Company, verified: bool) -> 
                 body=f"{company.legal_name} ya muestra el sello de empresa verificada.",
                 link="/panel",
             )
-        db.commit()
     return company
 
 
@@ -74,7 +73,6 @@ def take_down(db: Session, admin: User, listing: Listing, reason: str) -> Listin
         body=f"{listing.title}: {reason.strip()}",
         link=f"/publicaciones/{listing.id}",
     )
-    db.commit()
     return listing
 
 

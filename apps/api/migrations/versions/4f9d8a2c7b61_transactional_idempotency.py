@@ -43,9 +43,7 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("user_id", "scope", "key"),
     )
-    op.create_index(
-        op.f("ix_idempotency_records_user_id"), "idempotency_records", ["user_id"]
-    )
+    op.create_index(op.f("ix_idempotency_records_user_id"), "idempotency_records", ["user_id"])
     op.create_index(
         op.f("ix_idempotency_records_expires_at"), "idempotency_records", ["expires_at"]
     )

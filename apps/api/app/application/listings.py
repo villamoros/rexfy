@@ -7,6 +7,7 @@ from sqlalchemy import Select, func, or_, select
 from sqlalchemy.orm import Session
 
 from app.application import analytics, audit
+from app.application.policies import company_ids
 from app.domain.listings.enums import Availability, ListingStatus, MaterialCategory, PricingType
 from app.domain.listings.rules import check_listing_terms
 from app.domain.organizations.roles import MarketRole
@@ -41,10 +42,6 @@ class NotAllowed(Exception):
 
 class InvalidState(Exception):
     pass
-
-
-def _company_ids(user: User) -> set[uuid.UUID]:
-    return {m.company_id for m in user.memberships}
 
 
 def _require_generator(user: User, company_id: uuid.UUID) -> None:
@@ -90,7 +87,6 @@ def create_listing(
             category=listing.category.value,
             properties={"pricing_type": listing.pricing_type.value},
         )
-    db.commit()
     return listing
 
 
@@ -101,7 +97,7 @@ def get_listing_for(db: Session, user: User | None, listing_id: uuid.UUID) -> Li
         return None
     if listing.status is ListingStatus.PUBLISHED:
         return listing
-    if user is not None and listing.company_id in _company_ids(user):
+    if user is not None and listing.company_id in company_ids(user):
         return listing
     return None
 
@@ -126,7 +122,6 @@ def update_listing(db: Session, user: User, listing: Listing, changes: dict[str,
         audit.record(
             db, user, "listing.updated", listing, company_id=listing.company_id, changes=changed
         )
-    db.commit()
     return listing
 
 
@@ -147,7 +142,6 @@ def publish_listing(db: Session, user: User, listing: Listing) -> Listing:
         category=listing.category.value,
         properties={"pricing_type": listing.pricing_type.value},
     )
-    db.commit()
     return listing
 
 
@@ -155,14 +149,13 @@ def archive_listing(db: Session, user: User, listing: Listing) -> Listing:
     _require_generator(user, listing.company_id)
     listing.status = ListingStatus.ARCHIVED
     audit.record(db, user, "listing.archived", listing, company_id=listing.company_id)
-    db.commit()
     return listing
 
 
 def listings_of(db: Session, user: User) -> list[Listing]:
     stmt = (
         select(Listing)
-        .where(Listing.company_id.in_(_company_ids(user)))
+        .where(Listing.company_id.in_(company_ids(user)))
         .order_by(Listing.created_at.desc())
     )
     return list(db.scalars(stmt))

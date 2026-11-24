@@ -38,6 +38,7 @@ def test_messages_notify_the_other_side_once(
     event = _events(db)[-1]
     assert event.payload["company_id"] == deal["seller_company"]
     assert event.payload["link"] == f"/mensajes/{tid}"
+    assert len(event.payload["_trace_id"]) == 32
 
 
 def test_offers_and_orders_create_durable_events(

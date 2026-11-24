@@ -5,7 +5,7 @@ from fastapi import APIRouter, status
 from pydantic import BaseModel, ConfigDict
 
 from app.application import notifications as service
-from app.presentation.deps import CurrentUser, DbSession
+from app.presentation.deps import CurrentUser, DbSession, UnitOfWork
 
 router = APIRouter(prefix="/notifications", tags=["notifications"])
 
@@ -38,10 +38,10 @@ def unread(db: DbSession, user: CurrentUser) -> UnreadCount:
 
 
 @router.post("/read", status_code=status.HTTP_204_NO_CONTENT)
-def read_all(db: DbSession, user: CurrentUser) -> None:
-    service.mark_read(db, user)
+def read_all(uow: UnitOfWork, user: CurrentUser) -> None:
+    service.mark_read(uow.session, user)
 
 
 @router.post("/{notification_id}/read", status_code=status.HTTP_204_NO_CONTENT)
-def read_one(notification_id: uuid.UUID, db: DbSession, user: CurrentUser) -> None:
-    service.mark_read(db, user, notification_id)
+def read_one(notification_id: uuid.UUID, uow: UnitOfWork, user: CurrentUser) -> None:
+    service.mark_read(uow.session, user, notification_id)

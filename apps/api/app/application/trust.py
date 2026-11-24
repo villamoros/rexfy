@@ -10,8 +10,8 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.application import audit, idempotency
-from app.application.deals import InvalidState, NotAllowed, lock
 from app.application.notifications import notify
+from app.application.policies import InvalidState, NotAllowed, company_ids, lock
 from app.domain.deals.enums import TransactionStatus
 from app.domain.listings.enums import ListingStatus
 from app.domain.trust.enums import DisputeReason, DisputeStatus
@@ -21,7 +21,7 @@ from app.infrastructure.db.models import Company, Dispute, Listing, Review, Tran
 
 def _my_side(user: User, transaction: Transaction) -> tuple[uuid.UUID, uuid.UUID]:
     """(the user's company, the counterpart) in an order. Raises NotAllowed for outsiders."""
-    mine = {m.company_id for m in user.memberships}
+    mine = company_ids(user)
     buyer, seller = transaction.buyer_company_id, transaction.seller_company_id
     if buyer in mine and seller not in mine:
         return buyer, seller
@@ -60,12 +60,11 @@ def leave_review(
         body=f"Orden {transaction.code}" + (f": {review.comment}" if review.comment else ""),
         link=f"/empresas/{other}",
     )
-    db.commit()
     return review
 
 
 def reviewed_by(db: Session, user: User, transaction: Transaction) -> bool:
-    mine = {m.company_id for m in user.memberships}
+    mine = company_ids(user)
     return bool(
         db.scalar(
             select(Review.id).where(
@@ -103,7 +102,6 @@ def open_dispute(
         body=description.strip()[:300],
         link=f"/ordenes/{transaction.id}",
     )
-    db.commit()
     return dispute
 
 
@@ -186,7 +184,6 @@ def resolve_dispute(
         request_hash=request_hash,
         resource=dispute,
     )
-    db.commit()
     return dispute
 
 

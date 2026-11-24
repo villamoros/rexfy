@@ -2,6 +2,8 @@
 
 import json
 import logging
+import re
+import secrets
 import time
 import uuid
 from contextvars import ContextVar
@@ -12,6 +14,11 @@ from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoin
 from app.core.config import Settings
 
 request_id: ContextVar[str] = ContextVar("request_id", default="-")
+trace_id: ContextVar[str] = ContextVar("trace_id", default="-")
+
+_TRACEPARENT = re.compile(
+    r"^00-(?P<trace>[0-9a-f]{32})-(?P<span>[0-9a-f]{16})-(?P<flags>[0-9a-f]{2})$"
+)
 
 log = logging.getLogger("rexfy.http")
 
@@ -26,6 +33,7 @@ class JsonFormatter(logging.Formatter):
             "logger": record.name,
             "message": record.getMessage(),
             "request_id": request_id.get(),
+            "trace_id": trace_id.get(),
         }
         entry.update(getattr(record, "fields", {}))
         if record.exc_info:
@@ -50,31 +58,57 @@ class RequestLogMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         rid = request.headers.get("x-request-id") or uuid.uuid4().hex[:16]
-        token = request_id.set(rid)
+        incoming_trace = _TRACEPARENT.fullmatch(request.headers.get("traceparent", ""))
+        current_trace = incoming_trace.group("trace") if incoming_trace else secrets.token_hex(16)
+        server_span = secrets.token_hex(8)
+        request_token = request_id.set(rid)
+        trace_token = trace_id.set(current_trace)
         started = time.perf_counter()
         try:
             response = await call_next(request)
+            elapsed = round((time.perf_counter() - started) * 1000, 1)
+            response.headers["X-Request-ID"] = rid
+            response.headers["Traceparent"] = f"00-{current_trace}-{server_span}-01"
+            log.info(
+                "%s %s %s %sms",
+                request.method,
+                request.url.path,
+                response.status_code,
+                elapsed,
+                extra={
+                    "fields": {
+                        "request_id": rid,
+                        "trace_id": current_trace,
+                        "span_id": server_span,
+                        "method": request.method,
+                        "path": request.url.path,
+                        "status": response.status_code,
+                        "duration_ms": elapsed,
+                    }
+                },
+            )
+            return response
+        except Exception:
+            log.exception(
+                "%s %s failed",
+                request.method,
+                request.url.path,
+                extra={
+                    "fields": {
+                        "request_id": rid,
+                        "trace_id": current_trace,
+                        "span_id": server_span,
+                        "method": request.method,
+                        "path": request.url.path,
+                        "status": 500,
+                        "duration_ms": round((time.perf_counter() - started) * 1000, 1),
+                    }
+                },
+            )
+            raise
         finally:
-            request_id.reset(token)
-        elapsed = round((time.perf_counter() - started) * 1000, 1)
-        response.headers["X-Request-ID"] = rid
-        log.info(
-            "%s %s %s %sms",
-            request.method,
-            request.url.path,
-            response.status_code,
-            elapsed,
-            extra={
-                "fields": {
-                    "request_id": rid,
-                    "method": request.method,
-                    "path": request.url.path,
-                    "status": response.status_code,
-                    "duration_ms": elapsed,
-                }
-            },
-        )
-        return response
+            request_id.reset(request_token)
+            trace_id.reset(trace_token)
 
 
 def setup(app: FastAPI, settings: Settings) -> None:

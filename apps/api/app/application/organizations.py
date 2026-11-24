@@ -49,8 +49,7 @@ def create_company(
             role=role.value,
             properties={"roles": [item.value for item in company.market_roles]},
         )
-    db.commit()
-    db.refresh(owner)
+    db.flush()
     return company
 
 
@@ -127,7 +126,6 @@ def invite(
             f"Entra en {get_settings().public_web_url}/panel\n",
             dedupe_key=f"member.added:{added.id}",
         )
-        db.commit()
         return added
     if db.scalar(
         select(CompanyInvitation.id).where(
@@ -150,7 +148,6 @@ def invite(
         f"{get_settings().public_web_url}/registro\n",
         dedupe_key=f"member.invited:{invitation.id}",
     )
-    db.commit()
     return invitation
 
 
@@ -162,7 +159,6 @@ def cancel_invitation(
     if invitation is None or invitation.company_id != company_id:
         raise LookupError
     db.delete(invitation)
-    db.commit()
 
 
 def _member(db: Session, company_id: uuid.UUID, user_id: uuid.UUID) -> CompanyMember:
@@ -185,7 +181,6 @@ def change_role(
         raise InvalidTeamChange("El dueño de la empresa no cambia de rol")
     target.role = role
     audit.record(db, user, "member.role_changed", target.company, company_id=company_id, role=role)
-    db.commit()
     return target
 
 
@@ -198,7 +193,6 @@ def remove_member(db: Session, user: User, company_id: uuid.UUID, user_id: uuid.
         raise InvalidTeamChange("El dueño no puede salir de la empresa")
     audit.record(db, user, "member.removed", target.company, company_id=company_id, user_id=user_id)
     db.delete(target)
-    db.commit()
 
 
 def accept_invitations(db: Session, user: User) -> None:

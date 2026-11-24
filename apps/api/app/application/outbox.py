@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 from app.application import audit
 from app.application.pagination import Page, PageRequest, paginate
 from app.core.config import get_settings
+from app.core.observability import trace_id
 from app.domain.notifications.enums import OutboxStatus
 from app.infrastructure.db.models import (
     CompanyMember,
@@ -101,6 +102,9 @@ def queue_email(
 
 
 def _queue(db: Session, *, kind: str, payload: dict[str, Any], dedupe_key: str) -> OutboxEvent:
+    current_trace = trace_id.get()
+    if current_trace != "-":
+        payload = {**payload, "_trace_id": current_trace}
     event = OutboxEvent(
         kind=kind,
         payload=payload,
@@ -206,7 +210,13 @@ def _record_failure(db: Session, event_id: uuid.UUID, error: Exception) -> Outbo
         event.failed_at = _now()
         log.error(
             "Outbox agotado",
-            extra={"fields": {"outbox_id": str(event.id), "attempts": event.attempts}},
+            extra={
+                "fields": {
+                    "outbox_id": str(event.id),
+                    "attempts": event.attempts,
+                    "trace_id": event.payload.get("_trace_id", "-"),
+                }
+            },
         )
     else:
         event.status = OutboxStatus.RETRY
@@ -214,7 +224,13 @@ def _record_failure(db: Session, event_id: uuid.UUID, error: Exception) -> Outbo
         event.available_at = _now() + delay
         log.warning(
             "Outbox reprogramado",
-            extra={"fields": {"outbox_id": str(event.id), "attempts": event.attempts}},
+            extra={
+                "fields": {
+                    "outbox_id": str(event.id),
+                    "attempts": event.attempts,
+                    "trace_id": event.payload.get("_trace_id", "-"),
+                }
+            },
         )
     db.commit()
     return event.status
@@ -267,6 +283,15 @@ def process_event(db: Session, event_id: uuid.UUID) -> OutboxStatus:
         event.locked_at = None
         event.last_error = None
         db.commit()
+        log.info(
+            "Outbox entregado",
+            extra={
+                "fields": {
+                    "outbox_id": str(event.id),
+                    "trace_id": event.payload.get("_trace_id", "-"),
+                }
+            },
+        )
         return event.status
     except Exception as exc:
         return _record_failure(db, event_id, exc)
@@ -352,5 +377,4 @@ def replay(db: Session, admin: User, event: OutboxEvent) -> OutboxEvent:
     event.failed_at = None
     event.last_error = None
     audit.record(db, admin, "outbox.replayed", event, attempts=event.attempts)
-    db.commit()
     return event

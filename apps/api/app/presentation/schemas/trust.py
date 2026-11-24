@@ -1,7 +1,7 @@
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_serializer
 
 from app.domain.organizations.roles import MarketRole
 from app.domain.trust.enums import DisputeReason, DisputeStatus
@@ -47,6 +47,17 @@ class DisputeOut(BaseModel):
     at_fault_company_id: uuid.UUID | None
     created_at: datetime
     resolved_at: datetime | None
+
+    @field_serializer("created_at", when_used="json", return_type=datetime)
+    def serialize_created_at(self, value: datetime) -> datetime:
+        """Keep idempotent responses stable regardless of the database timezone."""
+        return value.astimezone(UTC)
+
+    @field_serializer("resolved_at", when_used="json", return_type=datetime | None)
+    def serialize_resolved_at(self, value: datetime | None) -> datetime | None:
+        if value is None:
+            return None
+        return value.astimezone(UTC)
 
 
 class AdminDisputeOut(DisputeOut):

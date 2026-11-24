@@ -43,14 +43,15 @@ pertenecen al entorno protegido `staging-restore`, deben ser distintas y de mín
 ## SLO, alertas y presupuesto de error
 
 La fuente versionada es `ops/slo.json`; ventana móvil de 30 días y owner
-`platform-on-call`. Los logs HTTP JSON aportan status/duración/request-id, Sentry aporta
-errores y trazas, `/health/ready` aporta DB/Redis, el panel admin aporta antigüedad del
+`platform-on-call`. Los logs HTTP JSON aportan status, duración, request-id, trace-id y span-id;
+el `traceparent` se conserva desde Next.js hasta la API y el evento del outbox para correlacionar
+su entrega en el worker. Sentry aporta errores y trazas, `/health/ready` aporta DB/Redis, el panel admin aporta antigüedad del
 outbox y Playwright aporta el journey comercial.
 
 | SLI | Objetivo | Alerta | Runbook |
 | --- | --- | --- | --- |
 | Web: respuestas válidas y p95 | 99,9%; 2,5 s | burn 10%/1 h | rollback Vercel y revisar logs |
-| API: no-5xx y p95 | 99,9%; 1 s | burn 10%/1 h | correlacionar request-id/Sentry |
+| API: no-5xx y p95 | 99,9%; 1 s | burn 10%/1 h | correlacionar trace-id/request-id/Sentry |
 | DB: readiness y p95 | 99,95%; 500 ms | 2 fallos seguidos | conexiones, proveedor y migración |
 | Outbox: procesamiento y edad | 99%; <= 5 min | edad > 5 min por 10 min | worker, SMTP y replay auditado |
 | Journey comercial | 99%; 3 min | 2 fallos seguidos | artefacto Playwright por dominio |
@@ -58,6 +59,9 @@ outbox y Playwright aporta el journey comercial.
 El fast burn pagina; el slow burn crea ticket. Con más de 50% del presupuesto consumido se
 congelan cambios no esenciales; con 100% solo se permiten mitigaciones y rollback hasta que
 la ventana vuelva a estar dentro del objetivo.
+
+El monitor programado abre automáticamente un issue con el enlace a la ejecución cuando falla.
+El issue es el canal durable de alerta hasta que exista un proveedor de on-call dedicado.
 
 ## Ejercicio de alerta y release readiness
 

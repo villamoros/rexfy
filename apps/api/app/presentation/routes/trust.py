@@ -8,7 +8,7 @@ from app.application import idempotency
 from app.application import trust as service
 from app.domain.trust.enums import DisputeStatus
 from app.infrastructure.db.models import Dispute, Transaction, User
-from app.presentation.deps import AdminUser, CurrentUser, DbSession, IdempotencyKey
+from app.presentation.deps import AdminUser, CurrentUser, DbSession, IdempotencyKey, UnitOfWork
 from app.presentation.schemas.deals import CompanyRef
 from app.presentation.schemas.listings import ListingOut
 from app.presentation.schemas.trust import (
@@ -43,8 +43,9 @@ def _admin_dispute(dispute: Dispute) -> AdminDisputeOut:
 
 @router.post("/transactions/{transaction_id}/reviews", status_code=status.HTTP_201_CREATED)
 def review(
-    transaction_id: uuid.UUID, body: ReviewCreate, db: DbSession, user: CurrentUser
+    transaction_id: uuid.UUID, body: ReviewCreate, uow: UnitOfWork, user: CurrentUser
 ) -> ReviewOut:
+    db = uow.session
     transaction = _order(db, user, transaction_id)
     try:
         created = service.leave_review(
@@ -59,8 +60,9 @@ def review(
 
 @router.post("/transactions/{transaction_id}/disputes", status_code=status.HTTP_201_CREATED)
 def open_dispute(
-    transaction_id: uuid.UUID, body: DisputeCreate, db: DbSession, user: CurrentUser
+    transaction_id: uuid.UUID, body: DisputeCreate, uow: UnitOfWork, user: CurrentUser
 ) -> DisputeOut:
+    db = uow.session
     transaction = _order(db, user, transaction_id)
     try:
         dispute = service.open_dispute(
@@ -109,10 +111,11 @@ def admin_disputes(
 def resolve(
     dispute_id: uuid.UUID,
     body: DisputeResolve,
-    db: DbSession,
+    uow: UnitOfWork,
     admin: AdminUser,
     idempotency_key: IdempotencyKey,
 ) -> AdminDisputeOut:
+    db = uow.session
     dispute = db.get(Dispute, dispute_id)
     if dispute is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Disputa no encontrada")

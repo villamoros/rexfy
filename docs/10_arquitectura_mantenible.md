@@ -33,13 +33,17 @@ flowchart LR
 | Capa | Responsabilidad | Regla |
 |---|---|---|
 | `presentation` | HTTP, autenticación, validación y serialización | No decide transiciones ni confirma cambios dentro de servicios |
-| `application` | Casos de uso, permisos, idempotencia, auditoría y orquestación | Recibe comandos y trabaja dentro de un Unit of Work |
+| `application` | Casos de uso, permisos, idempotencia, auditoría y orquestación | Recibe comandos, puede consultar el ORM y trabaja dentro de un Unit of Work |
 | `domain` | Estados y reglas puras | No depende de FastAPI, SQLAlchemy ni Vercel |
 | `infrastructure` | ORM, PostgreSQL, Clerk, almacenamiento y correo | Implementa mecanismos; no redefine reglas de negocio |
 
 La unidad de despliegue continúa siendo una sola API. Separar procesos o servicios solo se
 considerará cuando exista una carga, un aislamiento operativo o una autonomía de equipo medible;
 los nombres de módulos por sí solos no justifican distribución.
+
+El acceso al ORM desde `application` es una decisión consciente del monolito, no una abstracción de
+repositorio incompleta. [ADR-007](14_adr_acceso_a_datos.md) registra el alcance y las pruebas de
+arquitectura impiden que el dominio dependa de SQLAlchemy o que las capas internas conozcan HTTP.
 
 ## Contrato de paginación
 
@@ -70,8 +74,9 @@ realiza un único `commit` después de que el caso de uso termina. Ante una exce
 `rollback` y no confirma ningún cambio parcial.
 
 La misma transacción incluye entidad de negocio, idempotencia, auditoría, analítica, notificación y
-evento de outbox. El worker y los procesos administrativos conservan fronteras propias porque su
-unidad de trabajo es un evento o una operación de plataforma, no una petición comercial.
+evento de outbox. Las mutaciones administrativas también usan la frontera de petición. Los commits
+explícitos restantes pertenecen al bootstrap de identidad con recuperación de carrera, a la saga de
+imágenes con compensación de storage y al worker, cuya unidad de trabajo es una entrega durable.
 
 ## Máquinas de estado
 

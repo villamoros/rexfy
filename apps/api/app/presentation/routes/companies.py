@@ -5,7 +5,7 @@ from fastapi import APIRouter, HTTPException, status
 from app.application import organizations as service
 from app.application.organizations import NitAlreadyRegistered, create_company, get_company
 from app.infrastructure.db.models import User
-from app.presentation.deps import CurrentUser, DbSession
+from app.presentation.deps import CurrentUser, DbSession, UnitOfWork
 from app.presentation.schemas.organizations import (
     CompanyCreate,
     CompanyOut,
@@ -20,7 +20,8 @@ router = APIRouter(prefix="/companies", tags=["companies"])
 
 
 @router.post("", status_code=status.HTTP_201_CREATED)
-def create(body: CompanyCreate, user: CurrentUser, db: DbSession) -> CompanyOut:
+def create(body: CompanyCreate, user: CurrentUser, uow: UnitOfWork) -> CompanyOut:
+    db = uow.session
     try:
         company = create_company(
             db,
@@ -80,27 +81,35 @@ def team(company_id: uuid.UUID, user: CurrentUser, db: DbSession) -> TeamOut:
 
 
 @router.post("/{company_id}/team", status_code=status.HTTP_201_CREATED)
-def invite(company_id: uuid.UUID, body: InviteIn, user: CurrentUser, db: DbSession) -> TeamOut:
+def invite(company_id: uuid.UUID, body: InviteIn, user: CurrentUser, uow: UnitOfWork) -> TeamOut:
+    db = uow.session
     _team_errors(lambda: service.invite(db, user, company_id, email=body.email, role=body.role))
     return _team_out(db, user, company_id)
 
 
 @router.delete("/{company_id}/team/invitations/{invitation_id}")
 def cancel_invitation(
-    company_id: uuid.UUID, invitation_id: uuid.UUID, user: CurrentUser, db: DbSession
+    company_id: uuid.UUID, invitation_id: uuid.UUID, user: CurrentUser, uow: UnitOfWork
 ) -> TeamOut:
+    db = uow.session
     _team_errors(lambda: service.cancel_invitation(db, user, company_id, invitation_id))
     return _team_out(db, user, company_id)
 
 
 @router.patch("/{company_id}/team/{user_id}")
 def change_role(
-    company_id: uuid.UUID, user_id: uuid.UUID, body: RoleChange, user: CurrentUser, db: DbSession
+    company_id: uuid.UUID,
+    user_id: uuid.UUID,
+    body: RoleChange,
+    user: CurrentUser,
+    uow: UnitOfWork,
 ) -> TeamOut:
+    db = uow.session
     _team_errors(lambda: service.change_role(db, user, company_id, user_id, body.role))
     return _team_out(db, user, company_id)
 
 
 @router.delete("/{company_id}/team/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
-def remove(company_id: uuid.UUID, user_id: uuid.UUID, user: CurrentUser, db: DbSession) -> None:
+def remove(company_id: uuid.UUID, user_id: uuid.UUID, user: CurrentUser, uow: UnitOfWork) -> None:
+    db = uow.session
     _team_errors(lambda: service.remove_member(db, user, company_id, user_id))

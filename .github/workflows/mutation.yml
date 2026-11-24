@@ -1,0 +1,45 @@
+name: Selective mutation testing
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 5 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  critical-domain:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: rexfy
+          POSTGRES_PASSWORD: rexfy
+          POSTGRES_DB: rexfy
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U rexfy" --health-interval 5s --health-retries 10
+    env:
+      REXFY_DATABASE_URL: postgresql+psycopg://rexfy:rexfy@localhost:5432/rexfy
+    defaults:
+      run:
+        working-directory: apps/api
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@d0d8abe699bfb85fec6de9f7adb5ae17292296ff
+      - run: uv sync --frozen
+      - run: uv run alembic upgrade head
+      - name: Mutate pricing, roles and state machines
+        run: uv run mutmut run
+      - name: Publish mutation results
+        if: always()
+        run: uv run mutmut results | tee mutation-results.txt
+      - if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: mutation-results
+          path: apps/api/mutation-results.txt

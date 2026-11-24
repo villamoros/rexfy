@@ -33,7 +33,16 @@ jobs:
       - run: uv run alembic upgrade head
       - name: Migration graph and applied revision are safe
         run: uv run python -m app.cli.migrate check
-      - run: uv run pytest -q
+      - name: API tests and branch coverage gate
+        run: >-
+          uv run pytest -q --cov=app --cov-branch
+          --cov-report=term-missing --cov-report=xml:coverage.xml
+          --cov-fail-under=60
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: api-coverage
+          path: apps/api/coverage.xml
       - name: OpenAPI schema is up to date
         run: uv run python -m app.cli.openapi openapi.json && git diff --exit-code openapi.json
 

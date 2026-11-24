@@ -3,92 +3,29 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
-import { replayOutboxEvent, setCompanyVerified } from "@/app/actions/admin";
 import { Stat, StatGrid, formatNumber, formatPercent } from "@/components/kpi";
-import { MutationForm } from "@/components/mutation-form";
 import { RequestError } from "@/components/request-error";
 import { SiteHeader } from "@/components/site-header";
 import { EmptyState, PageHeader } from "@/components/ui";
-import { apiFetch, type MarketRole } from "@/lib/api";
+import { apiFetch } from "@/lib/api";
 import type { PlatformKpis, ProductFunnel } from "@/lib/dashboard";
 import { formatCop, formatDateTime } from "@/lib/deals";
 import { formatPrice, formatQuantity, type Listing } from "@/lib/listings";
-import { roleLabel } from "@/lib/roles";
 import { getToken, requireUser } from "@/lib/session";
 import { DISPUTE_REASONS, type AdminDispute } from "@/lib/trust";
 import type { CursorPage } from "@/lib/pagination";
 
 import { ResolveForm } from "./resolve-form";
 import { TakeDownForm } from "./take-down-form";
+import { Activity, Companies, OutboxSection } from "./operational-sections";
+import type {
+  AdminCompany,
+  AuditEntry,
+  OutboxEvent,
+  OutboxHealth,
+} from "./model";
 
 export const metadata: Metadata = { title: "Admin · RexFy" };
-
-type AdminCompany = {
-  id: string;
-  legal_name: string;
-  nit: string;
-  city: string;
-  market_roles: MarketRole[];
-  is_verified: boolean;
-  created_at: string;
-  members: number;
-};
-
-type AuditEntry = {
-  id: string;
-  created_at: string;
-  actor_name: string | null;
-  action: string;
-  entity_type: string;
-  entity_id: string;
-  data: Record<string, unknown>;
-};
-
-type OutboxHealth = {
-  pending: number;
-  processing: number;
-  retry: number;
-  failed: number;
-  processed_24h: number;
-  due: number;
-  oldest_unprocessed_at: string | null;
-};
-
-type OutboxEvent = {
-  id: string;
-  kind: string;
-  status: "pending" | "processing" | "retry" | "processed" | "failed";
-  attempts: number;
-  created_at: string;
-  last_error: string | null;
-};
-
-const ACTIONS: Record<string, string> = {
-  "company.created": "registró una empresa",
-  "company.verified": "verificó una empresa",
-  "company.unverified": "quitó la verificación",
-  "listing.created": "guardó un borrador",
-  "listing.published": "publicó material",
-  "listing.updated": "editó una publicación",
-  "listing.archived": "archivó una publicación",
-  "listing.taken_down": "retiró una publicación",
-  "listing.images_added": "subió fotos",
-  "member.added": "agregó a alguien al equipo",
-  "member.invited": "invitó a alguien al equipo",
-  "member.role_changed": "cambió un rol del equipo",
-  "member.removed": "quitó a alguien del equipo",
-  "offer.sent": "envió una cotización",
-  "offer.accepted": "aceptó una cotización",
-  "offer.declined": "rechazó una cotización",
-  "order.completed": "confirmó la recepción",
-  "shipment.requested": "pidió transporte",
-  "transport_quote.accepted": "eligió transportador",
-  "shipment.advanced": "actualizó un envío",
-  "dispute.opened": "abrió una disputa",
-  "dispute.resolved": "resolvió una disputa",
-  "review.created": "calificó a una empresa",
-  "outbox.replayed": "reprogramó una notificación",
-};
 
 export default function AdminPage() {
   return (
@@ -107,7 +44,6 @@ export default function AdminPage() {
     </>
   );
 }
-
 async function Console() {
   const me = await requireUser();
   if (!me.is_platform_admin) notFound();
@@ -123,25 +59,31 @@ async function Console() {
     outboxHealth,
     outboxEvents,
   ] = await Promise.all([
-      apiFetch<PlatformKpis>("/admin/metrics", { token }),
-      apiFetch<ProductFunnel>("/admin/funnel", { token }),
-      apiFetch<AdminDispute[]>("/admin/disputes?status=open", { token }),
-      apiFetch<CursorPage<AdminCompany>>("/admin/companies?verified=false&limit=100", { token }),
-      apiFetch<CursorPage<AdminCompany>>("/admin/companies?verified=true&limit=100", { token }),
-      apiFetch<CursorPage<Listing>>("/admin/listings?status=published&limit=100", { token }),
-      apiFetch<CursorPage<AuditEntry>>("/admin/audit?limit=30", { token }),
-      apiFetch<OutboxHealth>("/admin/outbox/health", { token }),
-      apiFetch<CursorPage<OutboxEvent>>("/admin/outbox?limit=30", { token }),
-    ]);
+    apiFetch<PlatformKpis>("/admin/metrics", { token }),
+    apiFetch<ProductFunnel>("/admin/funnel", { token }),
+    apiFetch<AdminDispute[]>("/admin/disputes?status=open", { token }),
+    apiFetch<CursorPage<AdminCompany>>(
+      "/admin/companies?verified=false&limit=100",
+      { token },
+    ),
+    apiFetch<CursorPage<AdminCompany>>(
+      "/admin/companies?verified=true&limit=100",
+      { token },
+    ),
+    apiFetch<CursorPage<Listing>>(
+      "/admin/listings?status=published&limit=100",
+      { token },
+    ),
+    apiFetch<CursorPage<AuditEntry>>("/admin/audit?limit=30", { token }),
+    apiFetch<OutboxHealth>("/admin/outbox/health", { token }),
+    apiFetch<CursorPage<OutboxEvent>>("/admin/outbox?limit=30", { token }),
+  ]);
 
   const m = metrics.ok ? metrics.data : null;
   return (
     <>
       {!metrics.ok && (
-        <RequestError
-          message={metrics.message}
-          requestId={metrics.requestId}
-        />
+        <RequestError message={metrics.message} requestId={metrics.requestId} />
       )}
       {m && (
         <Section title="La plataforma">
@@ -196,10 +138,7 @@ async function Console() {
       )}
       <Section title="Funnel de producto">
         {!funnel.ok ? (
-          <RequestError
-            message={funnel.message}
-            requestId={funnel.requestId}
-          />
+          <RequestError message={funnel.message} requestId={funnel.requestId} />
         ) : (
           <>
             <p className="text-sm text-muted">
@@ -222,8 +161,8 @@ async function Console() {
             </StatGrid>
             {funnel.data.segments.length === 0 ? (
               <EmptyState>
-                Aún no hay volumen suficiente para mostrar segmentos sin
-                exponer grupos pequeños.
+                Aún no hay volumen suficiente para mostrar segmentos sin exponer
+                grupos pequeños.
               </EmptyState>
             ) : (
               <ul className="card divide-y divide-border text-sm">
@@ -246,70 +185,7 @@ async function Console() {
         )}
       </Section>
       <Section title="Entrega de notificaciones">
-        {!outboxHealth.ok ? (
-          <RequestError
-            message={outboxHealth.message}
-            requestId={outboxHealth.requestId}
-          />
-        ) : (
-          <StatGrid>
-            <Stat
-              label="Pendientes"
-              value={outboxHealth.data.pending}
-              hint={
-                outboxHealth.data.oldest_unprocessed_at
-                  ? `Más antigua: ${formatDateTime(outboxHealth.data.oldest_unprocessed_at)}`
-                  : "Sin cola acumulada"
-              }
-            />
-            <Stat label="En proceso" value={outboxHealth.data.processing} />
-            <Stat label="Reintentos" value={outboxHealth.data.retry} />
-            <Stat label="Agotados" value={outboxHealth.data.failed} />
-            <Stat label="Listos para enviar" value={outboxHealth.data.due} />
-            <Stat
-              label="Entregados"
-              value={outboxHealth.data.processed_24h}
-              hint="Últimas 24 horas"
-            />
-          </StatGrid>
-        )}
-        {!outboxEvents.ok ? (
-          <RequestError
-            message={outboxEvents.message}
-            requestId={outboxEvents.requestId}
-          />
-        ) : outboxEvents.data.items.filter(
-            (event) => event.status !== "processed",
-          ).length === 0 ? (
-          <EmptyState>No hay entregas que requieran atención.</EmptyState>
-        ) : (
-          <ul className="divide-y divide-border card text-sm">
-            {outboxEvents.data.items
-              .filter((event) => event.status !== "processed")
-              .map((event) => (
-                <li
-                  key={event.id}
-                  className="flex flex-wrap items-center justify-between gap-3 px-4 py-3"
-                >
-                  <div className="min-w-0">
-                    <p className="font-medium">
-                      {event.kind} · {event.status} · intento {event.attempts}
-                    </p>
-                    <p className="truncate text-muted">
-                      {event.last_error ??
-                        `Creado ${formatDateTime(event.created_at)}`}
-                    </p>
-                  </div>
-                  {event.status === "failed" && (
-                    <MutationForm action={replayOutboxEvent}>
-                      <input type="hidden" name="event_id" value={event.id} />
-                      <button className="btn btn-secondary text-sm">Reintentar</button>
-                    </MutationForm>
-                  )}
-                </li>
-              ))}
-          </ul>
-        )}
+        <OutboxSection health={outboxHealth} events={outboxEvents} />
       </Section>
       <Section title="Disputas abiertas">
         {!disputes.ok ? (
@@ -383,38 +259,11 @@ async function Console() {
         <Companies result={verified} />
       </Section>
       <Section title="Actividad reciente">
-        {!activity.ok ? (
-          <RequestError
-            message={activity.message}
-            requestId={activity.requestId}
-          />
-        ) : activity.data.items.length === 0 ? (
-          <EmptyState>Sin actividad todavía.</EmptyState>
-        ) : (
-          <ul className="divide-y divide-border card text-sm">
-            {activity.data.items.map((e) => (
-              <li key={e.id} className="flex justify-between gap-4 px-4 py-2">
-                <span>
-                  <span className="font-medium">
-                    {e.actor_name ?? "Sistema"}
-                  </span>{" "}
-                  {ACTIONS[e.action] ?? e.action}
-                  {typeof e.data.reason === "string" && (
-                    <span className="text-muted"> · {e.data.reason}</span>
-                  )}
-                </span>
-                <span className="shrink-0 font-mono text-xs text-muted">
-                  {formatDateTime(e.created_at)}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
+        <Activity result={activity} />
       </Section>
     </>
   );
 }
-
 function Section({
   title,
   children,
@@ -427,53 +276,5 @@ function Section({
       <h2 className="text-xl font-bold">{title}</h2>
       {children}
     </section>
-  );
-}
-
-function Companies({
-  result,
-  verify = false,
-}: {
-  result: Awaited<ReturnType<typeof apiFetch<CursorPage<AdminCompany>>>>;
-  verify?: boolean;
-}) {
-  if (!result.ok)
-    return (
-      <RequestError message={result.message} requestId={result.requestId} />
-    );
-  if (result.data.items.length === 0)
-    return (
-      <EmptyState>
-        {verify ? "No hay empresas esperando revisión." : "Ninguna todavía."}
-      </EmptyState>
-    );
-  return (
-    <ul className="divide-y divide-border card">
-      {result.data.items.map((c) => (
-        <li
-          key={c.id}
-          className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 text-sm"
-        >
-          <div className="min-w-0">
-            <p className="font-medium">{c.legal_name}</p>
-            <p className="text-muted">
-              NIT <span className="font-mono">{c.nit}</span> · {c.city} ·{" "}
-              {c.market_roles.map(roleLabel).join(", ")} · {c.members}{" "}
-              {c.members === 1 ? "miembro" : "miembros"} · desde{" "}
-              {formatDateTime(c.created_at)}
-            </p>
-          </div>
-          <MutationForm action={setCompanyVerified}>
-            <input type="hidden" name="company_id" value={c.id} />
-            <input type="hidden" name="verified" value={String(verify)} />
-            <button
-              className={`btn text-sm ${verify ? "btn-primary" : "btn-secondary"}`}
-            >
-              {verify ? "Verificar" : "Quitar verificación"}
-            </button>
-          </MutationForm>
-        </li>
-      ))}
-    </ul>
   );
 }

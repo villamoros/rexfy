@@ -6,7 +6,7 @@ from fastapi import APIRouter, File, HTTPException, Query, UploadFile, status
 from app.application import listings as service
 from app.domain.listings.enums import Availability, MaterialCategory, PricingType
 from app.infrastructure.db.models import Listing
-from app.presentation.deps import CurrentUser, DbSession, OptionalUser
+from app.presentation.deps import CurrentUser, DbSession, OptionalUser, UnitOfWork
 from app.presentation.schemas.listings import ListingCreate, ListingOut, ListingPage, ListingUpdate
 
 router = APIRouter(tags=["listings"])
@@ -71,7 +71,8 @@ def my_listings(db: DbSession, user: CurrentUser) -> list[ListingOut]:
 
 
 @router.post("/listings", status_code=status.HTTP_201_CREATED)
-def create(body: ListingCreate, db: DbSession, user: CurrentUser) -> ListingOut:
+def create(body: ListingCreate, uow: UnitOfWork, user: CurrentUser) -> ListingOut:
+    db = uow.session
     try:
         listing = service.create_listing(
             db, user, body.model_dump(exclude={"publish"}), publish=body.publish
@@ -90,8 +91,9 @@ def read(listing_id: uuid.UUID, db: DbSession, user: OptionalUser) -> ListingOut
 
 @router.patch("/listings/{listing_id}")
 def update(
-    listing_id: uuid.UUID, body: ListingUpdate, db: DbSession, user: CurrentUser
+    listing_id: uuid.UUID, body: ListingUpdate, uow: UnitOfWork, user: CurrentUser
 ) -> ListingOut:
+    db = uow.session
     listing = _load(db, user, listing_id)
     try:
         listing = service.update_listing(db, user, listing, body.model_dump(exclude_unset=True))
@@ -100,13 +102,13 @@ def update(
     except service.InvalidState:
         raise HTTPException(status.HTTP_409_CONFLICT, "La publicación está archivada") from None
     except ValueError as exc:
-        db.rollback()
         raise _invalid(str(exc)) from None
     return ListingOut.model_validate(listing)
 
 
 @router.post("/listings/{listing_id}/publish")
-def publish(listing_id: uuid.UUID, db: DbSession, user: CurrentUser) -> ListingOut:
+def publish(listing_id: uuid.UUID, uow: UnitOfWork, user: CurrentUser) -> ListingOut:
+    db = uow.session
     listing = _load(db, user, listing_id)
     try:
         listing = service.publish_listing(db, user, listing)
@@ -120,7 +122,8 @@ def publish(listing_id: uuid.UUID, db: DbSession, user: CurrentUser) -> ListingO
 
 
 @router.post("/listings/{listing_id}/archive")
-def archive(listing_id: uuid.UUID, db: DbSession, user: CurrentUser) -> ListingOut:
+def archive(listing_id: uuid.UUID, uow: UnitOfWork, user: CurrentUser) -> ListingOut:
+    db = uow.session
     listing = _load(db, user, listing_id)
     try:
         listing = service.archive_listing(db, user, listing)

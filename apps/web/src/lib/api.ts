@@ -49,6 +49,8 @@ export async function apiFetch<T>(
   // FormData goes as multipart (file uploads); anything else as JSON.
   const multipart = body instanceof FormData;
   const requestId = crypto.randomUUID();
+  const traceId = crypto.randomUUID().replaceAll("-", "");
+  const spanId = crypto.randomUUID().replaceAll("-", "").slice(0, 16);
   const effectiveTimeout =
     timeoutMs ?? (multipart ? 60_000 : method === "GET" ? 8_000 : 15_000);
   const controller = new AbortController();
@@ -62,6 +64,7 @@ export async function apiFetch<T>(
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
         ...(idempotencyKey ? { "Idempotency-Key": idempotencyKey } : {}),
         "X-Request-ID": requestId,
+        traceparent: `00-${traceId}-${spanId}-01`,
       },
       body:
         body === undefined

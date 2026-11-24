@@ -6,7 +6,6 @@ import { Logo } from "@/components/logo";
 import { Network } from "@/components/network";
 import { SectionHeading } from "@/components/ui";
 import { CATEGORIES, type MaterialCategory } from "@/lib/listings";
-import { MARKET_ROLES } from "@/lib/roles";
 
 // Illustrative offers for the hero; labelled as examples on the page.
 const PREVIEW: {
@@ -49,40 +48,12 @@ const BUYER_VALUE = [
   "Solicita y compara cotizaciones de transporte",
 ];
 
-const CHAIN = [
-  "Material recuperado",
-  "Transporte",
-  "Taller transformador",
-  "Nueva materia prima",
-];
-
-const STEPS = [
-  {
-    title: "Publica",
-    text: "Tipo de material, cantidad, precio y ubicación. Queda visible en el marketplace al terminar.",
-  },
-  {
-    title: "Negocia",
-    text: "El comprador escribe por el chat y recibe una cotización formal que puede aceptar o rechazar.",
-  },
-  {
-    title: "Cierra",
-    text: "Al aceptar, la orden queda registrada con cantidad, precio y el avance de la entrega.",
-  },
-  {
-    title: "Transporta",
-    text: "Los transportistas cotizan la recolección y la carga se sigue por etapas hasta su destino.",
-  },
-];
-
 export default function Home() {
   return (
     <div className="flex flex-1 flex-col">
       <main className="flex-1">
         <Hero />
         <Fronts />
-        <ChainSection />
-        <Audience />
         <ClosingCta />
       </main>
       <SiteFooter />
@@ -233,98 +204,6 @@ function Fronts() {
             Ver material disponible
           </Link>
         </article>
-      </div>
-    </section>
-  );
-}
-
-/** How a micro supply chain forms, and the four steps of a deal. */
-function ChainSection() {
-  return (
-    <section className="bg-ink text-on-ink">
-      <div className="mx-auto w-full max-w-6xl px-4 py-20">
-        <SectionHeading
-          onInk
-          eyebrow="Micro cadenas productivas"
-          title="Lo que ninguna empresa resuelve sola, se arma entre varias."
-        />
-        <ol className="mt-10 flex flex-col items-start gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-0">
-          {CHAIN.map((node, i) => (
-            <li key={node} className="flex items-center">
-              <span
-                className={`flex items-center gap-2.5 rounded-lg border-[1.5px] bg-ink-2 px-4 py-2.5 text-sm font-semibold ${
-                  i === CHAIN.length - 1
-                    ? "border-signal"
-                    : "border-ink-line-strong"
-                }`}
-              >
-                <span className="size-2.5 rounded-full bg-signal" />
-                {node}
-              </span>
-              {i < CHAIN.length - 1 && (
-                <span
-                  className="relative mx-1 hidden h-[1.5px] w-12 bg-net sm:block"
-                  aria-hidden
-                >
-                  <span className="absolute -right-0.5 -top-[3px] size-2 rounded-full bg-net" />
-                </span>
-              )}
-            </li>
-          ))}
-        </ol>
-        <ol className="mt-16 grid gap-px overflow-hidden rounded-xl bg-ink-line sm:grid-cols-2 lg:grid-cols-4">
-          {STEPS.map((step, i) => (
-            <li key={step.title} className="flex flex-col gap-3 bg-ink p-6">
-              <span className="font-mono text-sm text-signal">
-                Paso {i + 1}
-              </span>
-              <h3 className="text-xl font-bold">{step.title}</h3>
-              <p className="text-sm leading-relaxed text-on-ink-muted">
-                {step.text}
-              </p>
-            </li>
-          ))}
-        </ol>
-      </div>
-    </section>
-  );
-}
-
-/** Who RexFy is for, and the material categories as entry points. */
-function Audience() {
-  return (
-    <section className="mx-auto w-full max-w-6xl px-4 py-20">
-      <div className="grid gap-12 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
-        <div>
-          <SectionHeading
-            eyebrow="Para quién es"
-            title="Tres roles en una misma red."
-          />
-          <ul className="mt-8 flex flex-col divide-y divide-border border-y border-border">
-            {MARKET_ROLES.map((role) => (
-              <li key={role.value} className="py-4">
-                <p className="text-lg font-bold">{role.label}</p>
-                <p className="text-muted">{role.hint}.</p>
-              </li>
-            ))}
-          </ul>
-        </div>
-        <div>
-          <p className="eyebrow">Material por tipo</p>
-          <ul className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {(Object.keys(CATEGORIES) as MaterialCategory[]).map((category) => (
-              <li key={category}>
-                <Link
-                  href={`/marketplace?category=${category}`}
-                  className="card flex flex-col items-start gap-6 p-4 transition hover:border-foreground"
-                >
-                  <MaterialIcon category={category} className="size-7" />
-                  <span className="font-semibold">{CATEGORIES[category]}</span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </div>
       </div>
     </section>
   );

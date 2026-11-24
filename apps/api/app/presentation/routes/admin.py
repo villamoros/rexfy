@@ -10,7 +10,7 @@ from app.application.dashboard import platform_kpis
 from app.domain.listings.enums import ListingStatus, MaterialCategory
 from app.domain.organizations.roles import MarketRole
 from app.infrastructure.db.models import Company, OutboxEvent
-from app.presentation.deps import AdminUser, DbSession, PageParams
+from app.presentation.deps import AdminUser, DbSession, PageParams, UnitOfWork
 from app.presentation.schemas.admin import (
     AdminCompany,
     AuditEntry,
@@ -49,13 +49,15 @@ def companies(
 
 
 @router.post("/companies/{company_id}/verify")
-def verify(company_id: uuid.UUID, db: DbSession, admin: AdminUser) -> CompanyOut:
+def verify(company_id: uuid.UUID, uow: UnitOfWork, admin: AdminUser) -> CompanyOut:
+    db = uow.session
     company = service.set_verified(db, admin, _load_company(db, company_id), True)
     return CompanyOut.model_validate(company)
 
 
 @router.post("/companies/{company_id}/unverify")
-def unverify(company_id: uuid.UUID, db: DbSession, admin: AdminUser) -> CompanyOut:
+def unverify(company_id: uuid.UUID, uow: UnitOfWork, admin: AdminUser) -> CompanyOut:
+    db = uow.session
     company = service.set_verified(db, admin, _load_company(db, company_id), False)
     return CompanyOut.model_validate(company)
 
@@ -75,7 +77,10 @@ def listings(
 
 
 @router.post("/listings/{listing_id}/take-down")
-def take_down(listing_id: uuid.UUID, body: TakeDown, db: DbSession, admin: AdminUser) -> ListingOut:
+def take_down(
+    listing_id: uuid.UUID, body: TakeDown, uow: UnitOfWork, admin: AdminUser
+) -> ListingOut:
+    db = uow.session
     listing = service.get_listing(db, listing_id)
     if listing is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Publicación no encontrada")
@@ -151,7 +156,8 @@ def outbox_events(
 
 
 @router.post("/outbox/{event_id}/replay")
-def replay_outbox_event(event_id: uuid.UUID, db: DbSession, admin: AdminUser) -> OutboxEventOut:
+def replay_outbox_event(event_id: uuid.UUID, uow: UnitOfWork, admin: AdminUser) -> OutboxEventOut:
+    db = uow.session
     event = db.get(OutboxEvent, event_id)
     if event is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Evento de outbox no encontrado")

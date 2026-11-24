@@ -11,6 +11,7 @@ from app.application.notifications import notify
 from app.application.organizations import NotAllowed as TeamNotAllowed
 from app.application.organizations import require_committer
 from app.application.pagination import Page, PageRequest, paginate
+from app.application.policies import InvalidState, NotAllowed, company_ids, lock
 from app.domain.deals.enums import OfferStatus, TransactionStatus
 from app.domain.deals.pricing import offer_total
 from app.domain.deals.state_machine import (
@@ -36,38 +37,13 @@ from app.infrastructure.db.models import (
 )
 
 
-class NotAllowed(Exception):
-    pass
-
-
-class InvalidState(Exception):
-    def __init__(self, message: str) -> None:
-        super().__init__(message)
-        self.message = message
-
-
 def _now() -> datetime:
     return datetime.now(UTC)
 
 
-def lock(db: Session, row: object) -> None:
-    """Take a row lock for the rest of the transaction and reload the row's current state.
-
-    Locks only the row itself: a plain `with_for_update` would also try to lock the
-    outer-joined relationships, which Postgres refuses.
-    """
-    model = type(row)
-    db.execute(select(model.id).where(model.id == row.id).with_for_update())
-    db.refresh(row)
-
-
-def _company_ids(user: User) -> set[uuid.UUID]:
-    return {m.company_id for m in user.memberships}
-
-
 def acting_company(user: User, thread: Thread) -> uuid.UUID:
     """The side of the thread `user` speaks for. Raises NotAllowed for outsiders."""
-    mine = _company_ids(user)
+    mine = company_ids(user)
     sides = [c for c in (thread.buyer_company_id, thread.seller_company_id) if c in mine]
     if len(sides) != 1:
         raise NotAllowed
@@ -174,7 +150,7 @@ def _company_name(db: Session, company_id: uuid.UUID) -> str:
 
 
 def threads_of(db: Session, user: User, page: PageRequest) -> Page[Thread]:
-    mine = _company_ids(user)
+    mine = company_ids(user)
     stmt = (
         select(Thread)
         .where(or_(Thread.buyer_company_id.in_(mine), Thread.seller_company_id.in_(mine)))
@@ -492,7 +468,7 @@ def get_offer(db: Session, user: User, offer_id: uuid.UUID) -> Offer | None:
 
 
 def transactions_of(db: Session, user: User, page: PageRequest) -> Page[Transaction]:
-    mine = _company_ids(user)
+    mine = company_ids(user)
     stmt = (
         select(Transaction)
         .where(or_(Transaction.buyer_company_id.in_(mine), Transaction.seller_company_id.in_(mine)))
@@ -503,7 +479,7 @@ def transactions_of(db: Session, user: User, page: PageRequest) -> Page[Transact
 
 def get_transaction(db: Session, user: User, transaction_id: uuid.UUID) -> Transaction | None:
     transaction = db.get(Transaction, transaction_id)
-    mine = _company_ids(user)
+    mine = company_ids(user)
     if (
         transaction is None
         or not {
@@ -521,7 +497,7 @@ def confirm_receipt(db: Session, user: User, transaction: Transaction) -> Transa
 
     With a shipment under way, only after the transporter marked it delivered.
     """
-    if transaction.buyer_company_id not in _company_ids(user):
+    if transaction.buyer_company_id not in company_ids(user):
         raise NotAllowed
     try:
         require_committer(user, transaction.buyer_company_id)

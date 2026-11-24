@@ -4,12 +4,15 @@ import "@fontsource-variable/manrope";
 import "@fontsource/ibm-plex-mono/400.css";
 import "@fontsource/ibm-plex-mono/500.css";
 import type { Metadata } from "next";
+
+import { ClerkGate } from "@/components/clerk-gate";
+
 import "./globals.css";
 
 export const metadata: Metadata = {
   title: "RexFy",
   description:
-    "Una red productiva: material recuperado y capacidad de manufactura entre empresas.",
+    "Marketplace B2B para publicar, comprar y transportar materiales recuperados en Colombia.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
@@ -33,7 +36,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
               },
             }}
           >
-            {children}
+            <ClerkGate>{children}</ClerkGate>
           </ClerkProvider>
         ) : (
           children

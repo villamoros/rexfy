@@ -52,3 +52,14 @@ def test_responses_carry_a_request_id(client: TestClient) -> None:
     assert len(client.get("/health").headers["x-request-id"]) == 16
     echoed = client.get("/health", headers={"X-Request-ID": "abc123"})
     assert echoed.headers["x-request-id"] == "abc123"
+
+
+def test_responses_continue_the_w3c_trace(client: TestClient) -> None:
+    trace = "0123456789abcdef0123456789abcdef"
+    response = client.get("/health", headers={"traceparent": f"00-{trace}-0123456789abcdef-01"})
+
+    version, returned_trace, server_span, flags = response.headers["traceparent"].split("-")
+    assert version == "00"
+    assert returned_trace == trace
+    assert len(server_span) == 16
+    assert flags == "01"

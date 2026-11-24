@@ -7,6 +7,7 @@ from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
 from app.application import outbox
+from app.application.policies import company_ids
 from app.infrastructure.db.models import Notification, User
 
 # A busy chat would otherwise send an email per message.
@@ -52,14 +53,10 @@ def notify(
         )
 
 
-def _company_ids(user: User) -> list[uuid.UUID]:
-    return [m.company_id for m in user.memberships]
-
-
 def inbox(db: Session, user: User, *, limit: int = 30) -> list[Notification]:
     stmt = (
         select(Notification)
-        .where(Notification.company_id.in_(_company_ids(user)))
+        .where(Notification.company_id.in_(company_ids(user)))
         .order_by(Notification.created_at.desc())
         .limit(limit)
     )
@@ -70,7 +67,7 @@ def unread_count(db: Session, user: User) -> int:
     return (
         db.scalar(
             select(func.count(Notification.id)).where(
-                Notification.company_id.in_(_company_ids(user)), Notification.read_at.is_(None)
+                Notification.company_id.in_(company_ids(user)), Notification.read_at.is_(None)
             )
         )
         or 0
@@ -79,9 +76,8 @@ def unread_count(db: Session, user: User) -> int:
 
 def mark_read(db: Session, user: User, notification_id: uuid.UUID | None = None) -> None:
     stmt = update(Notification).where(
-        Notification.company_id.in_(_company_ids(user)), Notification.read_at.is_(None)
+        Notification.company_id.in_(company_ids(user)), Notification.read_at.is_(None)
     )
     if notification_id is not None:
         stmt = stmt.where(Notification.id == notification_id)
     db.execute(stmt.values(read_at=datetime.now(UTC)))
-    db.commit()

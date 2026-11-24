@@ -8,10 +8,38 @@ const WORDMARK =
 function SymbolModules() {
   return (
     <>
-      <rect width="10" height="40" rx="1.5" fill="currentColor" />
-      <path d="M14 0H26a10 10 0 0 1 0 20H14z" fill="currentColor" />
-      <path d="M14 24h10l12 16H26z" fill="var(--signal)" />
+      <rect
+        className="rexfy-logo-stem"
+        width="10"
+        height="40"
+        rx="1.5"
+        fill="currentColor"
+      />
+      <path
+        className="rexfy-logo-bowl"
+        d="M14 0H26a10 10 0 0 1 0 20H14z"
+        fill="currentColor"
+      />
+      <path
+        className="rexfy-logo-leg"
+        d="M14 24h10l12 16H26z"
+        fill="var(--signal)"
+      />
     </>
+  );
+}
+
+/** Standalone RexFy symbol for compact brand moments such as the app loader. */
+export function LogoMark({ className = "" }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 36 40"
+      className={className}
+      aria-hidden="true"
+      focusable="false"
+    >
+      <SymbolModules />
+    </svg>
   );
 }
 

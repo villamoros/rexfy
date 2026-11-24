@@ -5,10 +5,10 @@ from sqlalchemy.orm import Session
 
 from app.application import analytics, audit, idempotency
 from app.application.commands import AdvanceShipment, RequestShipment, SubmitTransportQuote
-from app.application.deals import InvalidState, NotAllowed, lock
 from app.application.notifications import notify
 from app.application.organizations import membership
 from app.application.pagination import Page, PageRequest, paginate
+from app.application.policies import InvalidState, NotAllowed, company_ids, lock
 from app.domain.deals.enums import TransactionStatus
 from app.domain.deals.state_machine import (
     InvalidTransition as InvalidTransactionTransition,
@@ -48,10 +48,6 @@ _ORDER_STATUS = {
 }
 
 
-def _company_ids(user: User) -> set[uuid.UUID]:
-    return {m.company_id for m in user.memberships}
-
-
 def _transporter_ids(user: User, *, verified: bool = False) -> set[uuid.UUID]:
     """The user's transporter companies; with `verified`, only those RexFy has verified."""
     return {
@@ -73,7 +69,7 @@ def _parties(shipment: Shipment) -> set[uuid.UUID]:
 
 def relation(user: User, shipment: Shipment) -> str | None:
     """How `user` relates to a shipment: party, transporter (assigned), bidder or None."""
-    mine = _company_ids(user)
+    mine = company_ids(user)
     if _parties(shipment) & mine:
         return "party"
     if shipment.transporter_company_id in mine:
@@ -98,7 +94,7 @@ def request_shipment(
     idempotency_key: str,
     request_hash: str,
 ) -> Shipment:
-    mine = _company_ids(user) & {transaction.buyer_company_id, transaction.seller_company_id}
+    mine = company_ids(user) & {transaction.buyer_company_id, transaction.seller_company_id}
     if not mine:
         raise NotAllowed
     previous = idempotency.find(
@@ -162,7 +158,7 @@ def open_requests(db: Session, user: User, page: PageRequest) -> Page[Shipment]:
         raise NotAllowed
     if not _transporter_ids(user, verified=True):
         raise NotVerified
-    mine = _company_ids(user)
+    mine = company_ids(user)
     stmt = select(Shipment).where(Shipment.status == ShipmentStatus.REQUESTED)
     result = paginate(db, stmt, page, model=Shipment)
     return Page(
@@ -248,7 +244,7 @@ def get_quote(db: Session, user: User, quote_id: uuid.UUID) -> TransportQuote | 
 
 def accept_quote(db: Session, user: User, quote: TransportQuote) -> Shipment:
     shipment = quote.shipment
-    mine = _parties(shipment) & _company_ids(user)
+    mine = _parties(shipment) & company_ids(user)
     if not mine:
         raise NotAllowed
     if not any(membership(user, c).role.can_commit for c in mine):
@@ -276,7 +272,7 @@ def accept_quote(db: Session, user: User, quote: TransportQuote) -> Shipment:
         user,
         "transport_quote.accepted",
         quote,
-        company_id=next(iter(_parties(shipment) & _company_ids(user))),
+        company_id=next(iter(_parties(shipment) & company_ids(user))),
         price=quote.price,
     )
     notify(
@@ -303,7 +299,7 @@ def advance(
 
     "In transit" may be skipped on short trips, but nothing is delivered before pickup.
     """
-    if shipment.transporter_company_id not in _company_ids(user):
+    if shipment.transporter_company_id not in company_ids(user):
         raise NotAllowed
     previous = idempotency.find(
         db,

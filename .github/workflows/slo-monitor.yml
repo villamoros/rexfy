@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: read
+  issues: write
 
 jobs:
   journey:
@@ -52,3 +53,21 @@ jobs:
             apps/web/playwright-report
             apps/web/test-results
           retention-days: 30
+      - name: Alert platform owner
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          jq -n \
+            --arg title "SLO monitor failed · run $GITHUB_RUN_ID" \
+            --arg body "The production readiness or commercial journey check failed. Evidence: $RUN_URL" \
+            '{title: $title, body: $body}' > issue.json
+          curl --fail --silent --show-error \
+            --request POST \
+            --header "Authorization: Bearer $GH_TOKEN" \
+            --header "Accept: application/vnd.github+json" \
+            --header "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/$REPOSITORY/issues" \
+            --data @issue.json

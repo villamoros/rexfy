@@ -3,10 +3,8 @@ import Link from "next/link";
 import { Suspense } from "react";
 
 import { MaterialIcon } from "@/components/icons";
-import { ListingCard } from "@/components/listing-card";
-import { RequestError } from "@/components/request-error";
 import { SiteHeader } from "@/components/site-header";
-import { EmptyState, PageHeader } from "@/components/ui";
+import { PageHeader } from "@/components/ui";
 import { apiFetch } from "@/lib/api";
 import {
   AVAILABILITY,
@@ -14,6 +12,8 @@ import {
   type ListingPage,
   type MaterialCategory,
 } from "@/lib/listings";
+
+import { Results } from "./results";
 
 export const metadata: Metadata = { title: "Marketplace · RexFy" };
 
@@ -51,7 +51,6 @@ export default function MarketplacePage({
     </>
   );
 }
-
 async function Search({ searchParams }: { searchParams: Promise<Params> }) {
   const params = await searchParams;
   const offset = Math.max(0, Number(one(params, "offset")) || 0);
@@ -73,35 +72,15 @@ async function Search({ searchParams }: { searchParams: Promise<Params> }) {
     <div className="mt-8 grid gap-6 lg:grid-cols-[272px_1fr]">
       <Filters params={params} />
       <section aria-live="polite">
-        {!result.ok ? (
-          <RequestError
-            message={result.message}
-            requestId={result.requestId}
-          />
-        ) : (
-          <>
-            <p className="mb-3 font-mono text-xs text-muted">
-              {result.data.total === 1
-                ? "1 resultado"
-                : `${result.data.total} resultados`}
-            </p>
-            {result.data.items.length === 0 ? (
-              <EmptyState>No hay material con esos filtros todavía.</EmptyState>
-            ) : (
-              <ul className="flex flex-col gap-3">
-                {result.data.items.map((listing) => (
-                  <ListingCard key={listing.id} listing={listing} />
-                ))}
-              </ul>
-            )}
-            <Pager query={query} offset={offset} total={result.data.total} />
-          </>
-        )}
+        <Results
+          result={result}
+          queryString={query.toString()}
+          offset={offset}
+        />
       </section>
     </div>
   );
 }
-
 function Filters({ params }: { params: Params }) {
   const categories = all(params, "category");
   const availability = all(params, "availability");
@@ -255,48 +234,5 @@ function Check({
       />
       {label}
     </label>
-  );
-}
-
-function Pager({
-  query,
-  offset,
-  total,
-}: {
-  query: URLSearchParams;
-  offset: number;
-  total: number;
-}) {
-  if (total <= PAGE_SIZE) return null;
-  const link = (to: number) => {
-    const next = new URLSearchParams(query);
-    next.delete("limit");
-    if (to > 0) next.set("offset", String(to));
-    else next.delete("offset");
-    return `/marketplace?${next}`;
-  };
-  return (
-    <nav className="mt-6 flex items-center justify-between text-sm">
-      {offset > 0 ? (
-        <Link
-          href={link(Math.max(0, offset - PAGE_SIZE))}
-          className="underline"
-        >
-          ← Anterior
-        </Link>
-      ) : (
-        <span />
-      )}
-      <span className="text-muted">
-        {offset + 1}–{Math.min(offset + PAGE_SIZE, total)} de {total}
-      </span>
-      {offset + PAGE_SIZE < total ? (
-        <Link href={link(offset + PAGE_SIZE)} className="underline">
-          Siguiente →
-        </Link>
-      ) : (
-        <span />
-      )}
-    </nav>
   );
 }

@@ -143,12 +143,10 @@ flowchart TB
 
 ## 4) Domain model
 
-### Core entities
+### Entidades implementadas
 - User
 - Company
-- Role
 - MaterialCategory
-- Material
 - Listing
 - ListingImage
 - Offer
@@ -158,22 +156,24 @@ flowchart TB
 - Shipment
 - TransportQuote
 - Review
-- TrustScore
 - Dispute
-- Document
 - Notification
-- Subscription
-- ESGReport
 
 ### Key relationships
 - Company has many Users
 - Company creates many Listings
-- Listing belongs to one Material and one Company
+- Listing belongs to one material category and one Company
 - Listing receives many Offers
 - Offer can become one Transaction
-- Transaction can create one or more Shipments
-- Transaction can generate trust score and review records
-- Transaction can attach documents and logistics events
+- Transaction can create one Shipment in the MVP
+- Transaction can generate reviews and dispute records
+- Shipment records logistics events
+
+### Capacidades futuras, no implementadas
+
+Documentos comerciales, suscripciones, reportes ESG, pagos y un catálogo de materiales separado
+son opciones de evolución, no componentes del sistema actual. Requieren validación de producto y
+un ADR antes de entrar al modelo de dominio.
 
 ## 5) Event storming starter set
 

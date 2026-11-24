@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import { Suspense } from "react";
 
 import { Card } from "@/components/form";
 import { Logo } from "@/components/logo";
-import { requireUser } from "@/lib/session";
+import { RequestError } from "@/components/request-error";
+import { getMe } from "@/lib/session";
 
 import { CompanyForm } from "./company-form";
 
@@ -26,6 +28,15 @@ export default function OnboardingPage() {
 }
 
 async function SignedInOnly() {
-  await requireUser();
+  const account = await getMe();
+  if (!account) redirect("/ingresar");
+  if (!account.ok) {
+    return (
+      <RequestError
+        message={`Tu sesión se creó, pero no pudimos cargar tu cuenta: ${account.message}`}
+        requestId={account.requestId}
+      />
+    );
+  }
   return <CompanyForm />;
 }
