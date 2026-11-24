@@ -6,7 +6,7 @@ type Readiness = { status: string; database: string; redis: string };
 
 const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
-export function ApiStatus() {
+export function ApiStatus({ inverted = false }: { inverted?: boolean }) {
   const [data, setData] = useState<Readiness | null>(null);
   const [error, setError] = useState(false);
   const [requestId, setRequestId] = useState<string | null>(null);
@@ -52,12 +52,14 @@ export function ApiStatus() {
           ["Redis", data.redis],
         ]
       : [["API", "verificando…"]];
+  const textColor = inverted ? "text-on-ink-muted" : "text-muted";
+  const hoverColor = inverted ? "hover:text-on-ink" : "hover:text-foreground";
 
   return (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
       <ul
         aria-live="polite"
-        className="flex flex-wrap gap-x-4 gap-y-1 font-mono text-xs text-muted"
+        className={`flex flex-wrap gap-x-4 gap-y-1 font-mono text-xs ${textColor}`}
       >
         {rows.map(([label, value]) => (
           <li key={label} className="flex items-center gap-1.5">
@@ -71,7 +73,7 @@ export function ApiStatus() {
       {error && (
         <button
           type="button"
-          className="text-xs text-muted underline hover:text-foreground"
+          className={`text-xs underline ${textColor} ${hoverColor}`}
           title={requestId ? `Referencia ${requestId}` : undefined}
           onClick={() => {
             setData(null);

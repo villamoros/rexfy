@@ -5,6 +5,7 @@ import {
   markAllRead,
   openNotification,
 } from "@/app/actions/notifications";
+import { BrandLoader } from "@/components/brand-loader";
 import { MutationForm } from "@/components/mutation-form";
 import { RequestError } from "@/components/request-error";
 import { SiteHeader } from "@/components/site-header";
@@ -39,7 +40,7 @@ export default function NotificationsPage() {
             </MutationForm>
           }
         />
-        <Suspense fallback={<p className="text-muted">Cargando…</p>}>
+        <Suspense fallback={<BrandLoader overlay boundary />}>
           <Inbox />
         </Suspense>
       </main>

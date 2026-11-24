@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 
+import { BrandLoader } from "@/components/brand-loader";
 import { Card } from "@/components/form";
 import { Logo } from "@/components/logo";
 import { RequestError } from "@/components/request-error";
@@ -19,7 +20,7 @@ export default function OnboardingPage() {
         title="Registra tu empresa"
         subtitle="En RexFy se negocia entre empresas verificadas."
       >
-        <Suspense fallback={<p className="text-sm text-muted">Cargando…</p>}>
+        <Suspense fallback={<BrandLoader overlay boundary />}>
           <SignedInOnly />
         </Suspense>
       </Card>

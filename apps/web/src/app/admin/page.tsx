@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
+import { BrandLoader } from "@/components/brand-loader";
 import { Stat, StatGrid, formatNumber, formatPercent } from "@/components/kpi";
 import { RequestError } from "@/components/request-error";
 import { SiteHeader } from "@/components/site-header";
@@ -37,7 +38,7 @@ export default function AdminPage() {
           title="Admin"
           description="Verifica empresas, modera publicaciones y revisa la actividad de la plataforma."
         />
-        <Suspense fallback={<p className="text-muted">Cargando…</p>}>
+        <Suspense fallback={<BrandLoader overlay boundary />}>
           <Console />
         </Suspense>
       </main>

@@ -6,6 +6,7 @@ import "@fontsource/ibm-plex-mono/500.css";
 import type { Metadata } from "next";
 
 import { ClerkGate } from "@/components/clerk-gate";
+import { SiteFooter } from "@/components/site-footer";
 
 import "./globals.css";
 
@@ -17,6 +18,12 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   const clerkEnabled = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
+  const app = (
+    <>
+      {children}
+      <SiteFooter />
+    </>
+  );
   return (
     <html lang="es" className="h-full antialiased">
       <body className="min-h-full flex flex-col">
@@ -36,10 +43,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
               },
             }}
           >
-            <ClerkGate>{children}</ClerkGate>
+            <ClerkGate>{app}</ClerkGate>
           </ClerkProvider>
         ) : (
-          children
+          app
         )}
       </body>
     </html>

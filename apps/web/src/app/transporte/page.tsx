@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 
 import { advanceShipment } from "@/app/actions/logistics";
+import { BrandLoader } from "@/components/brand-loader";
 import { MutationForm } from "@/components/mutation-form";
 import { CursorNextLink } from "@/components/cursor-next-link";
 import { RequestError } from "@/components/request-error";
@@ -40,7 +41,7 @@ export default function TransportePage({
           title="Transporte"
           description="Cotiza viajes de material reciclable y actualiza tus envíos."
         />
-        <Suspense fallback={<p className="mt-6 text-muted">Cargando…</p>}>
+        <Suspense fallback={<BrandLoader overlay boundary />}>
           <Board searchParams={searchParams} />
         </Suspense>
       </main>

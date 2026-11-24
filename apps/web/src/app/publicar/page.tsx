@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 
+import { BrandLoader } from "@/components/brand-loader";
 import { SiteHeader } from "@/components/site-header";
 import { PageHeader } from "@/components/ui";
 import { requireUser } from "@/lib/session";
@@ -17,7 +18,7 @@ export default function PublicarPage() {
       <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-8">
         <PageHeader title="Publicar material" />
         <div className="mt-6">
-          <Suspense fallback={<p className="text-muted">Cargando…</p>}>
+          <Suspense fallback={<BrandLoader overlay boundary />}>
             <GeneratorOnly />
           </Suspense>
         </div>

@@ -5,6 +5,7 @@ import { Suspense } from "react";
 
 import { acceptTransportQuote } from "@/app/actions/logistics";
 import { AutoRefresh } from "@/components/auto-refresh";
+import { BrandLoader } from "@/components/brand-loader";
 import { MutationForm } from "@/components/mutation-form";
 import { OrderProgress } from "@/components/order-progress";
 import { RequestError } from "@/components/request-error";
@@ -41,7 +42,7 @@ export default function OrderPage({
     <>
       <SiteHeader />
       <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-8">
-        <Suspense fallback={<p className="text-muted">Cargando orden…</p>}>
+        <Suspense fallback={<BrandLoader overlay boundary />}>
           <Order params={params} searchParams={searchParams} />
         </Suspense>
       </main>

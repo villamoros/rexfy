@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 import { cancelInvitation, changeRole, removeMember } from "@/app/actions/team";
+import { BrandLoader } from "@/components/brand-loader";
 import { MutationForm } from "@/components/mutation-form";
 import { RequestError } from "@/components/request-error";
 import { SiteHeader } from "@/components/site-header";
@@ -33,7 +34,7 @@ export default function TeamPage({ params }: PageProps<"/panel/equipo/[id]">) {
     <>
       <SiteHeader />
       <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-4 py-10">
-        <Suspense fallback={<p className="text-muted">Cargando…</p>}>
+        <Suspense fallback={<BrandLoader overlay boundary />}>
           <TeamView params={params} />
         </Suspense>
       </main>

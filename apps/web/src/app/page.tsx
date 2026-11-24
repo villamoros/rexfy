@@ -1,6 +1,5 @@
 import Link from "next/link";
 
-import { ApiStatus } from "@/components/api-status";
 import { MaterialIcon } from "@/components/icons";
 import { Logo } from "@/components/logo";
 import { Network } from "@/components/network";
@@ -56,11 +55,9 @@ export default function Home() {
         <Fronts />
         <ClosingCta />
       </main>
-      <SiteFooter />
     </div>
   );
 }
-
 /** Noche hero: landing nav, value proposition and example listings. */
 function Hero() {
   return (
@@ -234,19 +231,5 @@ function ClosingCta() {
         </Link>
       </div>
     </section>
-  );
-}
-
-function SiteFooter() {
-  return (
-    <footer className="border-t border-border bg-surface">
-      <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-4 px-4 py-8 text-sm text-muted">
-        <div className="flex items-center gap-4">
-          <Logo className="h-6 text-foreground" />
-          <span>Una red productiva.</span>
-        </div>
-        <ApiStatus />
-      </div>
-    </footer>
   );
 }

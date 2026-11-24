@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { Suspense } from "react";
 
 import { archiveListing } from "@/app/actions/listings";
+import { BrandLoader } from "@/components/brand-loader";
 import { Stat, StatGrid, formatNumber, formatPercent } from "@/components/kpi";
 import { MutationForm } from "@/components/mutation-form";
 import { RequestError } from "@/components/request-error";
@@ -29,7 +30,7 @@ export default function PanelPage() {
     <>
       <SiteHeader />
       <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10">
-        <Suspense fallback={<p className="text-muted">Cargando tu panel…</p>}>
+        <Suspense fallback={<BrandLoader overlay boundary />}>
           <Dashboard />
         </Suspense>
         <SignOutButton redirectUrl="/ingresar">

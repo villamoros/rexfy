@@ -2,9 +2,10 @@ import { UserButton } from "@clerk/nextjs";
 import Link from "next/link";
 import { Suspense } from "react";
 
+import { BrandLoader } from "@/components/brand-loader";
 import { ClientOnly } from "@/components/client-only";
 import { Logo } from "@/components/logo";
-import { NavLinks, NavList } from "@/components/nav-links";
+import { NavLinks } from "@/components/nav-links";
 import { VISITOR_LINKS, linksFor } from "@/lib/nav";
 import { apiFetch } from "@/lib/api";
 import { getMe, getToken } from "@/lib/session";
@@ -16,14 +17,12 @@ export function SiteHeader() {
       <nav className="mx-auto flex w-full max-w-6xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3">
         <Logo />
         <div className="order-3 w-full sm:order-none sm:w-auto sm:flex-1">
-          <Suspense
-            fallback={<NavList links={VISITOR_LINKS} pathname={null} />}
-          >
+          <Suspense fallback={<BrandLoader overlay boundary />}>
             <RoleNav />
           </Suspense>
         </div>
         <div className="ml-auto flex items-center gap-3 sm:ml-0">
-          <Suspense fallback={null}>
+          <Suspense fallback={<BrandLoader overlay boundary />}>
             <Bell />
           </Suspense>
           {clerkEnabled ? (

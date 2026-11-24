@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 
+import { BrandLoader } from "@/components/brand-loader";
 import { OrderProgress } from "@/components/order-progress";
 import { CursorNextLink } from "@/components/cursor-next-link";
 import { SiteHeader } from "@/components/site-header";
@@ -28,9 +29,7 @@ export default function OrdenesPage({
           title="Órdenes"
           description="Tus compras y ventas cerradas en RexFy."
         />
-        <Suspense
-          fallback={<p className="mt-6 text-muted">Cargando órdenes…</p>}
-        >
+        <Suspense fallback={<BrandLoader overlay boundary />}>
           <Orders searchParams={searchParams} />
         </Suspense>
       </main>

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 
+import { BrandLoader } from "@/components/brand-loader";
 import { MaterialIcon } from "@/components/icons";
 import { SiteHeader } from "@/components/site-header";
 import { PageHeader } from "@/components/ui";
@@ -42,9 +43,7 @@ export default function MarketplacePage({
           title="Marketplace"
           description="Material reciclable publicado por empresas en Colombia, listo para volver a la cadena productiva."
         />
-        <Suspense
-          fallback={<p className="mt-8 text-muted">Buscando material…</p>}
-        >
+        <Suspense fallback={<BrandLoader overlay boundary />}>
           <Search searchParams={searchParams} />
         </Suspense>
       </main>

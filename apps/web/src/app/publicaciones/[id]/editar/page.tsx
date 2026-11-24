@@ -4,6 +4,7 @@ import { Suspense } from "react";
 
 import { removePhoto } from "@/app/actions/listings";
 import { PublishWizard } from "@/app/publicar/wizard";
+import { BrandLoader } from "@/components/brand-loader";
 import { MutationForm } from "@/components/mutation-form";
 import { RequestError } from "@/components/request-error";
 import { SiteHeader } from "@/components/site-header";
@@ -21,7 +22,7 @@ export default function EditListingPage({
     <>
       <SiteHeader />
       <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-8">
-        <Suspense fallback={<p className="text-muted">Cargando…</p>}>
+        <Suspense fallback={<BrandLoader overlay boundary />}>
           <Editor params={params} />
         </Suspense>
       </main>

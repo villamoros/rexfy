@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
+import { BrandLoader } from "@/components/brand-loader";
 import { MaterialIcon } from "@/components/icons";
 import { SiteHeader } from "@/components/site-header";
 import { RequestError } from "@/components/request-error";
@@ -31,9 +32,7 @@ export default function ListingPage({
     <>
       <SiteHeader />
       <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-8">
-        <Suspense
-          fallback={<p className="text-muted">Cargando publicación…</p>}
-        >
+        <Suspense fallback={<BrandLoader overlay boundary />}>
           <Detail params={params} searchParams={searchParams} />
         </Suspense>
       </main>

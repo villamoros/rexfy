@@ -1,12 +1,24 @@
 import { LogoMark } from "@/components/logo";
 
-export function BrandLoader({ className = "" }: { className?: string }) {
+export function BrandLoader({
+  boundary = false,
+  className = "",
+  hidden = false,
+  overlay = false,
+}: {
+  boundary?: boolean;
+  className?: string;
+  hidden?: boolean;
+  overlay?: boolean;
+}) {
   return (
     <div
-      className={`brand-loader ${className}`}
+      className={`brand-loader ${overlay ? "brand-loader--overlay" : ""} ${className}`}
+      data-rexfy-loading-boundary={boundary ? "true" : undefined}
       role="status"
       aria-live="polite"
       aria-label="Cargando"
+      aria-hidden={hidden}
     >
       <div className="brand-loader__stage" aria-hidden="true">
         <span className="brand-loader__halo" />

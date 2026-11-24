@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 
+import { BrandLoader } from "@/components/brand-loader";
 import { SiteHeader } from "@/components/site-header";
 import { CursorNextLink } from "@/components/cursor-next-link";
 import { RequestError } from "@/components/request-error";
@@ -23,9 +24,7 @@ export default function MensajesPage({
       <SiteHeader />
       <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-8">
         <PageHeader title="Mensajes" />
-        <Suspense
-          fallback={<p className="mt-6 text-muted">Cargando conversaciones…</p>}
-        >
+        <Suspense fallback={<BrandLoader overlay boundary />}>
           <Inbox searchParams={searchParams} />
         </Suspense>
       </main>

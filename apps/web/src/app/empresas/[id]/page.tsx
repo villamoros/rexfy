@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
+import { BrandLoader } from "@/components/brand-loader";
 import { ListingCard } from "@/components/listing-card";
 import { SiteHeader } from "@/components/site-header";
 import { RequestError } from "@/components/request-error";
@@ -18,7 +19,7 @@ export default function CompanyPage({ params }: PageProps<"/empresas/[id]">) {
     <>
       <SiteHeader />
       <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-8">
-        <Suspense fallback={<p className="text-muted">Cargando perfil…</p>}>
+        <Suspense fallback={<BrandLoader overlay boundary />}>
           <Profile params={params} />
         </Suspense>
       </main>

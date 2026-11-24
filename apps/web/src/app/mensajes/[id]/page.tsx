@@ -5,6 +5,7 @@ import { Suspense } from "react";
 
 import { respondToOffer } from "@/app/actions/deals";
 import { AutoRefresh } from "@/components/auto-refresh";
+import { BrandLoader } from "@/components/brand-loader";
 import { CursorNextLink } from "@/components/cursor-next-link";
 import { MutationForm } from "@/components/mutation-form";
 import { RequestError } from "@/components/request-error";
@@ -33,9 +34,7 @@ export default function ThreadPage({
     <>
       <SiteHeader />
       <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-6">
-        <Suspense
-          fallback={<p className="text-muted">Cargando conversación…</p>}
-        >
+        <Suspense fallback={<BrandLoader overlay boundary />}>
           <Conversation params={params} searchParams={searchParams} />
         </Suspense>
       </main>
