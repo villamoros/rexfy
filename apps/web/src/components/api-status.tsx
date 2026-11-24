@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-type Readiness = { status: string; database: string; redis: string };
+type Readiness = { status: string; database: string; redis: string; outbox: string };
 
 const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
@@ -50,6 +50,7 @@ export function ApiStatus({ inverted = false }: { inverted?: boolean }) {
           ["API", data.status],
           ["Base de datos", data.database],
           ["Redis", data.redis],
+          ["Cola de notificaciones", data.outbox],
         ]
       : [["API", "verificando…"]];
   const textColor = inverted ? "text-on-ink-muted" : "text-muted";

@@ -9,7 +9,14 @@ from app.core.config import get_settings
 log = logging.getLogger("rexfy.email")
 
 
+def require_email_transport() -> None:
+    settings = get_settings()
+    if settings.env not in ("local", "test") and not settings.smtp_host:
+        raise RuntimeError("REXFY_SMTP_HOST is required for email delivery")
+
+
 def send_email(to: str, subject: str, text: str, *, message_id: str | None = None) -> None:
+    require_email_transport()
     settings = get_settings()
     if not settings.smtp_host:
         log.info("Email (sin SMTP configurado) a %s: %s\n%s", to, subject, text)

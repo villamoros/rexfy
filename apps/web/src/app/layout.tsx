@@ -1,8 +1,5 @@
 import { ClerkProvider } from "@clerk/nextjs";
 import { esMX } from "@clerk/localizations";
-import "@fontsource-variable/manrope";
-import "@fontsource/ibm-plex-mono/400.css";
-import "@fontsource/ibm-plex-mono/500.css";
 import type { Metadata } from "next";
 
 import { ClerkGate } from "@/components/clerk-gate";

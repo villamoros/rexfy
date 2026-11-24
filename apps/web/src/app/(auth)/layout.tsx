@@ -1,3 +1,8 @@
+import { auth } from "@clerk/nextjs/server";
+import { redirect } from "next/navigation";
+import { Suspense, type ReactNode } from "react";
+
+import { BrandLoader } from "@/components/brand-loader";
 import { Logo } from "@/components/logo";
 import { Network } from "@/components/network";
 
@@ -31,8 +36,16 @@ export default function AuthLayout({ children }: LayoutProps<"/">) {
       </aside>
       <main className="flex flex-col items-center justify-center gap-8 px-4 py-12">
         <Logo className="lg:hidden" />
-        {children}
+        <Suspense fallback={<BrandLoader overlay boundary />}>
+          <GuestOnly>{children}</GuestOnly>
+        </Suspense>
       </main>
     </div>
   );
+}
+
+async function GuestOnly({ children }: { children: ReactNode }) {
+  const { isAuthenticated } = await auth();
+  if (isAuthenticated) redirect("/panel");
+  return children;
 }
